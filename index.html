@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Element TD — หกธาตุพิทักษ์</title>
+  <meta name="description" content="เกม Tower Defense บนเบราว์เซอร์ ใช้พลังธาตุทั้ง 6: ดิน น้ำ ลม ไฟ แสง มืด">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="brand">Element <span>TD</span></div>
+      <div class="stats">
+        <div class="stat" title="ทอง"><span class="ico">🪙</span><b id="gold">0</b></div>
+        <div class="stat" title="พลังชีวิตแกนกลาง"><span class="ico">❤️</span><b id="lives">0</b></div>
+        <div class="stat" title="เวฟ"><span class="ico">🌊</span><b id="wave">0</b><small id="waveTotal">/30</small></div>
+      </div>
+      <div class="controls">
+        <button id="btnWave" class="primary">▶ เริ่มเวฟ</button>
+        <button id="btnSpeed" title="ความเร็ว (F)">1×</button>
+        <button id="btnPause" title="หยุดชั่วคราว (P)">⏸</button>
+        <button id="btnMute" title="เสียง (M)">🔊</button>
+        <button id="btnHelp" title="วิธีเล่น (H)">?</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <div id="stageWrap">
+        <canvas id="game" width="800" height="480"></canvas>
+        <div id="nextWave"></div>
+        <div id="toast"></div>
+      </div>
+
+      <aside id="side">
+        <section>
+          <h3>สร้างป้อมธาตุ</h3>
+          <div id="buildGrid"></div>
+        </section>
+        <section id="infoPanel">
+          <div class="hint">เลือกธาตุแล้วคลิกบนพื้นหญ้าเพื่อวางป้อม<br>คลิกที่ป้อมเพื่ออัปเกรด / หลอมรวม</div>
+        </section>
+        <section class="cycle">
+          <h3>วงจรธาตุ</h3>
+          <canvas id="cycleCanvas" width="220" height="150"></canvas>
+          <p class="small">ลูกศรชี้ไปยังธาตุที่แพ้ทาง — ดาเมจ ×1.75<br>ธาตุเดียวกัน ×0.5 · โดนแพ้ทาง ×0.65</p>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <!-- เมนูเริ่มเกม -->
+  <div id="menu" class="overlay show">
+    <div class="card wide">
+      <h1>Element <span>TD</span></h1>
+      <p class="sub">หกธาตุพิทักษ์ — ปกป้องแกนกลางด้วยพลังแห่ง ดิน · น้ำ · ลม · ไฟ · แสง · มืด</p>
+      <div class="elemRow" id="menuElems"></div>
+      <h3>เลือกแผนที่</h3>
+      <div id="mapList" class="choiceRow"></div>
+      <h3>ระดับความยาก</h3>
+      <div id="diffList" class="choiceRow"></div>
+      <div class="menuActions">
+        <button id="btnStart" class="primary big">เริ่มเกม</button>
+        <button id="btnHowTo" class="big">วิธีเล่น</button>
+      </div>
+      <p class="small" id="bestScore"></p>
+    </div>
+  </div>
+
+  <!-- วิธีเล่น -->
+  <div id="help" class="overlay">
+    <div class="card wide">
+      <h2>วิธีเล่น</h2>
+      <ul class="helpList">
+        <li>ศัตรูแต่ละตัวมี <b>ธาตุประจำตัว</b> (ดูสีและไอคอน) — ใช้ป้อมธาตุที่ชนะทางเพื่อทำดาเมจ ×1.75</li>
+        <li>วงจรธาตุ: <b>🔥 ไฟ → 🌪️ ลม → 🪨 ดิน → 💧 น้ำ → 🔥 ไฟ</b> และ <b>✨ แสง ⇄ 🌑 มืด</b> ชนะทางกันและกัน</li>
+        <li>ดูแถบ <b>“เวฟถัดไป”</b> มุมซ้ายบนเพื่อวางแผนก่อนเริ่มเวฟ</li>
+        <li>อัปเกรดป้อมได้ถึงเลเวล 3 จากนั้นกด <b>หลอมรวม</b> กับป้อมเลเวล 3 ต่างธาตุ เพื่อสร้าง <b>ป้อมหลอมรวม</b> ที่มีพลังของทั้งสองธาตุ (15 แบบ!)</li>
+        <li>บอสจะมาทุก ๆ 10 เวฟ — ผ่านครบ 30 เวฟเพื่อชนะ แล้วเล่นต่อในโหมดไม่รู้จบได้</li>
+      </ul>
+      <div class="elemTable" id="elemTable"></div>
+      <h3>คีย์ลัด</h3>
+      <p class="small">1–6 เลือกธาตุ · Space เริ่มเวฟ · U อัปเกรด · S ขาย · T เปลี่ยนโหมดเล็งเป้า · F ความเร็ว · P หยุด · Esc ยกเลิก</p>
+      <button id="btnCloseHelp" class="primary">เข้าใจแล้ว</button>
+    </div>
+  </div>
+
+  <!-- จบเกม -->
+  <div id="endScreen" class="overlay">
+    <div class="card">
+      <h2 id="endTitle">จบเกม</h2>
+      <p id="endText"></p>
+      <div class="menuActions">
+        <button id="btnContinue" class="primary">เล่นต่อ (ไม่รู้จบ)</button>
+        <button id="btnRetry" class="primary">เล่นอีกครั้ง</button>
+        <button id="btnMenu">เมนูหลัก</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
