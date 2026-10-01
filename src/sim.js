@@ -552,7 +552,7 @@ export class Game {
       slowT: 0, slowF: 1, stunT: 0, burnT: 0, burnDps: 0, burnSrc: null,
       rootT: 0, freezeT: 0, freezeImm: 0, silenceT: 0, chill: 0, chillT: 0, wetT: 0,
       corrodeT: 0, corrodePct: 0, corrodeCap: 0, corrodeSrc: null, soulT: 0, soulDps: 0, soulSrc: null,
-      exposeT: 0, exposeAmp: 1, shredT: 0, shredAmp: 1, marks: 0, markT: 0, erosion: 0, poolT: 0, mudT: 0, zoneF: 1,
+      exposeT: 0, exposeAmp: 1, shredT: 0, shredAmp: 1, marks: 0, markT: 0, erosion: 0, poolT: 0, mudT: 0, zoneF: 1, pullT: 0, pullImm: 0,
       alive: true, flash: 0, revived: false, moving: 1,
       wave: entry.wave || (from && from.wave) || this.wave,
     };
@@ -741,7 +741,7 @@ export class Game {
 
   updateCreep(e, dt) {
     e.flash = Math.max(0, e.flash - dt);
-    for (const k of ['slowT', 'stunT', 'rootT', 'freezeT', 'freezeImm', 'silenceT', 'exposeT', 'shredT', 'markT', 'wetT', 'chillT']) {
+    for (const k of ['slowT', 'stunT', 'rootT', 'freezeT', 'freezeImm', 'silenceT', 'exposeT', 'shredT', 'markT', 'wetT', 'chillT', 'pullImm']) {
       if (e[k] > 0) e[k] -= dt;
     }
     if (e.chillT <= 0 && e.chill > 0) e.chill = Math.max(0, e.chill - 25 * dt);
@@ -986,7 +986,8 @@ export class Game {
   // ลำแสงต่อเนื่อง ยิ่งยิงเป้าเดิมนานยิ่งแรง
   fireRamp(t, target) {
     const r = t.stats.ramp;
-    if (t.rampTarget !== target) { t.rampTarget = target; t.rampT = 0; }
+    // เปลี่ยนเป้า: พลังสะสมเหลือครึ่งหนึ่ง
+    if (t.rampTarget !== target) { t.rampTarget = target; t.rampT = (t.rampT || 0) * 0.5; }
     t.rampT += 1 / t.stats.rate;
     const k = Math.min(1, t.rampT / r.time);
     const mul = r.min + (r.max - r.min) * k;
@@ -1083,16 +1084,21 @@ export class Game {
         const pct = Math.min(z.capPct, z.pct + z.grow * e.poolT) * (e.ability === 'boss' ? 0.25 : 1);
         d += Math.min(e.hp * pct, z.cap);
       } else if (z.kind === 'lava') {
-        if (!immune) e.zoneF = Math.min(e.zoneF, z.sticky);
+        if (!immune) e.zoneF = Math.min(e.zoneF, e.ability === 'boss' ? Math.max(z.sticky, 0.7) : z.sticky);
         if (z.burn) this.setBurn(e, z.burn, t);
       } else if (z.kind === 'mud') {
-        e.mudT = Math.min(8, (e.mudT || 0) + dt * 2);
+        e.mudT = Math.min(4, (e.mudT || 0) + dt * 2);
         const f = Math.max(z.minF, 1 - z.sink * e.mudT);
-        e.zoneF = Math.min(e.zoneF, immune ? Math.sqrt(f) : f);
+        e.zoneF = Math.min(e.zoneF, e.ability === 'boss' ? Math.max(f, 0.7) : immune ? Math.sqrt(f) : f);
       } else if (z.kind === 'void') {
-        const k = e.ability === 'boss' ? 0.15 : immune ? 0.5 : 1;
+        // ถูกดึงต่อเนื่อง 0.8 วิ แล้วต้านแรงดึง 2 วิ
+        const k = e.ability === 'boss' ? 0.15 : immune ? 0.25 : 1;
         const dx = z.x - e.x, dy = z.y - e.y, dd = Math.hypot(dx, dy);
-        if (dd > 4) {
+        if (e.pullImm <= 0) {
+          e.pullT = (e.pullT || 0) + dt;
+          if (e.pullT >= 0.8) { e.pullT = 0; e.pullImm = 2; }
+        }
+        if (dd > 4 && e.pullImm <= 0) {
           const step = Math.min(dd, z.pull * k * dt);
           const nx = e.x + (dx / dd) * step, ny = e.y + (dy / dd) * step;
           if (this.canStand(e, nx, ny)) { e.x = nx; e.y = ny; }

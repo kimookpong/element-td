@@ -338,16 +338,14 @@ export function buildWorld(map, themeKey) {
     coreGem.position.y = 1.75 + Math.sin(t * 2) * 0.08;
   });
 
-  // ---- ของตกแต่งรอบนอก ----
-  decorate(group, map, theme, walk, anim);
+  // ---- ป้ายผู้สร้างเกม (มุมที่ว่างจากป้ายอื่น) ----
+  const spot = [-2.3, -0.5];
+  const creatorSign = makeCreatorSign();
+  creatorSign.position.set(tileX(spot[0]), 0, tileZ(spot[1]));
+  group.add(creatorSign);
 
-  // ---- ป้ายแนะนำ ----
-  const signs = (map.def.signs || []).map((sg) => {
-    const s = makeSign(sg);
-    s.position.set(tileX(sg.c), 0, tileZ(sg.r));
-    group.add(s);
-    return s;
-  });
+  // ---- ของตกแต่งรอบนอก ----
+  decorate(group, map, theme, walk, anim, [{ x: tileX(spot[0]), z: tileZ(spot[1]) }]);
 
   // ---- ท้องฟ้า ----
   const sky = new THREE.Mesh(
@@ -375,17 +373,17 @@ export function buildWorld(map, themeKey) {
 
   return {
     group, theme, anim,
-    spawnPortal, corePortal, coreCrystal, signs,
+    spawnPortal, corePortal, coreCrystal, creatorSign,
     update(t) { for (const a of anim) a(t); },
   };
 }
 
 /* ---------- ของตกแต่ง ---------- */
-function decorate(group, map, theme, walk, anim) {
+function decorate(group, map, theme, walk, anim, extraPts = []) {
   const B = { x0: -COLS / 2, x1: COLS / 2, z0: -ROWS / 2, z1: ROWS / 2 };
   const inBoard = (x, z, m = 0.5) => x > B.x0 - m && x < B.x1 + m && z > B.z0 - m && z < B.z1 + m;
   const portals = [map.spawn, map.core].map((i) => ({ x: tileX(i % COLS), z: tileZ(Math.floor(i / COLS)) }));
-  const signPts = (map.def.signs || []).map((sg) => ({ x: tileX(sg.c), z: tileZ(sg.r) }));
+  const signPts = extraPts;
   const nearPortal = (x, z, d = 2.2) => portals.some((p) => Math.hypot(p.x - x, p.z - z) < d) || signPts.some((p) => Math.hypot(p.x - x, p.z - z) < 1.4);
   const scatter = (n, minD, maxD, margin = 0.9) => {
     const pts = [];
@@ -590,9 +588,7 @@ function decorate(group, map, theme, walk, anim) {
 }
 
 /* ---------- ป้ายไม้แนะนำ (หันหากล้องเสมอ) ---------- */
-function drawSign(c, sg) {
-  const g = c.getContext('2d');
-  const W = c.width, H = c.height;
+function drawBoard(g, W, H) {
   g.clearRect(0, 0, W, H);
   const r = 26;
   const path = () => {
@@ -617,38 +613,66 @@ function drawSign(c, sg) {
   for (const [x, y] of [[26, 26], [W - 26, 26], [26, H - 26], [W - 26, H - 26]]) {
     g.fillStyle = '#e8c870'; g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.fill();
   }
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.font = '600 46px Kanit, "Noto Sans Thai", sans-serif';
-  g.lineWidth = 6; g.strokeStyle = 'rgba(40,20,0,0.8)';
-  g.strokeText(sg.title, W / 2, 62); g.fillStyle = '#ffe08a'; g.fillText(sg.title, W / 2, 62);
-  g.font = '500 32px Kanit, "Noto Sans Thai", sans-serif';
-  sg.lines.forEach((ln, i) => {
-    g.lineWidth = 5; g.strokeStyle = 'rgba(40,20,0,0.7)';
-    g.strokeText(ln, W / 2, 128 + i * 46); g.fillStyle = '#fbf0d8'; g.fillText(ln, W / 2, 128 + i * 46);
-  });
 }
 
-function makeSign(sg) {
+/* ---------- ป้ายผู้สร้างเกม: รูปโปรไฟล์ GitHub + คลิกไปหน้าเว็บ ---------- */
+export const CREATOR = { name: 'kimookpong', url: 'https://kimookpong.github.io/', avatar: `${import.meta.env.BASE_URL}creator.png` };
+
+function drawCreator(c, img) {
+  const g = c.getContext('2d');
+  const W = c.width, H = c.height;
+  drawBoard(g, W, H);
+  const cx = 118, cy = H / 2, R = 82;
+  g.save();
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.closePath();
+  g.fillStyle = '#2a1a0c'; g.fill();
+  g.clip();
+  if (img) g.drawImage(img, cx - R, cy - R, R * 2, R * 2);
+  g.restore();
+  g.lineWidth = 8; g.strokeStyle = '#e8c870';
+  g.beginPath(); g.arc(cx, cy, R + 2, 0, Math.PI * 2); g.stroke();
+  g.lineWidth = 2; g.strokeStyle = '#5a3a12';
+  g.beginPath(); g.arc(cx, cy, R + 7, 0, Math.PI * 2); g.stroke();
+  const x = 228;
+  const text = (t, y, font, fill, sw = 5) => {
+    g.font = font; g.lineWidth = sw; g.strokeStyle = 'rgba(40,20,0,0.8)';
+    g.strokeText(t, x, y); g.fillStyle = fill; g.fillText(t, x, y);
+  };
+  g.textAlign = 'left'; g.textBaseline = 'middle';
+  text('เกมนี้คิดและพัฒนาโดย', 58, '500 28px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
+  text(CREATOR.name, 108, '700 46px Kanit, "Noto Sans Thai", sans-serif', '#ffe08a', 6);
+  text('สนใจติดต่อได้เลย!', 160, '600 30px Kanit, "Noto Sans Thai", sans-serif', '#b6ffb0');
+  text('▶ คลิกที่ป้ายนี้', 206, '500 26px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
+}
+
+function makeCreatorSign() {
   const g = new THREE.Group();
   const c = document.createElement('canvas');
   c.width = 512; c.height = 256;
-  drawSign(c, sg);
+  let img = null;
+  drawCreator(c, null);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawSign(c, sg); tex.needsUpdate = true; });
+  const redraw = () => { drawCreator(c, img); tex.needsUpdate = true; };
+  const im = new Image();
+  im.onload = () => { img = im; redraw(); };
+  im.src = CREATOR.avatar;
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
   const woodM = std(0x5a3a20, { roughness: 0.9 });
   const face = new THREE.Group();
-  face.position.y = 1.15;
+  face.position.y = 1.2;
   face.rotation.x = -0.18;
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, transparent: true }));
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, transparent: true, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.12 }));
   board.position.z = 0.03;
   face.add(board);
+  face.add(mesh(G.box(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { s: [1.8, 0.95, 0.04], z: -0.01 }));
   face.add(mesh(G.box(), woodM, { s: [1.72, 0.87, 0.05] }));
   g.add(face);
-  for (const x of [-0.62, 0.62]) g.add(mesh(G.box(), woodM, { x, y: 0.55, s: [0.07, 1.1, 0.07] }));
+  for (const x of [-0.62, 0.62]) g.add(mesh(G.box(), woodM, { x, y: 0.58, s: [0.07, 1.16, 0.07] }));
   g.add(mesh(G.box(), std(0x8a8478, { flatShading: true }), { y: 0.03, s: [1.5, 0.06, 0.25] }));
-  g.userData.isSign = true;
-  g.scale.setScalar(1.5);
+  g.userData.link = CREATOR.url;
+  g.scale.setScalar(1.6);
   return g;
 }
+

@@ -21,7 +21,7 @@ export const TOWERS = {
     look: 'กรงเล็บหินดำโอบลูกแก้วม่วง',
     attack: 'ยิงพลังมืดแรง พร้อมกัดกร่อนชีวิต ทำดาเมจต่อเนื่องตาม %HP ปัจจุบัน',
     weak: 'ระยะปานกลาง คำสาปเบาลงเมื่อศัตรูเลือดน้อย',
-    atk: 'proj', rate: 0.9, range: 105, dpsF: 0.72,
+    atk: 'proj', rate: 0.9, range: 105, dpsF: 0.9,
     fx: (lv, dps) => ({ corrode: { pct: 0.025 + 0.01 * lv, dur: 3, cap: dps * 0.6 } }),
   },
   water: {
@@ -53,7 +53,7 @@ export const TOWERS = {
     look: 'โกเลมหินหมัดใหญ่ มีผลึกอำพัน',
     attack: 'ขว้างหินหนัก มีโอกาสมึนงง หยุดการเดินและใช้สกิลชั่วคราว',
     weak: 'ระยะสั้น ยิงช้า สตันไม่แน่นอน',
-    atk: 'proj', rate: 0.5, range: 86, dpsF: 1.3,
+    atk: 'proj', rate: 0.5, range: 100, dpsF: 1.6,
     fx: (lv) => ({ stun: { chance: 0.14 + 0.05 * lv, dur: 0.9 } }),
   },
 
@@ -63,7 +63,7 @@ export const TOWERS = {
     look: 'วงแหวนทองล้อมดวงอาทิตย์ดำ',
     attack: 'ยิงสะสมตราคราสบนเป้าเดียว ครบจำนวนแล้วระเบิดดาเมจตาม HP ที่เป้าหมายเสียไป',
     weak: 'ไม่คุ้มกับตัวเลือดเต็มหรือตัวที่ตายก่อนสะสมตราครบ',
-    atk: 'beam', rate: 1.25, range: 125, dpsF: 0.7,
+    atk: 'beam', rate: 1.25, range: 125, dpsF: 0.8,
     fx: (lv, dps, dmg) => ({ marks: { need: 4, pct: 0.14 + 0.04 * lv, cap: dmg * 5, dur: 4 } }),
   },
   'light+water': {
@@ -79,7 +79,7 @@ export const TOWERS = {
     look: 'หอรวมแสง มีแกนดวงอาทิตย์',
     attack: 'ยิงลำแสงต่อเนื่อง ยิ่งโจมตีเป้าเดิมนานยิ่งร้อนและแรง',
     weak: 'เปลี่ยนเป้าแล้วพลังสะสมรีเซ็ต',
-    atk: 'ramp', rate: 6, range: 112, dpsF: 0.52,
+    atk: 'ramp', rate: 6, range: 112, dpsF: 0.72,
     fx: (lv) => ({ ramp: { time: 3.2 - 0.3 * lv, min: 0.45, max: 2.1 + 0.2 * lv } }),
   },
   'light+wind': {
@@ -111,7 +111,7 @@ export const TOWERS = {
     look: 'เตาหัวกะโหลก มีไฟม่วงแดง',
     attack: 'ติดไฟคำสาป หากเป้าหมายตาย ไฟที่เหลือแพร่ไปยังศัตรูใกล้เคียง',
     weak: 'ประสิทธิภาพลดลงเมื่อศัตรูเดินกระจาย',
-    atk: 'proj', rate: 0.9, range: 110, dpsF: 0.5, proj: 'soul',
+    atk: 'proj', rate: 0.9, range: 110, dpsF: 0.62, proj: 'soul',
     fx: (lv, dps) => ({ soul: { dps: dps * 0.55, dur: 4, spread: 2 + lv, jump: 70 } }),
   },
   'dark+wind': {
@@ -136,15 +136,15 @@ export const TOWERS = {
     attack: 'ทิ้งแอ่งลาวา ทำดาเมจต่อเนื่อง ติดหนืดและเผาไหม้',
     weak: 'ต้องให้ศัตรูอยู่ในแอ่งนานจึงคุ้ม',
     atk: 'zone', rate: 0.5, range: 105, dpsF: 0.95,
-    fx: (lv, dps) => ({ zone: { kind: 'lava', r: 40, dur: 4, dps: dps * 0.45, sticky: 0.62 - 0.04 * lv, burn: { dps: dps * 0.15, dur: 2 } } }),
+    fx: (lv, dps) => ({ zone: { kind: 'lava', r: 40, dur: 4, dps: dps * 0.28, sticky: 0.7 - 0.04 * lv, burn: { dps: dps * 0.1, dur: 2 } } }),
   },
   'water+wind': {
     th: 'พายุเหมันต์', name: 'Winter Storm',
     look: 'ผลึกน้ำแข็งกลางวงพายุ',
     attack: 'พายุหิมะสะสมความเย็นจนเต็มแล้วแช่แข็ง',
     weak: 'ต้องใช้เวลาสะสม และมีช่วงต้านทานการแช่ซ้ำ',
-    atk: 'proj', rate: 1.2, range: 112, dpsF: 0.55, proj: 'ice',
-    fx: (lv) => ({ splash: 44, chill: { add: 18 + 5 * lv, freeze: 1.4 + 0.15 * lv, imm: 3 } }),
+    atk: 'proj', rate: 1.2, range: 112, dpsF: 0.65, proj: 'ice',
+    fx: (lv) => ({ splash: 44, chill: { add: 26 + 6 * lv, freeze: 1.4 + 0.15 * lv, imm: 3 } }),
   },
   'earth+water': {
     th: 'บึงดูด', name: 'Sucking Bog',
@@ -152,7 +152,7 @@ export const TOWERS = {
     attack: 'สร้างโคลนติดจมโคลน ยิ่งอยู่ในพื้นที่นานยิ่งเดินช้า',
     weak: 'ดาเมจต่ำ ไม่เด่นกับทางผ่านสั้น ๆ',
     atk: 'zone', rate: 0.4, range: 108, dpsF: 0.5,
-    fx: (lv, dps) => ({ zone: { kind: 'mud', r: 46, dur: 5, dps: dps * 0.26, sink: 0.35, minF: 0.32 - 0.04 * lv } }),
+    fx: (lv, dps) => ({ zone: { kind: 'mud', r: 46, dur: 5, dps: dps * 0.26, sink: 0.3, minF: 0.4 - 0.02 * lv } }),
   },
   'fire+wind': {
     th: 'พายุเพลิง', name: 'Firestorm',
@@ -175,7 +175,7 @@ export const TOWERS = {
     look: 'เสาหินทรายกับวงหินบด',
     attack: 'ยิงทรายเป็นกรวย สะสมกัดเซาะจนครบแล้วขัดจังหวะสกิลที่กำลังร่าย',
     weak: 'ระยะสั้น ต้องหันกรวยให้ครอบคลุมฝูง',
-    atk: 'cone', rate: 1.4, range: 88, dpsF: 0.5,
+    atk: 'cone', rate: 1.4, range: 100, dpsF: 0.8,
     fx: (lv) => ({ cone: { spread: 0.55 }, erosion: { need: 6 - Math.min(2, lv - 1), silence: 3, stun: 0.4 } }),
   },
 
@@ -187,7 +187,7 @@ export const TOWERS = {
     weak: 'ดาเมจเน้นสะสม พื้นที่ด้านหลังคงอยู่ไม่นาน',
     atk: 'tornado', rate: 0.36, range: 125, dpsF: 0.85,
     fx: (lv, dps) => ({
-      tornado: { r: 36, dur: 4, speed: 48, dps: dps * 0.55, burn: { dps: dps * 0.15, dur: 2 }, trail: { every: 0.45, r: 30, dur: 2.2, dps: dps * 0.18, sticky: 0.55 } },
+      tornado: { r: 36, dur: 4, speed: 48, dps: dps * 0.4, burn: { dps: dps * 0.1, dur: 2 }, trail: { every: 0.5, r: 30, dur: 2, dps: dps * 0.1, sticky: 0.65 } },
     }),
   },
   'earth+fire+water': {
@@ -195,8 +195,8 @@ export const TOWERS = {
     look: 'เนินหินแตกร้าว มีลาวาและช่องไอน้ำ',
     attack: 'วางจุดปะทุบนทาง หน่วงเวลาก่อนระเบิดแรง ทำให้มึนงงช่วงสั้น และทิ้งแอ่งลาวา',
     weak: 'ศัตรูเร็วอาจผ่านจุดก่อนปะทุ คูลดาวน์นาน',
-    atk: 'erupt', rate: 0.3, range: 125, dpsF: 1.0,
-    fx: (lv, dps) => ({ erupt: { delay: 1.1, r: 62, stun: 0.7, lava: { r: 40, dur: 3, dps: dps * 0.25, sticky: 0.6 } } }),
+    atk: 'erupt', rate: 0.3, range: 125, dpsF: 0.6,
+    fx: (lv, dps) => ({ erupt: { delay: 1.1, r: 62, stun: 0.7, lava: { r: 40, dur: 3, dps: dps * 0.15, sticky: 0.7 } } }),
   },
   'earth+water+wind': {
     th: 'ธารน้ำแข็ง', name: 'Glacier',

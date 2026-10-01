@@ -488,7 +488,9 @@ canvas.addEventListener('pointerdown', (ev) => {
 canvas.addEventListener('pointermove', (ev) => {
   if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
   if (gesture && Math.hypot(ev.clientX - gesture.x, ev.clientY - gesture.y) > 8) gesture.moved = true;
-  if (ev.pointerType !== 'mouse' || !view.game) return;
+  if (ev.pointerType !== 'mouse') return;
+  canvas.style.cursor = renderer.pickLink(ev.clientX, ev.clientY) ? 'pointer' : '';
+  if (!view.game) return;
   const h = renderer.pickTile(ev.clientX, ev.clientY);
   const changed = !h !== !view.hover || (h && (h.c !== view.hover.c || h.r !== view.hover.r));
   view.hover = h;
@@ -514,6 +516,8 @@ canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
 renderer.controls.addEventListener('start', () => { renderer.userMovedCamera = true; });
 
 function handleTap(x, y) {
+  const link = renderer.pickLink(x, y);
+  if (link) { window.open(link, '_blank', 'noopener'); return; }
   const g = view.game;
   if (!g || view.menu) return;
   Sound.unlock();
@@ -745,7 +749,7 @@ function renderHelp() {
     ['sparkle', '<b>เพิ่มธาตุ</b> ให้ป้อมเพื่อกลายเป็น <b>ป้อมสองธาตุ (15 แบบ)</b> และ <b>ป้อมสามธาตุ (4 แบบ)</b> — รวมทั้งหมด 25 ป้อม แต่ละแบบมีวิธีโจมตีและจุดอ่อนต่างกัน'],
     ['map_maze', '<b>สร้างเขาวงกต</b> — ในลานหิน มอนสเตอร์จะเดินอ้อมป้อม (ห้ามปิดทางทั้งหมด) และต้องผ่านจุดตรวจตามลำดับ'],
     ['gold', 'จบแต่ละเวฟได้โบนัส + <b>ดอกเบี้ย 3%</b> ของทองที่เก็บไว้ · เกมบันทึกอัตโนมัติระหว่างเวฟ'],
-    ['sign', 'ป้ายไม้ในแผนที่มีคำแนะนำ — ซ่อน/แสดงได้ด้วยปุ่มป้ายด้านบน (G)'],
+    ['sign', 'ป้ายผู้สร้างเกมที่มุมแผนที่ คลิกเพื่อไปหน้าเว็บผู้พัฒนา — ซ่อน/แสดงได้ด้วยปุ่มป้ายด้านบน (G)'],
   ];
   $('helpList').innerHTML = items.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('');
   $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss'].map((k) => {

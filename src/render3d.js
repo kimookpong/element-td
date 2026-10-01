@@ -379,6 +379,16 @@ export class Renderer3D {
     return top || low;
   }
 
+  // ลิงก์ที่อยู่ใต้ตำแหน่งเมาส์ (ป้ายผู้สร้างเกม)
+  pickLink(clientX, clientY) {
+    const sign = this.world && this.world.creatorSign;
+    if (!sign || !sign.visible) return null;
+    const rect = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    return this.raycaster.intersectObject(sign, true).length ? sign.userData.link : null;
+  }
+
   /* ---------- เหตุการณ์จากระบบเกม ---------- */
   creepY(e) { return e.flying ? FLY_HEIGHT : FLOOR; }
 
@@ -914,12 +924,11 @@ export class Renderer3D {
     this.particles.update(dt);
 
     // ป้ายแนะนำหันหากล้อง
-    if (this.world && this.world.signs) {
-      const show = view.showSigns !== false;
-      for (const sg of this.world.signs) {
-        sg.visible = show;
-        if (show) sg.rotation.y = Math.atan2(this.camera.position.x - sg.position.x, this.camera.position.z - sg.position.z);
-      }
+    // ป้ายผู้สร้างเกมหันหากล้อง (ซ่อน/แสดงด้วยปุ่มป้าย)
+    if (this.world && this.world.creatorSign) {
+      const cs = this.world.creatorSign;
+      cs.visible = view.showSigns !== false;
+      cs.rotation.y = Math.atan2(this.camera.position.x - cs.position.x, this.camera.position.z - cs.position.z);
     }
     if (this.world) {
       this.coreHit = Math.max(0, (this.coreHit || 0) - dt * 2);
