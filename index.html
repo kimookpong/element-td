@@ -19,6 +19,7 @@
         <div class="stat life" title="พลังชีวิตแกนกลาง"><span class="ico">❤️</span><b id="lives">0</b></div>
         <div class="stat wave" title="เวฟ"><span class="ico">⚔️</span><b id="wave">0</b><small id="waveTotal">/30</small></div>
         <div class="stat essence" title="ผลึกธาตุ — ใช้ปลดล็อก/อัปเลเวลธาตุ"><span class="ico">🔮</span><b id="points">0</b></div>
+        <div id="saveBadge" class="saveBadge" title="บันทึกอัตโนมัติทุกครั้งที่อยู่ระหว่างเวฟ">💾</div>
       </div>
       <div class="controls">
         <button id="btnWave" class="primary">▶ เริ่มเวฟ</button>
@@ -63,12 +64,19 @@
       <div class="logo"><span class="t1">Element</span> <span class="t2">TD</span></div>
       <p class="sub">หกธาตุพิทักษ์ — ปกป้องประตูแกนกลางด้วยพลังแห่ง แสง · มืด · น้ำ · ไฟ · ลม · ดิน</p>
       <div class="elemRow" id="menuElems"></div>
+      <div id="resumeBox" class="resumeBox" hidden>
+        <div class="resumeInfo"><b>💾 มีเกมที่บันทึกไว้</b><span id="resumeText"></span></div>
+        <div class="resumeBtns">
+          <button id="btnResume" class="primary big">▶ เล่นต่อ</button>
+          <button id="btnDiscard" class="danger" title="ลบเกมที่บันทึกไว้">🗑️</button>
+        </div>
+      </div>
       <h3>เลือกสมรภูมิ</h3>
       <div id="mapList" class="choiceRow"></div>
       <h3>ระดับความยาก</h3>
       <div id="diffList" class="choiceRow"></div>
       <div class="menuActions">
-        <button id="btnStart" class="primary big">⚔️ เริ่มเกม</button>
+        <button id="btnStart" class="primary big">⚔️ เริ่มเกมใหม่</button>
         <button id="btnHowTo" class="big">📜 วิธีเล่น</button>
       </div>
       <p class="small" id="bestScore"></p>

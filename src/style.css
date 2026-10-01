@@ -324,3 +324,18 @@ body.panelHidden #btnPanel { box-shadow: 0 0 0 2px var(--gold2); }
   #side .panel { padding: 8px 10px; }
   #side .panel .small { display: none; }
 }
+
+/* ---------- บันทึกเกม ---------- */
+.resumeBox {
+  display: flex; align-items: center; gap: 12px; justify-content: space-between; text-align: left;
+  margin: 16px auto 0; padding: 10px 14px; max-width: 560px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(90, 60, 140, .35), rgba(40, 28, 60, .35)); border: 1px solid #8a6ad0;
+}
+.resumeBox[hidden] { display: none; }
+.resumeInfo { display: flex; flex-direction: column; gap: 2px; }
+.resumeInfo span { font-size: .8rem; color: var(--muted); }
+.resumeBtns { display: flex; gap: 6px; flex-shrink: 0; }
+.resumeBtns button { white-space: nowrap; }
+.saveBadge { display: flex; align-items: center; padding: 0 4px; opacity: 0; transition: opacity .4s; font-size: 1rem; }
+.saveBadge.show { opacity: 1; }
+@media (max-width: 600px) { .resumeBox { flex-direction: column; align-items: stretch; } .resumeBtns button.big { flex: 1; } .saveBadge { display: none; } }

@@ -51,9 +51,48 @@ function saveBest(wave) {
   }
 }
 
+/* ---------------- บันทึกเกมอัตโนมัติ ---------------- */
+const SAVE_KEY = 'etd_save';
+let saveTimer = null;
+
+function readSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; }
+}
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
+}
+// บันทึกเฉพาะตอนไม่มีเวฟกำลังเล่น — ถ้ารีเฟรชกลางเวฟ จะกลับไปเริ่มเวฟนั้นใหม่
+function saveGame() {
+  const g = view.game;
+  if (!g || g.over || g.waveActive) return;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...g.serialize(), savedAt: Date.now() }));
+    const badge = $('saveBadge');
+    badge.classList.add('show');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => badge.classList.remove('show'), 1500);
+  } catch (e) { /* พื้นที่เต็มหรือถูกบล็อก — เล่นต่อได้ตามปกติ */ }
+}
+
+function resumeGame() {
+  const g = Game.restore(readSave());
+  if (!g) { clearSave(); renderMenu(); showToast('ไฟล์บันทึกเสียหาย — เริ่มเกมใหม่', 1600); return; }
+  view.mapIndex = g.mapIndex;
+  view.diffKey = g.diffKey;
+  startWithGame(g);
+  showToast(`▶ เล่นต่อเวฟ ${g.wave + 1} — ${MAPS[g.mapIndex].name}`, 1800);
+}
+
 /* ---------------- เริ่มเกม / เมนู ---------------- */
 function newGame() {
-  view.game = new Game(view.mapIndex, view.diffKey);
+  if (readSave() && !confirm('เริ่มเกมใหม่จะเขียนทับเกมที่บันทึกไว้ ต้องการเริ่มใหม่หรือไม่?')) return;
+  clearSave();
+  startWithGame(new Game(view.mapIndex, view.diffKey));
+  showToast(MAPS[view.mapIndex].name, 1600);
+}
+
+function startWithGame(game) {
+  view.game = game;
   view.selectedBuild = null;
   view.selectedTower = null;
   view.paused = false;
@@ -68,7 +107,7 @@ function newGame() {
   $('pauseOverlay').classList.remove('show');
   hideOverlays();
   refreshAll();
-  showToast(MAPS[view.mapIndex].name, 1600);
+  saveGame();
 }
 
 function openMenu() {
@@ -125,6 +164,7 @@ function processEvents(g, visuals = true) {
         break;
       case 'win': if (visuals) showEnd(true); break;
       case 'lose':
+        clearSave();
         saveBest(Math.max(0, g.wave - 1));
         if (visuals) setTimeout(() => showEnd(false), 900);
         break;
@@ -133,6 +173,7 @@ function processEvents(g, visuals = true) {
     }
   }
   g.events.length = 0;
+  if (changed) saveGame();
   if (changed) {
     if (view.selectedTower && !g.towers.includes(view.selectedTower)) view.selectedTower = null;
     view.hoverCheck = null;
@@ -594,6 +635,15 @@ $('btnContinue').addEventListener('click', () => {
 $('btnRetry').addEventListener('click', () => { Sound.unlock(); newGame(); });
 $('btnMenu').addEventListener('click', openMenu);
 $('btnStart').addEventListener('click', () => { Sound.unlock(); newGame(); });
+$('btnResume').addEventListener('click', () => { Sound.unlock(); resumeGame(); });
+$('btnDiscard').addEventListener('click', () => {
+  if (!confirm('ลบเกมที่บันทึกไว้?')) return;
+  clearSave();
+  renderMenu();
+});
+// บันทึกครั้งสุดท้ายก่อนปิด/สลับแท็บ (ถ้าอยู่ระหว่างเวฟ)
+window.addEventListener('pagehide', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
 
 function drawThumb(def) {
   const c = document.createElement('canvas');
@@ -643,6 +693,15 @@ function renderMenu() {
     b.addEventListener('click', () => { view.diffKey = key; renderMenu(); });
     diffList.appendChild(b);
   });
+  const save = readSave();
+  const box = $('resumeBox');
+  if (save && MAPS[save.mapIndex] && DIFFICULTIES[save.diffKey]) {
+    box.hidden = false;
+    const when = save.savedAt ? new Date(save.savedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    $('resumeText').textContent = `${MAPS[save.mapIndex].name} · ${DIFFICULTIES[save.diffKey].th} · ผ่านแล้ว ${save.wave} เวฟ · ❤️ ${save.lives} · 🪙 ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
+  } else {
+    box.hidden = true;
+  }
   const best = loadBest()[MAPS[view.mapIndex].id + ':' + view.diffKey];
   $('bestScore').textContent = best ? `🏅 สถิติสูงสุด: เวฟ ${best}` : '';
 }

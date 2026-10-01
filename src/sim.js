@@ -11,6 +11,7 @@ import {
 } from './data.js';
 
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
+export const SAVE_VERSION = 1;
 export const TARGET_LABEL = { first: 'หัวแถว', last: 'ท้ายแถว', strong: 'HP มากสุด', close: 'ใกล้สุด' };
 
 const N = COLS * ROWS;
@@ -169,6 +170,63 @@ export class Game {
     this.flyPath = this.computeFlyPath();
     this.currentWave = null;
     this.nextWaveData = this.makeWave(1);
+  }
+
+  /* ---------- บันทึก / โหลดเกม ----------
+   * บันทึกเฉพาะช่วงระหว่างเวฟ (ไม่มีมอนสเตอร์อยู่ในสนาม) เพื่อให้สถานะสมบูรณ์เสมอ
+   */
+  serialize() {
+    return {
+      v: SAVE_VERSION,
+      mapIndex: this.mapIndex,
+      diffKey: this.diffKey,
+      gold: this.gold,
+      lives: this.lives,
+      wave: this.wave,
+      kills: this.kills,
+      endless: this.endless,
+      won: this.won,
+      elemPoints: this.elemPoints,
+      elemLevel: { ...this.elemLevel },
+      lastElement: this.lastElement,
+      nextWaveData: this.nextWaveData,
+      nextId: this.nextId,
+      towers: this.towers.map((t) => ({
+        c: t.c, r: t.r, kind: t.kind, base: t.base, elements: t.elements.slice(), tier: t.tier,
+        spent: t.spent, mode: t.mode, kills: t.kills, dmgDealt: Math.round(t.dmgDealt),
+      })),
+    };
+  }
+
+  static restore(data) {
+    if (!data || data.v !== SAVE_VERSION || !MAPS[data.mapIndex] || !DIFFICULTIES[data.diffKey]) return null;
+    const g = new Game(data.mapIndex, data.diffKey);
+    for (const k of ['gold', 'lives', 'wave', 'kills', 'endless', 'won', 'elemPoints', 'lastElement', 'nextId']) {
+      if (data[k] !== undefined) g[k] = data[k];
+    }
+    for (const e of ELEMENT_ORDER) g.elemLevel[e] = Math.max(0, Math.min(MAX_ELEMENT_LEVEL, data.elemLevel?.[e] | 0));
+    if (data.nextWaveData) g.nextWaveData = data.nextWaveData;
+    for (const s of data.towers || []) {
+      if (s.c < 0 || s.c >= COLS || s.r < 0 || s.r >= ROWS) continue;
+      const i = idx(s.c, s.r);
+      if (!g.map.build[i] || g.towerGrid[i]) continue;
+      const t = {
+        id: g.nextId++, c: s.c, r: s.r, i,
+        x: s.c * TILE + TILE / 2, y: s.r * TILE + TILE / 2,
+        kind: s.kind === 'basic' ? 'basic' : 'element', base: s.base || null,
+        elements: (s.elements || []).filter((e) => ELEMENTS[e]), tier: s.tier || 1,
+        spent: s.spent || 0, cd: 0.3, angle: -Math.PI / 2,
+        mode: TARGET_MODES.includes(s.mode) ? s.mode : 'first', kills: s.kills || 0, dmgDealt: s.dmgDealt || 0, version: 0,
+      };
+      if (t.kind === 'basic' && !BASIC[t.base]) continue;
+      if (t.kind === 'element' && !t.elements.length) continue;
+      t.stats = towerStats(t);
+      g.towers.push(t);
+      g.towerGrid[i] = t;
+      if (g.map.walk[i]) g.blocked[i] = 1;
+    }
+    g.recomputeFields();
+    return g;
   }
 
   emit(type, data = {}) { this.events.push({ type, ...data }); }
