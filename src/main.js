@@ -162,7 +162,7 @@ function showMenuPage(page) {
   bgNext = 0;
   $('menuMain').hidden = page !== 'main';
   $('menuNew').hidden = page !== 'new';
-  $('menu').querySelector('.menuCard').classList.toggle('wide', page === 'new');
+  $('menu').classList.toggle('isNew', page === 'new');
   renderMenu();
 }
 
@@ -751,9 +751,11 @@ function renderMenu() {
   mapList.innerHTML = '';
   MAPS.forEach((m, i) => {
     const b = document.createElement('button');
-    b.className = 'choice' + (i === view.mapIndex ? ' selected' : '');
-    b.innerHTML = `<b>${tr(m, 'name')}</b>`;
+    b.className = 'mapCard' + (i === view.mapIndex ? ' selected' : '');
     b.appendChild(drawThumb(m));
+    const name = document.createElement('b');
+    name.textContent = tr(m, 'name');
+    b.appendChild(name);
     b.addEventListener('click', () => { view.mapIndex = i; bgMapIndex = i; renderer.loadMap(i); renderMenu(); });
     mapList.appendChild(b);
   });
@@ -761,8 +763,8 @@ function renderMenu() {
   diffList.innerHTML = '';
   Object.entries(DIFFICULTIES).forEach(([key, d]) => {
     const b = document.createElement('button');
-    b.className = 'choice' + (key === view.diffKey ? ' selected' : '');
-    b.innerHTML = `<b>${tr(d, 'th')}</b>`;
+    b.className = 'seg' + (key === view.diffKey ? ' on' : '');
+    b.textContent = tr(d, 'th');
     b.addEventListener('click', () => { view.diffKey = key; renderMenu(); });
     diffList.appendChild(b);
   });
@@ -835,6 +837,7 @@ function applyLang() {
   for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = T(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = T(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('#langLbl, .langLbl')) el.textContent = L === 'th' ? 'EN' : 'TH';
+  for (const b of document.querySelectorAll('#langSwitch button')) b.classList.toggle('on', b.dataset.lang === L);
   updatePauseUI();
   updateQualityUI();
   renderHelp();
@@ -848,7 +851,7 @@ function toggleLang() {
   showToast(T('toast.lang'), 1000);
 }
 $('btnLang').addEventListener('click', toggleLang);
-$('btnLangMenu').addEventListener('click', toggleLang);
+for (const b of document.querySelectorAll('#langSwitch button')) b.addEventListener('click', () => { if (b.dataset.lang !== getLang()) toggleLang(); });
 
 /* ---------------- เริ่มต้น ---------------- */
 applyLang();

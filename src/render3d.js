@@ -314,15 +314,18 @@ export class Renderer3D {
   }
 
   resetCamera() {
-    const polar = 0.74;
-    const target = new THREE.Vector3(0, -0.2, 0.3);
-    const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => new THREE.Vector3(sx * (COLS / 2 + 0.2), 0, sz * (ROWS / 2 + 0.2)));
-    const dir = new THREE.Vector3(0, Math.cos(polar), Math.sin(polar));
     // ขอบเขตส่วนที่มองเห็นในพิกัด NDC (หักพื้นที่ที่ UI บัง)
     const ins = this.insets || { top: 0, right: 0, bottom: 0, left: 0 };
     const w = this.width || 1, h = this.height || 1;
     const xmin = (2 * ins.left) / w - 1 + 0.02, xmax = 1 - (2 * ins.right) / w - 0.02;
     const ymin = (2 * ins.bottom) / h - 1 + 0.03, ymax = 1 - (2 * ins.top) / h - 0.03;
+    // จอแนวตั้ง (มือถือ): หมุนกล้องให้กระดานด้านยาวอยู่แนวตั้ง มอนสเตอร์เดินจากบนลงล่าง
+    const visAspect = ((xmax - xmin) * w) / Math.max(1, (ymax - ymin) * h);
+    const portrait = visAspect < 0.95;
+    const polar = portrait ? 0.5 : 0.74;
+    const target = portrait ? new THREE.Vector3(0.3, -0.2, 0) : new THREE.Vector3(0, -0.2, 0.3);
+    const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => new THREE.Vector3(sx * (COLS / 2 + 0.2), 0, sz * (ROWS / 2 + 0.2)));
+    const dir = portrait ? new THREE.Vector3(Math.sin(polar), Math.cos(polar), 0) : new THREE.Vector3(0, Math.cos(polar), Math.sin(polar));
     let lo = 4, hi = 80;
     for (let i = 0; i < 26; i++) {
       const d = (lo + hi) / 2;

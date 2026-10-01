@@ -45,7 +45,7 @@
     "alternateName": "หกธาตุพิทักษ์",
     "url": "https://kimookpong.github.io/element-td/",
     "image": "https://kimookpong.github.io/element-td/og-image.jpg",
-    "logo": "https://kimookpong.github.io/element-td/logo.png",
+    "logo": "https://kimookpong.github.io/element-td/logo-wide.webp",
     "description": "Free 3D elemental tower defense browser game: summon six elements (light, dark, water, fire, wind, earth), build mazes and fuse 25 unique towers to defend the core from mythical creatures.",
     "genre": ["Tower defense", "Strategy"],
     "gamePlatform": "Web browser",
@@ -84,7 +84,7 @@
 
     <!-- แถบบน -->
     <header id="hud">
-      <div class="brand"><img class="ico" src="icons/essence.png" alt=""><span class="t1">Element</span><span class="t2">TD</span></div>
+      <div class="brand"><img src="logo-wide.webp" alt="Element TD" draggable="false"></div>
       <div class="stats">
         <div class="stat gold" data-i18n-title="hud.gold" title="ทอง"><img class="ico" src="icons/gold.png" alt=""><b id="gold">0</b></div>
         <div class="stat life" data-i18n-title="hud.lives" title="พลังชีวิตแกนกลาง"><img class="ico" src="icons/heart.png" alt=""><b id="lives">0</b></div>
@@ -134,26 +134,30 @@
   </div>
 
   <!-- เมนูเริ่มเกม -->
-  <div id="menu" class="overlay show">
-    <div class="card frame menuCard">
-      <button id="btnLangMenu" class="langBtn menuLang" data-i18n-title="btn.lang" title="Language"><span class="langLbl">TH</span></button>
-      <img class="logoImg" src="logo-640.png" alt="Element TD 3D logo" width="330" height="330" draggable="false">
+  <div id="menu" class="titleScreen show">
+    <div class="tsVignette"></div>
+    <div class="langSwitch" id="langSwitch" data-i18n-title="btn.lang" title="Language">
+      <button data-lang="th">TH</button><button data-lang="en">EN</button>
+    </div>
+    <main class="tsCenter">
+      <img class="tsLogo" src="logo-wide.webp" alt="Element TD — 3D elemental tower defense" width="1400" height="526" draggable="false">
       <!-- หน้าแรก: 3 ปุ่ม -->
       <div id="menuMain" class="menuMain">
-        <button id="btnResume" class="primary big" hidden><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.resume">เล่นต่อ</span></button>
-        <button id="btnNew" class="big"><img class="ico" src="icons/swords.png" alt=""> <span data-i18n="menu.new">เริ่มใหม่</span></button>
-        <button id="btnHowTo" class="big"><img class="ico" src="icons/scroll.png" alt=""> <span data-i18n="menu.howto">วิธีเล่น</span></button>
+        <button id="btnResume" class="gameBtn gold" hidden><img class="ico" src="icons/play.png" alt=""><span data-i18n="menu.resume">เล่นต่อ</span></button>
+        <button id="btnNew" class="gameBtn"><img class="ico" src="icons/swords.png" alt=""><span data-i18n="menu.new">เริ่มใหม่</span></button>
+        <button id="btnHowTo" class="gameBtn"><img class="ico" src="icons/scroll.png" alt=""><span data-i18n="menu.howto">วิธีเล่น</span></button>
       </div>
       <!-- เริ่มใหม่: เลือกแผนที่ + ความยาก -->
       <div id="menuNew" class="menuNew" hidden>
-        <div id="mapList" class="choiceRow"></div>
-        <div id="diffList" class="choiceRow diffRow"></div>
-        <div class="menuActions">
-          <button id="btnBack" class="big"><img class="ico" src="icons/close.png" alt=""> <span data-i18n="menu.back">ย้อนกลับ</span></button>
-          <button id="btnStart" class="primary big"><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.start">เริ่มเกม</span></button>
+        <div id="mapList" class="mapGrid"></div>
+        <div id="diffList" class="segmented"></div>
+        <div class="newActions">
+          <button id="btnBack" class="gameBtn small"><img class="ico" src="icons/close.png" alt=""><span data-i18n="menu.back">ย้อนกลับ</span></button>
+          <button id="btnStart" class="gameBtn gold small"><img class="ico" src="icons/play.png" alt=""><span data-i18n="menu.start">เริ่มเกม</span></button>
         </div>
       </div>
-    </div>
+    </main>
+    <a class="tsCredit" href="https://kimookpong.github.io/" target="_blank" rel="noopener">by kimookpong</a>
   </div>
 
   <!-- วิธีเล่น -->

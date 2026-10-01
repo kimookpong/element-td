@@ -306,60 +306,106 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   #toast { font-size: 1.1rem; }
 }
 
-/* ---------- เมนูแบบมินิมอล + ปุ่มภาษา ---------- */
-.menuCard { position: relative; display: flex; flex-direction: column; gap: 16px; padding-top: 28px; }
-.menuCard .logo { font-size: 3.4rem; margin-bottom: 4px; }
-.menuCard:not(.wide) { max-width: 380px; }
-.menuMain { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px; margin: 0 auto; }
-.menuMain button { width: 100%; justify-content: center; }
-.menuMain button[hidden], .menuNew[hidden], .menuMain[hidden] { display: none; }
-.menuNew { display: flex; flex-direction: column; gap: 14px; }
-.menuCard .choice { text-align: center; }
-.diffRow .choice { min-width: 0; max-width: 140px; padding: 10px; align-items: center; }
-.langBtn { font-family: var(--title, serif); font-weight: 700; letter-spacing: 1px; font-size: .8rem; }
-#btnLang { min-width: 38px; }
-.menuLang { position: absolute; top: 12px; right: 12px; padding: 6px 10px; border-radius: 8px; }
-
-/* ---------- โลโก้เกม ---------- */
-.logoImg { display: block; width: min(330px, 72vw); height: auto; margin: -18px auto -10px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .55)); user-select: none; }
-.menuCard.wide .logoImg { width: min(210px, 50vw); margin: -14px auto -8px; }
-@media (max-height: 700px) { .logoImg { width: min(240px, 60vw); } .menuCard.wide .logoImg { width: 150px; } }
-
-/* ---------- เมนู: ซ่อน HUD ระหว่างอยู่ในเมนู + หน้าเลือกแผนที่บนจอเล็ก ---------- */
-body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard { visibility: hidden; }
-.menuNew .choice b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#mapList { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-#mapList .choice { max-width: none; min-width: 0; }
-#mapList .choice canvas { aspect-ratio: 5 / 3; object-fit: cover; }
-.diffRow { flex-wrap: nowrap; }
-@media (max-width: 600px) {
-  .menuCard { padding: 18px 12px 14px; gap: 12px; }
-  .menuCard.wide .logoImg { width: 120px; margin: -10px auto -6px; }
-  #mapList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  #mapList .choice { padding: 6px; }
-  #mapList .choice b { font-size: .82rem; }
-  #mapList .choice canvas { margin-top: 4px; }
-  .diffRow { gap: 6px; }
-  .diffRow .choice { flex: 1; max-width: none; padding: 8px 4px; }
-  .diffRow .choice b { font-size: .9rem; }
-  .menuNew .menuActions { position: sticky; bottom: -14px; margin: 0 -12px -14px; padding: 10px 12px 14px; background: linear-gradient(180deg, rgba(28, 26, 22, 0), rgba(28, 26, 22, .96) 30%); display: flex; gap: 8px; }
-  .menuNew .menuActions button { flex: 1; justify-content: center; padding: 12px 8px; font-size: 1rem; }
-}
-@media (max-height: 520px) {
-  .menuCard { padding: 12px 14px; gap: 8px; max-height: calc(100dvh - 16px); }
-  .menuCard.wide .logoImg { display: none; }
-  .menuCard.wide { padding-top: 42px; }
-  .menuLang { top: 8px; right: 10px; padding: 4px 8px; }
-  .menuCard:not(.wide) .logoImg { width: 150px; margin: -8px auto -6px; }
-  .menuMain { gap: 6px; }
-  .menuMain button.big { padding: 8px 12px; }
-  #mapList { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  #mapList .choice { padding: 5px; }
-  #mapList .choice b { font-size: .78rem; }
-  .menuNew { gap: 8px; }
-  .menuNew .menuActions { position: static; margin: 0; padding: 0; background: none; }
-  .menuNew .menuActions button { padding: 8px 14px; }
-}
+body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard, body.menuOpen #pauseOverlay { visibility: hidden; }
 
 /* ซ่อนจากสายตาแต่อ่านได้โดยเครื่องมือค้นหา/โปรแกรมอ่านหน้าจอ */
 .srOnly { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ============================================================
+ *  หน้าจอเริ่มเกม (Title screen) — เต็มจอ ไม่มีกล่อง
+ * ============================================================ */
+.titleScreen { position: fixed; inset: 0; z-index: 40; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 16px; overflow: hidden; }
+.titleScreen.show { display: flex; }
+.tsVignette { position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 42%, rgba(8, 8, 14, .15) 0%, rgba(8, 8, 14, .55) 60%, rgba(6, 6, 10, .88) 100%),
+    linear-gradient(180deg, rgba(6, 6, 12, .55) 0%, transparent 22%, transparent 70%, rgba(6, 6, 12, .75) 100%); }
+.tsCenter { position: relative; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3vh, 30px); width: 100%; max-width: 980px; max-height: 100%; }
+.tsLogo { width: min(760px, 94vw); height: auto; max-height: 40vh; object-fit: contain; user-select: none;
+  filter: drop-shadow(0 14px 30px rgba(0, 0, 0, .65)) drop-shadow(0 0 40px rgba(255, 200, 90, .18));
+  animation: tsFloat 6s ease-in-out infinite; }
+@keyframes tsFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.titleScreen.isNew .tsLogo { width: min(420px, 70vw); max-height: 20vh; animation: none; }
+
+/* ปุ่มสไตล์เกม */
+.gameBtn { position: relative; display: flex; align-items: center; justify-content: center; gap: 12px; width: min(340px, 82vw); padding: 14px 22px;
+  font-family: "Kanit", sans-serif; font-size: 1.3rem; font-weight: 600; letter-spacing: .5px; color: #f6ead0;
+  border-radius: 14px; border: 2px solid #8a6a2a;
+  background: linear-gradient(180deg, rgba(74, 62, 44, .96) 0%, rgba(42, 35, 26, .96) 100%);
+  box-shadow: 0 5px 0 #1a140c, 0 10px 22px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 230, 170, .18);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .55); transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, filter .12s ease; }
+.gameBtn .ico { width: 30px; height: 30px; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .5)); }
+.gameBtn:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--gold2); background: linear-gradient(180deg, rgba(92, 77, 52, .97), rgba(52, 43, 30, .97));
+  box-shadow: 0 7px 0 #1a140c, 0 14px 28px rgba(0, 0, 0, .55), 0 0 18px rgba(243, 217, 138, .25), inset 0 1px 0 rgba(255, 230, 170, .22); }
+.gameBtn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 #1a140c, 0 6px 14px rgba(0, 0, 0, .5); }
+.gameBtn.gold { color: #3a2206; text-shadow: 0 1px 0 rgba(255, 245, 210, .6); border-color: #fff0b0;
+  background: linear-gradient(180deg, #ffe68a 0%, #f5bf45 50%, #d98f22 100%);
+  box-shadow: 0 5px 0 #7a4a10, 0 10px 24px rgba(0, 0, 0, .5), 0 0 24px rgba(255, 190, 70, .35), inset 0 2px 0 rgba(255, 255, 255, .55); }
+.gameBtn.gold:hover:not(:disabled) { background: linear-gradient(180deg, #fff1b0 0%, #ffcc58 50%, #e59c2c 100%); border-color: #fff6cc; box-shadow: 0 7px 0 #7a4a10, 0 14px 28px rgba(0, 0, 0, .55), 0 0 30px rgba(255, 200, 80, .5), inset 0 2px 0 rgba(255, 255, 255, .6); }
+.gameBtn.gold:active:not(:disabled) { box-shadow: 0 2px 0 #7a4a10, 0 6px 14px rgba(0, 0, 0, .5); }
+.gameBtn.small { width: auto; min-width: 150px; padding: 11px 20px; font-size: 1.1rem; }
+.gameBtn.small .ico { width: 24px; height: 24px; }
+.gameBtn[hidden] { display: none; }
+.menuMain { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.menuMain[hidden], .menuNew[hidden] { display: none; }
+
+/* สวิตช์ภาษา */
+.langSwitch { position: absolute; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 2; display: flex; padding: 3px; border-radius: 999px;
+  background: rgba(20, 17, 12, .78); border: 1px solid var(--goldDark); box-shadow: 0 6px 16px rgba(0, 0, 0, .45); backdrop-filter: blur(6px); }
+.langSwitch button { padding: 6px 13px; min-width: 0; border: 0; border-radius: 999px; background: transparent; box-shadow: none; color: #bba98a; font-family: var(--title); font-weight: 700; font-size: .85rem; letter-spacing: 1px; }
+.langSwitch button:hover:not(:disabled) { background: rgba(255, 230, 170, .08); color: #fff; }
+.langSwitch button.on { background: linear-gradient(180deg, #ffe68a, #d99a2c); color: #3a2206; }
+
+.tsCredit { position: absolute; bottom: max(12px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 2;
+  font-size: .8rem; letter-spacing: 1px; color: rgba(246, 234, 208, .6); text-decoration: none; text-shadow: 0 1px 3px #000; }
+.tsCredit:hover { color: var(--gold2); }
+
+/* หน้าเลือกแผนที่ */
+.menuNew { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; padding: 18px; border-radius: 18px;
+  background: linear-gradient(180deg, rgba(30, 26, 20, .82), rgba(20, 17, 13, .9)); border: 1px solid rgba(138, 106, 42, .7);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 230, 170, .08); backdrop-filter: blur(8px); }
+.mapGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.mapCard { position: relative; display: block; padding: 0; overflow: hidden; border-radius: 12px; border: 2px solid rgba(138, 106, 42, .6); background: #120f0b;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .45); transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.mapCard canvas { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; filter: saturate(.85) brightness(.85); transition: filter .15s ease; }
+.mapCard b { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 8px 7px; font-size: .92rem; font-weight: 600; color: #fff; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .85)); text-shadow: 0 1px 3px #000; }
+.mapCard:hover:not(:disabled) { transform: translateY(-3px); border-color: var(--gold); background: #120f0b; }
+.mapCard:hover canvas { filter: none; }
+.mapCard.selected { border-color: #ffd75a; box-shadow: 0 0 0 2px rgba(255, 215, 90, .45), 0 0 22px rgba(255, 200, 80, .35), 0 6px 14px rgba(0, 0, 0, .45); }
+.mapCard.selected canvas { filter: none; }
+.mapCard.selected::after { content: "✓"; position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: #ffd75a; color: #3a2206; font-weight: 800; font-size: .85rem; box-shadow: 0 2px 6px rgba(0, 0, 0, .5); }
+.segmented { display: flex; padding: 4px; gap: 4px; border-radius: 12px; background: rgba(0, 0, 0, .45); border: 1px solid rgba(138, 106, 42, .6); }
+.seg { min-width: 110px; padding: 9px 16px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: #cdbb98; font-family: "Kanit", sans-serif; font-weight: 600; font-size: 1rem; }
+.seg:hover:not(:disabled) { background: rgba(255, 230, 170, .08); color: #fff; }
+.seg.on { background: linear-gradient(180deg, #ffe68a, #d99a2c); color: #3a2206; box-shadow: 0 2px 8px rgba(0, 0, 0, .4); }
+.newActions { display: flex; gap: 12px; justify-content: center; }
+
+/* HUD: โลโก้แทนข้อความ */
+.brand img { height: 34px; width: auto; display: block; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .6)); }
+
+@media (max-width: 700px) {
+  .tsLogo { width: 96vw; }
+  .titleScreen.isNew .tsLogo { width: min(300px, 72vw); }
+  .gameBtn { font-size: 1.15rem; padding: 13px 18px; }
+  .menuNew { padding: 12px; gap: 12px; }
+  .mapGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mapCard b { font-size: .82rem; padding: 14px 6px 6px; }
+  .segmented { width: 100%; }
+  .seg { flex: 1; min-width: 0; padding: 9px 6px; }
+  .newActions { width: 100%; }
+  .newActions .gameBtn { flex: 1; min-width: 0; }
+  .brand img { height: 26px; }
+}
+@media (max-height: 560px) {
+  .tsCenter { gap: 10px; }
+  .tsLogo { max-height: 34vh; }
+  .titleScreen.isNew .tsLogo { display: none; }
+  .gameBtn { padding: 9px 18px; font-size: 1.05rem; }
+  .gameBtn .ico { width: 24px; height: 24px; }
+  .menuMain { gap: 8px; }
+  .menuNew { padding: 10px; gap: 8px; }
+  .mapGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tsCredit { display: none; }
+}
