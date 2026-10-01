@@ -5,16 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Element TD 3D — หกธาตุพิทักษ์</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%AE%3C/text%3E%3C/svg%3E">
-  <meta name="description" content="เกม Tower Defense บนเบราว์เซอร์ ใช้พลังธาตุทั้ง 6: ดิน น้ำ ลม ไฟ แสง มืด">
+  <meta name="description" content="เกม Tower Defense 3D แนว Element TD: ดิน น้ำ ลม ไฟ แสง มืด สร้างเขาวงกต หลอมรวมป้อม 35 แบบ">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
-    <header id="hud">
-      <div class="brand">Element <span>TD</span></div>
+    <header id="hud" class="frame">
+      <div class="brand"><span class="gem">🔮</span><span class="t1">Element</span><span class="t2">TD</span></div>
       <div class="stats">
-        <div class="stat" title="ทอง"><span class="ico">🪙</span><b id="gold">0</b></div>
-        <div class="stat" title="พลังชีวิตแกนกลาง"><span class="ico">❤️</span><b id="lives">0</b></div>
-        <div class="stat" title="เวฟ"><span class="ico">🌊</span><b id="wave">0</b><small id="waveTotal">/30</small></div>
+        <div class="stat gold" title="ทอง"><span class="ico">🪙</span><b id="gold">0</b></div>
+        <div class="stat life" title="พลังชีวิตแกนกลาง"><span class="ico">❤️</span><b id="lives">0</b></div>
+        <div class="stat wave" title="เวฟ"><span class="ico">⚔️</span><b id="wave">0</b><small id="waveTotal">/30</small></div>
+        <div class="stat essence" title="ผลึกธาตุ — ใช้ปลดล็อก/อัปเลเวลธาตุ"><span class="ico">🔮</span><b id="points">0</b></div>
       </div>
       <div class="controls">
         <button id="btnWave" class="primary">▶ เริ่มเวฟ</button>
@@ -31,41 +35,39 @@
       <div id="stageWrap">
         <div id="stage"></div>
         <div id="floaters"></div>
-        <div id="pauseOverlay">⏸ หยุดชั่วคราว</div>
         <div id="nextWave"></div>
         <div id="toast"></div>
+        <div id="pauseOverlay">⏸ หยุดชั่วคราว</div>
       </div>
 
       <aside id="side">
-        <section>
-          <h3>สร้างป้อมธาตุ</h3>
+        <section class="panel frame" id="elemPanel">
+          <h3>ผลึกธาตุ <span class="badge" id="pointsBadge">0</span></h3>
+          <div id="elemGrid"></div>
+          <p class="small">ได้ผลึก 1 ชิ้นทุก 5 เวฟ · ใช้ปลดล็อกธาตุและเพิ่มเลเวล (สูงสุด 3)</p>
+        </section>
+        <section class="panel frame">
+          <h3>สร้างป้อม</h3>
           <div id="buildGrid"></div>
         </section>
-        <section id="infoPanel">
-          <div class="hint">เลือกธาตุแล้วคลิกบนพื้นหญ้าเพื่อวางป้อม<br>คลิกที่ป้อมเพื่ออัปเกรด / หลอมรวม</div>
-        </section>
-        <section class="cycle">
-          <h3>วงจรธาตุ</h3>
-          <canvas id="cycleCanvas" width="220" height="150"></canvas>
-          <p class="small">ลูกศรชี้ไปยังธาตุที่แพ้ทาง — ดาเมจ ×1.75<br>ธาตุเดียวกัน ×0.5 · โดนแพ้ทาง ×0.65</p>
-        </section>
+        <section class="panel frame" id="infoPanel"></section>
       </aside>
     </main>
   </div>
 
   <!-- เมนูเริ่มเกม -->
   <div id="menu" class="overlay show">
-    <div class="card wide">
-      <h1>Element <span>TD</span></h1>
-      <p class="sub">หกธาตุพิทักษ์ — ปกป้องแกนกลางด้วยพลังแห่ง ดิน · น้ำ · ลม · ไฟ · แสง · มืด</p>
+    <div class="card frame wide">
+      <div class="logo"><span class="t1">Element</span> <span class="t2">TD</span></div>
+      <p class="sub">หกธาตุพิทักษ์ — ปกป้องประตูแกนกลางด้วยพลังแห่ง แสง · มืด · น้ำ · ไฟ · ลม · ดิน</p>
       <div class="elemRow" id="menuElems"></div>
-      <h3>เลือกแผนที่</h3>
+      <h3>เลือกสมรภูมิ</h3>
       <div id="mapList" class="choiceRow"></div>
       <h3>ระดับความยาก</h3>
       <div id="diffList" class="choiceRow"></div>
       <div class="menuActions">
-        <button id="btnStart" class="primary big">เริ่มเกม</button>
-        <button id="btnHowTo" class="big">วิธีเล่น</button>
+        <button id="btnStart" class="primary big">⚔️ เริ่มเกม</button>
+        <button id="btnHowTo" class="big">📜 วิธีเล่น</button>
       </div>
       <p class="small" id="bestScore"></p>
     </div>
@@ -73,27 +75,37 @@
 
   <!-- วิธีเล่น -->
   <div id="help" class="overlay">
-    <div class="card wide">
-      <h2>วิธีเล่น</h2>
-      <ul class="helpList">
-        <li>ศัตรูแต่ละตัวมี <b>ธาตุประจำตัว</b> (ดูสีและไอคอน) — ใช้ป้อมธาตุที่ชนะทางเพื่อทำดาเมจ ×1.75</li>
-        <li>วงจรธาตุ: <b>🔥 ไฟ → 🌪️ ลม → 🪨 ดิน → 💧 น้ำ → 🔥 ไฟ</b> และ <b>✨ แสง ⇄ 🌑 มืด</b> ชนะทางกันและกัน</li>
-        <li>ดูแถบ <b>“เวฟถัดไป”</b> มุมซ้ายบนเพื่อวางแผนก่อนเริ่มเวฟ</li>
-        <li>อัปเกรดป้อมได้ถึงเลเวล 3 จากนั้นกด <b>หลอมรวม</b> กับป้อมเลเวล 3 ต่างธาตุ เพื่อสร้าง <b>ป้อมหลอมรวม</b> ที่มีพลังของทั้งสองธาตุ (15 แบบ!)</li>
-        <li>บอสจะมาทุก ๆ 10 เวฟ — ผ่านครบ 30 เวฟเพื่อชนะ แล้วเล่นต่อในโหมดไม่รู้จบได้</li>
-      </ul>
+    <div class="card frame wide">
+      <h2>📜 วิธีเล่น</h2>
+      <div class="helpCols">
+        <ul class="helpList">
+          <li><b>ผลึกธาตุ 🔮</b> — เริ่มเกมได้ 1 ชิ้น และได้เพิ่มทุก 5 เวฟ ใช้ <b>ปลดล็อกธาตุ</b> หรือ <b>เพิ่มเลเวลธาตุ</b> (สูงสุด 3)</li>
+          <li><b>ป้อมพื้นฐาน</b> ธนู/ปืนใหญ่ สร้างได้ทันที · <b>ป้อมธาตุ</b> สร้างได้เมื่อปลดล็อกธาตุนั้น</li>
+          <li>อัปเกรดป้อมธาตุได้ถึงระดับ 3 แต่ <b>ระดับป้อมต้องไม่เกินเลเวลธาตุ</b></li>
+          <li><b>เพิ่มธาตุ</b> ให้ป้อมเพื่อกลายเป็น <b>ป้อมสองธาตุ (15 แบบ)</b> และ <b>ป้อมสามธาตุ (20 แบบ)</b> ที่มีพลังของทุกธาตุรวมกัน</li>
+          <li><b>สร้างเขาวงกต</b> — ในลานหิน มอนสเตอร์จะเดินอ้อมป้อม ทำให้ทางยาวขึ้น (ห้ามปิดทางทั้งหมด) และต้องผ่านจุดตรวจ ① ② ตามลำดับ</li>
+          <li>มอนสเตอร์แต่ละเวฟมี <b>ธาตุ</b> และบางเวฟมี <b>ความสามารถพิเศษ</b>: ว่องไว · เกราะหิน · ฟื้นฟู · แยกร่าง · อมตะ · บินได้ · บอสมังกร (ทุก 10 เวฟ)</li>
+          <li>จบเวฟได้ <b>ดอกเบี้ย 3%</b> ของทองที่เก็บไว้ — เก็บเงินไว้ก็มีประโยชน์!</li>
+        </ul>
+        <div class="cycleBox">
+          <canvas id="cycleCanvas" width="260" height="240"></canvas>
+          <p class="small">ลูกศรชี้ไปยังธาตุที่แพ้ทาง<br>ชนะทาง ×2 · โดนแพ้ทาง ×0.5</p>
+        </div>
+      </div>
+      <h3>ป้อมธาตุเดี่ยว</h3>
       <div class="elemTable" id="elemTable"></div>
-      <h3>คีย์ลัด</h3>
-      <p class="small">1–6 เลือกธาตุ · Space เริ่มเวฟ · U อัปเกรด · S ขาย · T เปลี่ยนโหมดเล็งเป้า · F ความเร็ว · P หยุด · C รีเซ็ตกล้อง · Esc ยกเลิก</p>
-      <h3>กล้อง 3D</h3>
-      <p class="small">🖱️ คลิกขวาค้างแล้วลาก = หมุนกล้อง · ล้อเมาส์ = ซูม · 📱 ใช้สองนิ้วเพื่อหมุน/ซูม</p>
+      <h3>ตำราป้อมหลอมรวม</h3>
+      <div id="compendium"></div>
+      <h3>คีย์ลัด & กล้อง</h3>
+      <p class="small">1–8 เลือกป้อม · Space เริ่มเวฟ · U อัปเกรด · S ขาย · T โหมดเล็งเป้า · F ความเร็ว · P หยุด · C รีเซ็ตกล้อง · Esc ยกเลิก<br>
+      🖱️ คลิกขวาลาก = หมุนกล้อง · ล้อเมาส์ = ซูม · 📱 สองนิ้ว = หมุน/ซูม</p>
       <button id="btnCloseHelp" class="primary">เข้าใจแล้ว</button>
     </div>
   </div>
 
   <!-- จบเกม -->
   <div id="endScreen" class="overlay">
-    <div class="card">
+    <div class="card frame">
       <h2 id="endTitle">จบเกม</h2>
       <p id="endText"></p>
       <div class="menuActions">

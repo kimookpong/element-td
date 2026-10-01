@@ -1,151 +1,156 @@
 /* ============================================================
  *  Element TD — ตรรกะเกม (ไม่ขึ้นกับการเรนเดอร์)
- *  พิกัดในระบบจำลองเป็นพิกเซลบนกระดาน 800×480 (TILE = 40)
+ *  พิกัดเป็นพิกเซลบนกระดาน 800×480 (TILE = 40)
  *  ฝั่งเรนเดอร์อ่าน state และ events เพื่อแสดงผล
  * ============================================================ */
 import {
-  TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, BEATS, elementMultiplier,
-  FUSIONS, FUSION_COST, MAX_LEVEL, fusionKey, ENEMY_TYPES, MAPS, DIFFICULTIES, TOTAL_WAVES,
+  TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier, elementEffects,
+  BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL, DUALS, TRIPLES, comboKey,
+  ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES,
+  ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
 } from './data.js';
 
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const TARGET_LABEL = { first: 'หัวแถว', last: 'ท้ายแถว', strong: 'HP มากสุด', close: 'ใกล้สุด' };
-const DMG_BY_LEVEL = [1, 1.7, 2.8];
-export const MAX_STAR = 3;
 
+const N = COLS * ROWS;
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const dist2 = (ax, ay, bx, by) => (ax - bx) ** 2 + (ay - by) ** 2;
+export const idx = (c, r) => r * COLS + c;
+export const tileCenter = (i) => ({ x: (i % COLS) * TILE + TILE / 2, y: Math.floor(i / COLS) * TILE + TILE / 2 });
 
-/* ---------------- แผนที่ / เส้นทาง ---------------- */
-export function buildMap(def) {
-  const pts = def.points.map(([c, r]) => ({ x: c * TILE + TILE / 2, y: r * TILE + TILE / 2 }));
-  const segs = [];
-  let total = 0;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
-    segs.push({ a, b, len, start: total, angle: Math.atan2(b.y - a.y, b.x - a.x) });
-    total += len;
-  }
-  const grid = [];
-  for (let r = 0; r < ROWS; r++) grid.push(new Array(COLS).fill(0));
-  const pathTiles = [];
-  for (let i = 0; i < def.points.length - 1; i++) {
-    let [c1, r1] = def.points[i];
-    const [c2, r2] = def.points[i + 1];
-    const dc = Math.sign(c2 - c1), dr = Math.sign(r2 - r1);
-    for (;;) {
-      if (c1 >= 0 && c1 < COLS && r1 >= 0 && r1 < ROWS) grid[r1][c1] = 1;
-      if (!pathTiles.some(([c, r]) => c === c1 && r === r1)) pathTiles.push([c1, r1]);
-      if (c1 === c2 && r1 === r2) break;
-      c1 += dc; r1 += dr;
+/* ---------------- แผนที่ ---------------- */
+export function parseMap(def) {
+  const tiles = def.layout.map((row) => row.split(''));
+  if (tiles.length !== ROWS || tiles.some((r) => r.length !== COLS)) throw new Error(`map ${def.id}: bad size`);
+  const walk = new Uint8Array(N);
+  const build = new Uint8Array(N);
+  let spawn = -1, core = -1;
+  const cps = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const ch = tiles[r][c];
+      const i = idx(c, r);
+      if (ch === '.') { walk[i] = 1; build[i] = 1; }
+      else if (ch === '#') build[i] = 1;
+      else if (ch === '=') walk[i] = 1;
+      else if (ch === 'S') { walk[i] = 1; spawn = i; }
+      else if (ch === 'C') { walk[i] = 1; core = i; }
+      else if (ch >= '1' && ch <= '9') { walk[i] = 1; cps.push([Number(ch), i]); }
     }
   }
-  return { def, pts, segs, total, grid, pathTiles };
+  cps.sort((a, b) => a[0] - b[0]);
+  const goals = [...cps.map((x) => x[1]), core];
+  const outward = (i) => {
+    const c = i % COLS, r = Math.floor(i / COLS);
+    if (c === 0) return { x: -1, y: 0 };
+    if (c === COLS - 1) return { x: 1, y: 0 };
+    if (r === 0) return { x: 0, y: -1 };
+    if (r === ROWS - 1) return { x: 0, y: 1 };
+    return { x: 0, y: 0 };
+  };
+  return { def, tiles, walk, build, spawn, core, goals, spawnOut: outward(spawn), coreOut: outward(core) };
 }
 
-export function posAt(map, d) {
-  const segs = map.segs;
-  if (d <= 0) return { x: segs[0].a.x, y: segs[0].a.y, angle: segs[0].angle };
-  for (const s of segs) {
-    if (d <= s.start + s.len) {
-      const t = (d - s.start) / s.len;
-      return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, angle: s.angle };
+const DIRS = [
+  [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+  [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2],
+];
+
+/* Dijkstra จากเป้าหมาย → ได้ระยะทางและช่องถัดไปของทุกช่อง */
+function computeField(map, blocked, goal) {
+  const dist = new Float32Array(N).fill(Infinity);
+  const next = new Int16Array(N).fill(-1);
+  const done = new Uint8Array(N);
+  const pass = (i) => map.walk[i] && !blocked[i];
+  dist[goal] = 0;
+  const open = [goal];
+  while (open.length) {
+    let bi = 0;
+    for (let k = 1; k < open.length; k++) if (dist[open[k]] < dist[open[bi]]) bi = k;
+    const cur = open[bi];
+    open[bi] = open[open.length - 1];
+    open.pop();
+    if (done[cur]) continue;
+    done[cur] = 1;
+    const c = cur % COLS, r = Math.floor(cur / COLS);
+    for (const [dc, dr, cost] of DIRS) {
+      const nc = c + dc, nr = r + dr;
+      if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+      const ni = idx(nc, nr);
+      if (!pass(ni) || done[ni]) continue;
+      if (dc && dr && (!pass(idx(c + dc, r)) || !pass(idx(c, r + dr)))) continue;
+      const nd = dist[cur] + cost;
+      if (nd < dist[ni]) {
+        dist[ni] = nd;
+        next[ni] = cur;
+        open.push(ni);
+      }
     }
   }
-  const last = segs[segs.length - 1];
-  return { x: last.b.x, y: last.b.y, angle: last.angle };
+  return { dist, next };
 }
 
 /* ---------------- ค่าสถานะป้อม ---------------- */
-export function singleStats(el, level) {
-  const e = ELEMENTS[el];
-  const L = level - 1;
-  const m = DMG_BY_LEVEL[L];
+export function towerStats(t) {
+  if (t.kind === 'basic') {
+    const B = BASIC[t.base];
+    const L = t.tier - 1;
+    const rate = B.rate * (1 + 0.1 * L);
+    const dps = B.dps[L];
+    const s = { dps, rate, dmg: dps / rate, range: B.range * (1 + 0.08 * L) };
+    if (B.splash) s.splash = B.splash[L];
+    return s;
+  }
+  const n = t.elements.length;
+  const els = t.elements.map((e) => ELEMENTS[e]);
+  const avg = (k) => els.reduce((a, e) => a + e[k], 0) / n;
+  const dps = ELEMENT_TOWER[n].dps[t.tier - 1] * avg('dpsF');
+  const rate = avg('rate');
   const s = {
-    dmg: e.dmg * m,
-    range: e.range * (1 + 0.1 * L),
-    rate: e.rate * (1 + 0.15 * L),
+    dps, rate, dmg: dps / rate,
+    range: Math.max(...els.map((e) => e.range)) * (1 + 0.08 * (t.tier - 1)) + (n - 1) * 8,
   };
-  if (e.splash) s.splash = e.splash + 6 * L;
-  if (e.burn) s.burn = { dps: e.burn.dps * m, dur: e.burn.dur };
-  if (e.slow) s.slow = { factor: e.slow.factor - 0.06 * L, dur: e.slow.dur + 0.2 * L };
-  if (e.stun) s.stun = { chance: e.stun.chance + 0.05 * L, dur: e.stun.dur };
-  if (e.multi) s.multi = e.multi + L;
-  if (e.knock) s.knock = { chance: e.knock.chance + 0.04 * L, dist: e.knock.dist };
-  if (e.pierce) s.pierce = true;
-  if (e.curse) s.curse = { amp: e.curse.amp + 0.1 * L, dur: e.curse.dur };
-  if (e.percent) s.percent = e.percent + 0.01 * L;
-  return s;
-}
-
-export function computeStats(t) {
-  if (t.elements.length === 1) return singleStats(t.elements[0], t.level);
-  const A = singleStats(t.elements[0], MAX_LEVEL);
-  const B = singleStats(t.elements[1], MAX_LEVEL);
-  const starMul = 1 + 0.45 * t.star;
-  const rate = (A.rate + B.rate) / 2;
-  const dps = (A.dmg * A.rate + B.dmg * B.rate) * 1.2 * starMul;
-  const s = Object.assign({}, A, B);
-  s.rate = rate;
-  s.dmg = dps / rate;
-  s.range = Math.max(A.range, B.range) * (1.05 + 0.04 * t.star);
-  if (s.multi) s.multi = 3;
-  if (s.burn) s.burn = { dps: s.burn.dps * 1.3 * starMul, dur: s.burn.dur };
-  if (s.splash) s.splash *= 1.15;
+  const lv = Math.min(MAX_ELEMENT_LEVEL, t.tier + n - 1);
+  for (const e of t.elements) Object.assign(s, elementEffects(e, lv, dps));
   return s;
 }
 
 export function towerName(t) {
+  if (t.kind === 'basic') return BASIC[t.base].th;
   if (t.elements.length === 1) return `ป้อม${ELEMENTS[t.elements[0]].th}`;
-  const f = FUSIONS[fusionKey(t.elements[0], t.elements[1])];
-  return `${f.th} (${f.name})`;
+  const k = comboKey(t.elements);
+  const d = t.elements.length === 2 ? DUALS[k] : TRIPLES[k];
+  return `${d.th} (${d.name})`;
 }
 
-export function upgradeCost(t) {
-  if (t.elements.length === 1) {
-    if (t.level >= MAX_LEVEL) return null;
-    const base = ELEMENTS[t.elements[0]].cost;
-    return Math.round(base * (t.level === 1 ? 0.9 : 1.5));
-  }
-  if (t.star >= MAX_STAR) return null;
-  return 250 * (t.star + 1);
+export function comboName(els) {
+  if (els.length === 1) return `ป้อม${ELEMENTS[els[0]].th}`;
+  const d = (els.length === 2 ? DUALS : TRIPLES)[comboKey(els)];
+  return d.th;
 }
 
-export const sellValue = (t) => Math.floor(t.spent * 0.7);
+export const buildCost = (type) => (BASIC[type] ? BASIC[type].cost[0] : ELEMENT_TOWER[1].cum[0]);
+export const sellValue = (t) => Math.floor(t.spent * SELL_RATIO);
 
-export function canFuse(a, b) {
-  return !!(a && b && a !== b &&
-    a.elements.length === 1 && b.elements.length === 1 &&
-    a.level === MAX_LEVEL && b.level === MAX_LEVEL &&
-    a.elements[0] !== b.elements[0]);
-}
-
-function distToSegment(px, py, ax, ay, bx, by) {
-  const dx = bx - ax, dy = by - ay;
-  const l2 = dx * dx + dy * dy;
-  let k = ((px - ax) * dx + (py - ay) * dy) / l2;
-  k = Math.max(0, Math.min(1, k));
-  return Math.hypot(px - (ax + dx * k), py - (ay + dy * k));
-}
+function maxTier(t) { return t.kind === 'basic' ? 3 : MAX_TIER[t.elements.length]; }
 
 /* ============================================================ */
 export class Game {
   constructor(mapIndex, diffKey) {
-    const diff = DIFFICULTIES[diffKey];
     this.mapIndex = mapIndex;
     this.diffKey = diffKey;
-    this.diff = diff;
-    this.map = buildMap(MAPS[mapIndex]);
-    this.gold = diff.gold;
-    this.lives = diff.lives;
+    this.diff = DIFFICULTIES[diffKey];
+    this.map = parseMap(MAPS[mapIndex]);
+    this.gold = this.diff.gold;
+    this.lives = this.diff.lives;
     this.wave = 0;
     this.waveActive = false;
     this.waveTime = 0;
     this.spawnQueue = [];
     this.towers = [];
-    this.enemies = [];
+    this.creeps = [];
     this.projectiles = [];
     this.over = false;
     this.won = false;
@@ -154,8 +159,14 @@ export class Game {
     this.kills = 0;
     this.nextId = 1;
     this.events = [];
-    this.towerGrid = [];
-    for (let r = 0; r < ROWS; r++) this.towerGrid.push(new Array(COLS).fill(null));
+    this.towerGrid = new Array(N).fill(null);
+    this.blocked = new Uint8Array(N);
+    this.elemPoints = START_ELEMENT_POINTS;
+    this.elemLevel = Object.fromEntries(ELEMENT_ORDER.map((e) => [e, 0]));
+    this.lastElement = null;
+    this.routeVersion = 0;
+    this.recomputeFields();
+    this.flyPath = this.computeFlyPath();
     this.currentWave = null;
     this.nextWaveData = this.makeWave(1);
   }
@@ -163,50 +174,235 @@ export class Game {
   emit(type, data = {}) { this.events.push({ type, ...data }); }
   sound(name, throttle = 0) { this.emit('sound', { name, throttle }); }
   toast(text, ms = 1200) { this.emit('toast', { text, ms }); }
-  floater(x, y, text, color, size = 12) { this.emit('floater', { x, y, text, color, size }); }
+  floater(x, y, text, color, size = 12, h = 0) { this.emit('floater', { x, y, text, color, size, h }); }
+
+  /* ---------- เส้นทาง ---------- */
+  recomputeFields() {
+    this.fields = this.map.goals.map((g) => computeField(this.map, this.blocked, g));
+    this.routeVersion += 1;
+  }
+
+  // เส้นทางจากจุดเกิดผ่านทุกจุดตรวจ (สำหรับแสดงผล)
+  getRoute() {
+    const pts = [];
+    let cur = this.map.spawn;
+    pts.push(cur);
+    for (let s = 0; s < this.fields.length; s++) {
+      const f = this.fields[s];
+      let guard = 0;
+      while (cur !== this.map.goals[s] && guard++ < N) {
+        cur = f.next[cur];
+        if (cur < 0) return pts;
+        pts.push(cur);
+      }
+    }
+    return pts;
+  }
+
+  // เส้นทางบิน: แผนที่เขาวงกตบินตรงผ่านจุดตรวจ, แผนที่ทางตายตัวบินตามมุมของถนน
+  computeFlyPath() {
+    const m = this.map;
+    const isMaze = m.tiles.some((row) => row.includes('.'));
+    if (isMaze) return [m.spawn, ...m.goals];
+    const route = this.getRoute();
+    const pts = [route[0]];
+    for (let k = 1; k < route.length - 1; k++) {
+      const a = route[k - 1], b = route[k], c = route[k + 1];
+      if (b - a !== c - b) pts.push(b);
+    }
+    pts.push(route[route.length - 1]);
+    return pts;
+  }
+
+  tileAt(x, y) {
+    const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return -1;
+    return idx(c, r);
+  }
+
+  /* ตรวจว่าวางป้อมที่ช่องนี้ได้หรือไม่ (รวมถึงห้ามปิดทาง) */
+  checkBuild(c, r) {
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return { ok: false, reason: 'นอกพื้นที่' };
+    const i = idx(c, r);
+    const m = this.map;
+    if (!m.build[i]) return { ok: false, reason: 'สร้างตรงนี้ไม่ได้' };
+    if (this.towerGrid[i]) return { ok: false, reason: 'มีป้อมอยู่แล้ว' };
+    if (!m.walk[i]) return { ok: true };
+    const { x, y } = tileCenter(i);
+    for (const e of this.creeps) {
+      if (e.alive && !e.flying && Math.abs(e.x - x) < TILE * 0.85 && Math.abs(e.y - y) < TILE * 0.85) {
+        return { ok: false, reason: 'มีมอนสเตอร์ขวางอยู่' };
+      }
+    }
+    this.blocked[i] = 1;
+    const fields = m.goals.map((g) => computeField(m, this.blocked, g));
+    this.blocked[i] = 0;
+    for (let s = 0; s < fields.length; s++) {
+      const start = s === 0 ? m.spawn : m.goals[s - 1];
+      if (!Number.isFinite(fields[s].dist[start])) return { ok: false, reason: 'ห้ามปิดทางเดินทั้งหมด!' };
+    }
+    for (const e of this.creeps) {
+      if (!e.alive || e.flying) continue;
+      const ti = this.tileAt(e.x, e.y);
+      if (ti >= 0 && !Number.isFinite(fields[e.stage].dist[ti])) return { ok: false, reason: 'ห้ามขังมอนสเตอร์!' };
+    }
+    return { ok: true, fields };
+  }
+
+  /* ---------- ธาตุ ---------- */
+  buyElement(el) {
+    if (this.elemPoints <= 0) { this.sound('error'); this.toast('ไม่มีผลึกธาตุเหลือ', 900); return false; }
+    if (this.elemLevel[el] >= MAX_ELEMENT_LEVEL) { this.sound('error'); return false; }
+    this.elemPoints -= 1;
+    this.elemLevel[el] += 1;
+    const lv = this.elemLevel[el];
+    this.toast(`${ELEMENTS[el].icon} ธาตุ${ELEMENTS[el].th} เลเวล ${lv}!`, 1400);
+    this.emit('elementUp', { el, lv });
+    this.sound('fuse');
+    this.emit('changed');
+    return true;
+  }
+
+  /* ---------- ป้อม ---------- */
+  canBuildType(type) {
+    if (BASIC[type]) return { ok: true };
+    if (this.elemLevel[type] < 1) return { ok: false, reason: `ต้องปลดล็อกธาตุ${ELEMENTS[type].th}ก่อน` };
+    return { ok: true };
+  }
+
+  placeTower(type, c, r) {
+    const req = this.canBuildType(type);
+    if (!req.ok) { this.sound('error'); this.toast(req.reason, 1100); return false; }
+    const cost = buildCost(type);
+    if (this.gold < cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
+    const chk = this.checkBuild(c, r);
+    if (!chk.ok) { this.sound('error'); this.toast(chk.reason, 1100); return false; }
+    this.gold -= cost;
+    const i = idx(c, r);
+    const basic = !!BASIC[type];
+    const t = {
+      id: this.nextId++, c, r, i,
+      x: c * TILE + TILE / 2, y: r * TILE + TILE / 2,
+      kind: basic ? 'basic' : 'element', base: basic ? type : null,
+      elements: basic ? [] : [type], tier: 1,
+      spent: cost, cd: 0.3, angle: -Math.PI / 2,
+      mode: 'first', kills: 0, dmgDealt: 0, version: 0,
+    };
+    t.stats = towerStats(t);
+    this.towers.push(t);
+    this.towerGrid[i] = t;
+    if (this.map.walk[i]) {
+      this.blocked[i] = 1;
+      this.fields = chk.fields;
+      this.routeVersion += 1;
+    }
+    this.emit('build', { tower: t });
+    this.sound('build');
+    this.emit('changed');
+    return true;
+  }
+
+  /* ตัวเลือกอัปเกรดของป้อม */
+  upgradeOptions(t) {
+    const opts = [];
+    const lvOk = (els, need) => els.every((e) => this.elemLevel[e] >= need);
+    if (t.tier < maxTier(t)) {
+      let cost, need = null;
+      if (t.kind === 'basic') cost = BASIC[t.base].cost[t.tier];
+      else {
+        const T = ELEMENT_TOWER[t.elements.length];
+        cost = T.cum[t.tier] - T.cum[t.tier - 1];
+        if (!lvOk(t.elements, t.tier + 1)) need = `ต้องมีธาตุ ${t.elements.map((e) => ELEMENTS[e].th).join('+')} เลเวล ${t.tier + 1}`;
+      }
+      opts.push({ type: 'tier', cost, ok: !need, reason: need, label: `อัปเกรดเป็นระดับ ${t.tier + 1}` });
+    }
+    if (t.kind === 'element' && t.elements.length < 3) {
+      const n = t.elements.length;
+      const newTier = Math.min(t.tier, MAX_TIER[n + 1]);
+      for (const e of ELEMENT_ORDER) {
+        if (t.elements.includes(e)) continue;
+        const els = [...t.elements, e];
+        const cost = ELEMENT_TOWER[n + 1].cum[newTier - 1] - ELEMENT_TOWER[n].cum[t.tier - 1];
+        const ok = lvOk(els, newTier);
+        opts.push({
+          type: 'add', el: e, els, tier: newTier, cost, ok,
+          reason: ok ? null : `ต้องมีธาตุ${ELEMENTS[e].th} เลเวล ${newTier}${newTier > 1 ? ' (และธาตุเดิมเลเวลเท่ากัน)' : ''}`,
+          label: comboName(els),
+        });
+      }
+    }
+    return opts;
+  }
+
+  applyUpgrade(t, opt) {
+    if (!opt.ok) { this.sound('error'); this.toast(opt.reason, 1400); return false; }
+    if (this.gold < opt.cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
+    this.gold -= opt.cost;
+    t.spent += opt.cost;
+    if (opt.type === 'tier') t.tier += 1;
+    else { t.elements = opt.els; t.tier = opt.tier; }
+    t.stats = towerStats(t);
+    t.version += 1;
+    if (opt.type === 'add') {
+      this.emit('fuse', { tower: t, els: t.elements });
+      this.toast(`✦ ${towerName(t)} ✦`, 1600);
+      this.sound('fuse');
+    } else {
+      this.emit('upgrade', { tower: t });
+      this.sound('upgrade');
+    }
+    this.emit('changed');
+    return true;
+  }
+
+  upgradeTier(t) {
+    const o = this.upgradeOptions(t).find((x) => x.type === 'tier');
+    return o ? this.applyUpgrade(t, o) : false;
+  }
+
+  sellTower(t) {
+    const v = sellValue(t);
+    this.gold += v;
+    this.towers = this.towers.filter((x) => x !== t);
+    this.towerGrid[t.i] = null;
+    if (this.blocked[t.i]) {
+      this.blocked[t.i] = 0;
+      this.recomputeFields();
+    }
+    this.floater(t.x, t.y, `+${v}`, '#ffcf4a', 14);
+    this.emit('sell', { tower: t });
+    this.sound('sell');
+    this.emit('changed');
+  }
+
+  cycleMode(t) {
+    t.mode = TARGET_MODES[(TARGET_MODES.indexOf(t.mode) + 1) % TARGET_MODES.length];
+    this.emit('changed');
+  }
 
   /* ---------- เวฟ ---------- */
   makeWave(n) {
-    const hpScale = (28 * Math.pow(1.17, n - 1) + n * 4) * this.diff.hp;
-    const basic = ['fire', 'water', 'earth', 'wind'];
-    const pool = n >= 5 ? ELEMENT_ORDER : basic;
-    const numEl = n <= 4 ? 1 : n < 18 ? 2 : 3;
-    const els = [];
-    while (els.length < numEl) {
-      const e = pick(pool);
-      if (!els.includes(e)) els.push(e);
-    }
+    let ability;
+    if (n <= 3) ability = n === 2 ? 'fast' : 'normal';
+    else ability = WAVE_PATTERN[(n - 1) % WAVE_PATTERN.length];
+    if (n > TOTAL_WAVES && n % 5 === 0) ability = 'boss';
+    let element;
+    do { element = pick(ELEMENT_ORDER); } while (element === this.lastElement);
+    this.lastElement = element;
+    const hpScale = (32 * Math.pow(1.17, n - 1) + n * 6) * this.diff.hp;
     const entries = [];
     let t = 0;
-    const count = 8 + Math.floor(n * 0.9);
-    const pattern = n % 5;
-    const push = (type, gap) => {
-      entries.push({ type, element: pick(els), t });
-      t += gap;
-    };
-    const isBoss = n % 10 === 0;
-    if (isBoss) {
-      for (let i = 0; i < Math.floor(count / 2); i++) push(i % 3 === 0 ? 'tank' : 'grunt', 0.8);
-      t += 1.5;
-      entries.push({ type: 'boss', element: pick(els), t });
+    const add = (ab, gap) => { entries.push({ ability: ab, element, t }); t += gap; };
+    if (ability === 'boss') {
+      for (let i = 0; i < 6; i++) add('normal', 0.9);
       t += 2;
-    } else if (pattern === 1) {
-      for (let i = 0; i < count; i++) push('grunt', 0.85);
-    } else if (pattern === 2) {
-      for (let i = 0; i < count; i++) push(i % 3 === 2 ? 'grunt' : 'runner', 0.55);
-    } else if (pattern === 3) {
-      for (let i = 0; i < count * 2; i++) push('swarm', 0.3);
-    } else if (pattern === 4) {
-      for (let i = 0; i < count; i++) push(i % 3 === 0 ? 'tank' : 'grunt', i % 3 === 0 ? 1.4 : 0.8);
+      add('boss', 0);
     } else {
-      for (let i = 0; i < count; i++) push(pick(['grunt', 'runner', 'tank', 'swarm', 'swarm']), 0.6);
+      const count = Math.round((10 + Math.floor(n * 0.35)) * (ability === 'flying' ? 0.7 : 1));
+      const gap = { fast: 0.45, armored: 1.0, split: 1.1, flying: 0.75 }[ability] || 0.8;
+      for (let i = 0; i < count; i++) add(ability, gap);
     }
-    if (n > TOTAL_WAVES && !isBoss && n % 5 === 0) {
-      entries.push({ type: 'boss', element: pick(els), t: t + 1 });
-    }
-    const summary = {};
-    for (const e of entries) summary[e.type] = (summary[e.type] || 0) + 1;
-    return { n, els, entries, hpScale, summary, isBoss: entries.some((e) => e.type === 'boss') };
+    return { n, element, ability, entries, hpScale, count: entries.length };
   }
 
   startWave() {
@@ -218,12 +414,12 @@ export class Game {
     this.waveTime = 0;
     this.spawnQueue = w.entries.map((e) => ({ ...e }));
     this.nextWaveData = this.makeWave(this.wave + 1);
-    if (w.isBoss) {
+    if (w.ability === 'boss') {
       this.sound('boss');
-      this.toast('⚠️ บอสธาตุกำลังมา!', 2000);
+      this.toast(`⚠️ บอสมังกร${ELEMENTS[w.element].th}กำลังมา!`, 2000);
     } else {
       this.sound('wave');
-      this.toast(`เวฟ ${this.wave}`, 1100);
+      this.toast(`เวฟ ${this.wave}: ${ELEMENTS[w.element].icon} ${ABILITIES[w.ability].th}`, 1300);
     }
     this.emit('changed');
     return true;
@@ -231,9 +427,15 @@ export class Game {
 
   endWave() {
     this.waveActive = false;
-    const bonus = 20 + this.wave * 3;
-    this.gold += bonus;
-    this.emit('waveEnd', { bonus });
+    const bonus = 20 + this.wave * 4;
+    const interest = Math.floor(Math.min(this.gold * INTEREST_RATE, 20 + this.wave * 5));
+    this.gold += bonus + interest;
+    this.emit('waveEnd', { bonus, interest });
+    if (this.wave % ELEMENT_POINT_EVERY === 0) {
+      this.elemPoints += 1;
+      this.emit('elementPoint');
+      this.sound('win');
+    }
     if (this.wave >= TOTAL_WAVES && !this.endless && !this.won) {
       this.won = true;
       this.sound('win');
@@ -242,103 +444,212 @@ export class Game {
     this.emit('changed');
   }
 
-  /* ---------- ป้อม ---------- */
-  canBuildAt(c, r) {
-    return c >= 0 && c < COLS && r >= 0 && r < ROWS && this.map.grid[r][c] === 0 && !this.towerGrid[r][c];
-  }
-
-  placeTower(el, c, r) {
-    const cost = ELEMENTS[el].cost;
-    if (!this.canBuildAt(c, r)) { this.sound('error'); return false; }
-    if (this.gold < cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
-    this.gold -= cost;
-    const t = {
-      id: this.nextId++, c, r,
-      x: c * TILE + TILE / 2, y: r * TILE + TILE / 2,
-      elements: [el], level: 1, star: 0,
-      spent: cost, cd: 0.2, angle: -Math.PI / 2,
-      mode: 'first', kills: 0, dmgDealt: 0, version: 0,
+  /* ---------- มอนสเตอร์ ---------- */
+  spawnCreep(entry, hpScale, from = null) {
+    const A = ABILITIES[entry.ability];
+    const hp = A.hp * hpScale;
+    const m = this.map;
+    const sc = tileCenter(m.spawn);
+    const e = {
+      id: this.nextId++, ability: entry.ability, element: entry.element, model: A.model,
+      hp, maxHp: hp, speed: A.speed * rand(0.95, 1.05), size: A.size,
+      reward: Math.max(1, Math.round((3 + this.wave * 0.5) * A.reward)),
+      lives: A.lives,
+      x: sc.x + m.spawnOut.x * TILE * 0.45, y: sc.y + m.spawnOut.y * TILE * 0.45,
+      angle: Math.atan2(-m.spawnOut.y, -m.spawnOut.x),
+      stage: 0, wp: 0, flying: entry.ability === 'flying', progress: 0,
+      slowT: 0, slowF: 1, stunT: 0, burnT: 0, burnDps: 0, burnSrc: null,
+      curseT: 0, curseAmp: 1, alive: true, flash: 0, revived: false, moving: 1,
     };
-    t.stats = computeStats(t);
-    this.towers.push(t);
-    this.towerGrid[r][c] = t;
-    this.emit('burst', { x: t.x, y: t.y, color: ELEMENTS[el].color, n: 24, spd: 2.5 });
-    this.sound('build');
-    this.emit('changed');
-    return true;
+    if (from) {
+      e.x = from.x + rand(-8, 8); e.y = from.y + rand(-8, 8);
+      e.stage = from.stage; e.wp = from.wp; e.angle = from.angle;
+    }
+    this.creeps.push(e);
+    this.emit('spawn', { creep: e });
+    return e;
   }
 
-  upgradeTower(t) {
-    const cost = upgradeCost(t);
-    if (cost == null) return false;
-    if (this.gold < cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
-    this.gold -= cost;
-    t.spent += cost;
-    if (t.elements.length === 1) t.level += 1; else t.star += 1;
-    t.stats = computeStats(t);
-    t.version += 1;
-    this.emit('upgrade', { tower: t });
-    this.emit('burst', { x: t.x, y: t.y, color: '#ffe680', n: 30, spd: 3 });
-    this.sound('upgrade');
-    this.emit('changed');
-    return true;
+  isImmune(e) { return e.ability === 'armored'; }
+
+  applyHit(e, t, mul) {
+    if (!e.alive) return;
+    const s = t.stats;
+    let base = s.dmg * mul;
+    // ดาเมจตาม % HP จำกัดไม่เกิน 3 เท่าของดาเมจพื้นฐาน
+    if (s.percent) base += Math.min(e.maxHp * s.percent * (e.ability === 'boss' ? 0.25 : 1), s.dmg * 3) * mul;
+    const m = this.dealDamage(e, base, t.elements, t);
+    if (!e.alive) return;
+    const boss = e.ability === 'boss';
+    const immune = this.isImmune(e);
+    if (s.slow && !immune) {
+      const f = boss ? Math.sqrt(s.slow.factor) : s.slow.factor;
+      e.slowF = e.slowT > 0 ? Math.min(e.slowF, f) : f;
+      e.slowT = Math.max(e.slowT, s.slow.dur);
+    }
+    if (s.burn) {
+      e.burnDps = Math.max(e.burnT > 0 ? e.burnDps : 0, s.burn.dps * m);
+      e.burnT = s.burn.dur;
+      e.burnSrc = t;
+    }
+    if (s.stun && !immune && Math.random() < s.stun.chance * mul) {
+      e.stunT = Math.max(e.stunT, s.stun.dur * (boss ? 0.3 : 1));
+    }
+    if (s.knock && !boss && !immune && !e.flying && Math.random() < s.knock.chance * mul) {
+      const bx = e.x - Math.cos(e.angle) * s.knock.dist, by = e.y - Math.sin(e.angle) * s.knock.dist;
+      const ti = this.tileAt(bx, by);
+      if (ti >= 0 && this.map.walk[ti] && !this.blocked[ti]) { e.x = bx; e.y = by; }
+    }
+    if (s.curse) {
+      e.curseAmp = Math.max(e.curseT > 0 ? e.curseAmp : 1, s.curse.amp);
+      e.curseT = s.curse.dur;
+    }
   }
 
-  sellTower(t) {
-    const v = sellValue(t);
-    this.gold += v;
-    this.removeTower(t);
-    this.floater(t.x, t.y, `+${v}`, '#ffcf4a', 14);
-    this.emit('burst', { x: t.x, y: t.y, color: '#bbbbbb', n: 18, spd: 2 });
-    this.sound('sell');
-    this.emit('changed');
+  // คืนค่าตัวคูณธาตุที่ใช้
+  dealDamage(e, amount, atkElements, tower) {
+    let mult = 1;
+    if (atkElements && atkElements.length) {
+      mult = 0;
+      for (const a of atkElements) mult = Math.max(mult, elementMultiplier(a, e.element));
+    }
+    let dmg = amount * mult * (e.curseT > 0 ? e.curseAmp : 1);
+    if (this.isImmune(e)) dmg *= 0.8;
+    e.hp -= dmg;
+    e.flash = 0.08;
+    if (tower) tower.dmgDealt += dmg;
+    if (atkElements && dmg >= 1) {
+      const col = mult > 1 ? '#ffe45a' : mult < 1 ? '#9aa0b8' : '#ffffff';
+      this.floater(e.x + rand(-6, 6), e.y, Math.round(dmg).toString(), col, mult > 1 ? 14 : 11, e.flying ? 1 : 0);
+    }
+    if (e.hp <= 0) this.killCreep(e, tower);
+    return mult;
   }
 
-  removeTower(t) {
-    this.towers = this.towers.filter((x) => x !== t);
-    this.towerGrid[t.r][t.c] = null;
+  killCreep(e, tower) {
+    if (!e.alive) return;
+    if (e.ability === 'undead' && !e.revived) {
+      e.revived = true;
+      e.hp = e.maxHp * 0.5;
+      e.burnT = 0;
+      this.emit('revive', { creep: e });
+      return;
+    }
+    e.alive = false;
+    this.gold += e.reward;
+    this.kills += 1;
+    if (tower) tower.kills += 1;
+    this.emit('death', { creep: e });
+    this.floater(e.x, e.y, `+${e.reward}`, '#ffcf4a', 13, e.flying ? 1 : 0);
+    if (e.ability === 'split') {
+      for (let k = 0; k < 2; k++) {
+        const ch = this.spawnCreep({ ability: 'child', element: e.element }, 1, e);
+        ch.hp = ch.maxHp = e.maxHp * 0.45;
+      }
+    }
+    if (e.ability === 'boss') this.toast('บอสถูกกำจัด!', 1400);
   }
 
-  fuseTowers(a, b) {
-    if (!canFuse(a, b)) return false;
-    if (this.gold < FUSION_COST) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
-    this.gold -= FUSION_COST;
-    const els = [a.elements[0], b.elements[0]];
-    a.elements = els;
-    a.star = 0;
-    a.spent += b.spent + FUSION_COST;
-    a.kills += b.kills;
-    a.dmgDealt += b.dmgDealt;
-    a.stats = computeStats(a);
-    a.version += 1;
-    this.removeTower(b);
-    this.emit('fuse', { tower: a, fromX: b.x, fromY: b.y, els });
-    const f = FUSIONS[fusionKey(els[0], els[1])];
-    this.toast(`✦ หลอมรวม: ${f.th} ✦`, 1600);
-    this.sound('fuse');
-    this.emit('changed');
-    return true;
+  updateCreep(e, dt) {
+    e.flash = Math.max(0, e.flash - dt);
+    if (e.slowT > 0) e.slowT -= dt;
+    if (e.stunT > 0) e.stunT -= dt;
+    if (e.curseT > 0) e.curseT -= dt;
+    if (e.ability === 'regen') e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.025 * dt);
+    if (e.burnT > 0) {
+      e.burnT -= dt;
+      this.dealDamage(e, e.burnDps * dt, null, e.burnSrc);
+      if (!e.alive) return;
+    }
+    let v = e.speed;
+    if (e.slowT > 0) v *= e.slowF;
+    if (e.stunT > 0) v = 0;
+    e.moving = v / e.speed;
+    const m = this.map;
+    const goals = m.goals;
+
+    let tx, ty, arrive = false;
+    if (e.flying) {
+      const wps = this.flyPath;
+      const target = tileCenter(wps[Math.min(e.wp, wps.length - 1)]);
+      tx = target.x; ty = target.y;
+      if (dist2(e.x, e.y, tx, ty) < 36) {
+        if (e.wp >= wps.length - 1) arrive = true;
+        else e.wp += 1;
+      }
+      const rem = Math.hypot(tx - e.x, ty - e.y) / TILE;
+      e.progress = e.wp * 1000 - rem;
+    } else {
+      const ti = this.tileAt(e.x, e.y);
+      if (ti < 0) {
+        const sc = tileCenter(m.spawn);
+        tx = sc.x; ty = sc.y;
+        e.progress = -1;
+      } else {
+        const goal = goals[e.stage];
+        const f = this.fields[e.stage];
+        if (ti === goal) {
+          const gc = tileCenter(goal);
+          tx = gc.x; ty = gc.y;
+          if (dist2(e.x, e.y, tx, ty) < 100) {
+            if (e.stage >= goals.length - 1) arrive = true;
+            else e.stage += 1;
+          }
+        } else {
+          const nx = f.next[ti];
+          const target = nx >= 0 ? tileCenter(nx) : tileCenter(goal);
+          tx = target.x; ty = target.y;
+        }
+        const d = Number.isFinite(f.dist[ti]) ? f.dist[ti] : 99;
+        e.progress = e.stage * 1000 + 500 - d;
+      }
+    }
+    if (arrive) {
+      e.alive = false;
+      this.lives -= e.lives;
+      this.sound('leak');
+      this.emit('leak', { lives: e.lives, creep: e });
+      this.floater(e.x, e.y, `-${e.lives} ❤️`, '#ff5a6a', 18);
+      if (this.lives <= 0) { this.lives = 0; this.gameOver(); }
+      this.emit('changed');
+      return;
+    }
+    const dx = tx - e.x, dy = ty - e.y;
+    const d = Math.hypot(dx, dy);
+    const step = v * dt;
+    if (d > 0.001) {
+      const want = Math.atan2(dy, dx);
+      let diff = want - e.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      e.angle += diff * Math.min(1, dt * 10);
+      if (d <= step) { e.x = tx; e.y = ty; }
+      else { e.x += (dx / d) * step; e.y += (dy / d) * step; }
+    }
   }
 
-  cycleMode(t) {
-    t.mode = TARGET_MODES[(TARGET_MODES.indexOf(t.mode) + 1) % TARGET_MODES.length];
-    this.emit('changed');
+  gameOver() {
+    if (this.over) return;
+    this.over = true;
+    this.sound('lose');
+    this.emit('lose');
   }
 
+  /* ---------- การโจมตี ---------- */
   findTargets(t, count) {
     const s = t.stats;
     const list = [];
-    for (const e of this.enemies) {
+    for (const e of this.creeps) {
       if (!e.alive) continue;
       const rr = s.range + e.size * 0.5;
       if (dist2(t.x, t.y, e.x, e.y) <= rr * rr) list.push(e);
     }
     if (!list.length) return list;
     switch (t.mode) {
-      case 'last': list.sort((a, b) => a.d - b.d); break;
+      case 'last': list.sort((a, b) => a.progress - b.progress); break;
       case 'strong': list.sort((a, b) => b.hp - a.hp); break;
       case 'close': list.sort((a, b) => dist2(t.x, t.y, a.x, a.y) - dist2(t.x, t.y, b.x, b.y)); break;
-      default: list.sort((a, b) => b.d - a.d);
+      default: list.sort((a, b) => b.progress - a.progress);
     }
     return list.slice(0, count);
   }
@@ -362,18 +673,18 @@ export class Game {
       else this.fireProjectile(t, target);
     }
     this.emit('shot', { tower: t });
-    this.sound(t.elements.length > 1 ? t.elements[1] : t.elements[0], 70);
+    this.sound(t.kind === 'basic' ? (t.base === 'arrow' ? 'wind' : 'earth') : t.elements[t.elements.length - 1], 70);
   }
 
   fireProjectile(t, target) {
-    const el = t.elements[0];
-    const speeds = { fire: 330, water: 380, earth: 260, wind: 560, light: 600, dark: 340 };
+    const style = t.kind === 'basic' ? t.base : t.elements[0];
+    const speeds = { arrow: 520, cannon: 280, fire: 330, water: 380, earth: 260, wind: 560, dark: 340 };
     this.projectiles.push({
       id: this.nextId++,
-      x: t.x + Math.cos(t.angle) * 14, y: t.y + Math.sin(t.angle) * 14,
-      sx: t.x, sy: t.y,
+      x: t.x, y: t.y, sx: t.x, sy: t.y,
       tx: target.x, ty: target.y, target, tower: t,
-      speed: speeds[el], el, elements: t.elements.slice(),
+      speed: speeds[style] || 400, style, elements: t.elements.slice(),
+      fly: target.flying,
     });
   }
 
@@ -383,23 +694,23 @@ export class Game {
     const len = s.range + 20;
     const x2 = t.x + Math.cos(ang) * len, y2 = t.y + Math.sin(ang) * len;
     const hit = new Set();
-    for (const e of this.enemies) {
+    for (const e of this.creeps) {
       if (!e.alive) continue;
       if (distToSegment(e.x, e.y, t.x, t.y, x2, y2) <= e.size + 6) hit.add(e);
     }
     hit.add(target);
     for (const e of hit) this.applyHit(e, t, 1);
     if (s.splash) {
-      for (const e of this.enemies) {
+      for (const e of this.creeps) {
         if (!e.alive || hit.has(e)) continue;
         if (dist2(e.x, e.y, target.x, target.y) <= s.splash * s.splash) this.applyHit(e, t, 0.5);
       }
-      this.emit('explosion', { x: target.x, y: target.y, r: s.splash, color: ELEMENTS.fire.color });
+      this.emit('explosion', { x: target.x, y: target.y, r: s.splash, color: ELEMENTS.fire.color, fly: target.flying });
     }
     this.emit('beam', {
-      x1: t.x, y1: t.y, x2, y2,
+      tower: t, x1: t.x, y1: t.y, x2, y2, fly: target.flying,
       colors: t.elements.map((e) => ELEMENTS[e].color),
-      width: 1 + (t.elements.length > 1 ? 0.8 : 0) + t.level * 0.25,
+      width: 1 + (t.elements.length - 1) * 0.7 + t.tier * 0.25,
     });
   }
 
@@ -408,10 +719,7 @@ export class Game {
     const dx = p.tx - p.x, dy = p.ty - p.y;
     const d = Math.hypot(dx, dy);
     const step = p.speed * dt;
-    if (d <= step + 2) {
-      this.impact(p);
-      return false;
-    }
+    if (d <= step + 2) { this.impact(p); return false; }
     p.x += (dx / d) * step;
     p.y += (dy / d) * step;
     return true;
@@ -420,133 +728,18 @@ export class Game {
   impact(p) {
     const t = p.tower;
     const s = t.stats;
-    const color = ELEMENTS[p.elements[p.elements.length - 1]].color;
+    const color = t.kind === 'basic' ? BASIC[t.base].color : ELEMENTS[t.elements[t.elements.length - 1]].color;
     if (s.splash) {
-      for (const e of this.enemies) {
+      for (const e of this.creeps) {
         if (!e.alive) continue;
         const rr = s.splash + e.size * 0.5;
         if (dist2(e.x, e.y, p.tx, p.ty) <= rr * rr) this.applyHit(e, t, e === p.target ? 1 : 0.5);
       }
-      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: ELEMENTS[p.elements[0]].color });
+      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: t.kind === 'basic' ? '#ffb060' : ELEMENTS[t.elements[0]].color, fly: p.fly });
     } else if (p.target && p.target.alive) {
       this.applyHit(p.target, t, 1);
-      this.emit('burst', { x: p.tx, y: p.ty, color, n: 6, spd: 1.5, h: 0.35 });
+      this.emit('hit', { x: p.tx, y: p.ty, color, fly: p.fly });
     }
-  }
-
-  /* ---------- ศัตรู ---------- */
-  spawnEnemy(entry, hpScale) {
-    const T = ENEMY_TYPES[entry.type];
-    const hp = T.hp * hpScale;
-    const p = posAt(this.map, 0);
-    this.enemies.push({
-      id: this.nextId++, type: entry.type, element: entry.element,
-      hp, maxHp: hp, speed: T.speed * rand(0.95, 1.05), size: T.size,
-      reward: Math.max(1, Math.round((2 + this.wave * 0.25) * T.reward)),
-      lives: T.lives, d: 0, x: p.x, y: p.y, angle: p.angle,
-      slowT: 0, slowF: 1, stunT: 0, burnT: 0, burnDps: 0, burnSrc: null,
-      curseT: 0, curseAmp: 1, alive: true, flash: 0,
-    });
-  }
-
-  applyHit(e, t, mul) {
-    if (!e.alive) return;
-    const s = t.stats;
-    let base = s.dmg * mul;
-    // ดาเมจตาม % HP จำกัดไม่เกิน 3 เท่าของดาเมจพื้นฐาน เพื่อไม่ให้แรงเกินในเวฟท้าย ๆ
-    if (s.percent) base += Math.min(e.maxHp * s.percent * (e.type === 'boss' ? 0.25 : 1), s.dmg * 3) * mul;
-    const m = this.dealDamage(e, base, t.elements, t);
-    if (!e.alive) return;
-    const boss = e.type === 'boss';
-    if (s.slow) {
-      const f = boss ? Math.sqrt(s.slow.factor) : s.slow.factor;
-      e.slowF = e.slowT > 0 ? Math.min(e.slowF, f) : f;
-      e.slowT = Math.max(e.slowT, s.slow.dur);
-    }
-    if (s.burn) {
-      e.burnDps = Math.max(e.burnT > 0 ? e.burnDps : 0, s.burn.dps * m);
-      e.burnT = s.burn.dur;
-      e.burnSrc = t;
-    }
-    if (s.stun && Math.random() < s.stun.chance * mul) {
-      e.stunT = Math.max(e.stunT, s.stun.dur * (boss ? 0.3 : 1));
-    }
-    if (s.knock && !boss && Math.random() < s.knock.chance * mul) {
-      e.d = Math.max(0, e.d - s.knock.dist);
-    }
-    if (s.curse) {
-      e.curseAmp = Math.max(e.curseT > 0 ? e.curseAmp : 1, s.curse.amp);
-      e.curseT = s.curse.dur;
-    }
-  }
-
-  // คืนค่าตัวคูณธาตุที่ใช้
-  dealDamage(e, amount, atkElements, tower) {
-    let mult = 1;
-    if (atkElements) {
-      mult = 0;
-      for (const a of atkElements) mult = Math.max(mult, elementMultiplier(a, e.element));
-    }
-    const dmg = amount * mult * (e.curseT > 0 ? e.curseAmp : 1);
-    e.hp -= dmg;
-    e.flash = 0.08;
-    if (tower) tower.dmgDealt += dmg;
-    if (atkElements && dmg >= 1) {
-      const col = mult > 1 ? '#ffe45a' : mult < 1 ? '#9aa0b8' : '#ffffff';
-      this.floater(e.x + rand(-6, 6), e.y, Math.round(dmg).toString(), col, mult > 1 ? 14 : 11);
-    }
-    if (e.hp <= 0) this.killEnemy(e, tower);
-    return mult;
-  }
-
-  killEnemy(e, tower) {
-    if (!e.alive) return;
-    e.alive = false;
-    this.gold += e.reward;
-    this.kills += 1;
-    if (tower) tower.kills += 1;
-    const boss = e.type === 'boss';
-    this.emit('burst', { x: e.x, y: e.y, color: ELEMENTS[e.element].color, n: boss ? 120 : 20, spd: boss ? 5 : 2.5, h: 0.3 });
-    this.floater(e.x, e.y, `+${e.reward}`, '#ffcf4a', 13);
-    if (boss) this.toast('บอสถูกกำจัด!', 1400);
-  }
-
-  updateEnemy(e, dt) {
-    e.flash = Math.max(0, e.flash - dt);
-    if (e.slowT > 0) e.slowT -= dt;
-    if (e.stunT > 0) e.stunT -= dt;
-    if (e.curseT > 0) e.curseT -= dt;
-    if (e.burnT > 0) {
-      e.burnT -= dt;
-      this.dealDamage(e, e.burnDps * dt, null, e.burnSrc);
-      if (!e.alive) return;
-    }
-    let v = e.speed;
-    if (e.slowT > 0) v *= e.slowF;
-    if (e.stunT > 0) v = 0;
-    e.d += v * dt;
-    if (e.d >= this.map.total) {
-      e.alive = false;
-      this.lives -= e.lives;
-      this.sound('leak');
-      this.emit('leak', { lives: e.lives, x: e.x, y: e.y });
-      this.floater(e.x, e.y, `-${e.lives} ❤️`, '#ff5a6a', 18);
-      if (this.lives <= 0) {
-        this.lives = 0;
-        this.gameOver();
-      }
-      this.emit('changed');
-      return;
-    }
-    const p = posAt(this.map, e.d);
-    e.x = p.x; e.y = p.y; e.angle = p.angle;
-  }
-
-  gameOver() {
-    if (this.over) return;
-    this.over = true;
-    this.sound('lose');
-    this.emit('lose');
   }
 
   /* ---------- ลูปหลัก ---------- */
@@ -555,21 +748,25 @@ export class Game {
     if (this.waveActive) {
       this.waveTime += dt;
       while (this.spawnQueue.length && this.spawnQueue[0].t <= this.waveTime) {
-        this.spawnEnemy(this.spawnQueue.shift(), this.currentWave.hpScale);
+        this.spawnCreep(this.spawnQueue.shift(), this.currentWave.hpScale);
       }
     }
-    for (const e of this.enemies) if (e.alive) this.updateEnemy(e, dt);
+    for (const e of this.creeps) if (e.alive) this.updateCreep(e, dt);
     if (this.over) {
-      this.enemies = this.enemies.filter((e) => e.alive);
+      this.creeps = this.creeps.filter((e) => e.alive);
       return;
     }
     for (const t of this.towers) this.updateTower(t, dt);
     this.projectiles = this.projectiles.filter((p) => this.updateProjectile(p, dt));
-    this.enemies = this.enemies.filter((e) => e.alive);
-    if (this.waveActive && !this.spawnQueue.length && !this.enemies.length) this.endWave();
+    this.creeps = this.creeps.filter((e) => e.alive);
+    if (this.waveActive && !this.spawnQueue.length && !this.creeps.length) this.endWave();
   }
+}
 
-  strongAgainst(elements) {
-    return [...new Set(elements.map((e) => BEATS[e]))];
-  }
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let k = ((px - ax) * dx + (py - ay) * dy) / l2;
+  k = Math.max(0, Math.min(1, k));
+  return Math.hypot(px - (ax + dx * k), py - (ay + dy * k));
 }
