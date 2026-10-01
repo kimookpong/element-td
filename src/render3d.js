@@ -14,6 +14,7 @@ import { FLOOR, FLY_HEIGHT, wx, wz, tileX, tileZ, rand, glow, mesh, G, geo, std 
 import { buildWorld } from './world.js';
 import { buildTowerModel } from './models.js';
 import { buildCreatureModel } from './creatures.js';
+import { withIcons } from './icons.js';
 
 /* ---------------- ระบบอนุภาค ---------------- */
 class Particles {
@@ -409,6 +410,13 @@ export class Renderer3D {
         }
         break;
       }
+      case 'built': {
+        const t = ev.tower;
+        const y = this.tileGround(t.c, t.r);
+        this.addRing(wx(t.x), y + 0.05, wz(t.y), 0.9, '#fff2c0', 0.45);
+        P.burst(wx(t.x), y + 0.4, wz(t.y), t.kind === 'basic' ? '#ffe0a0' : ELEMENTS[t.elements[0]].color, 26, 2.5, 0.15, -4, y);
+        break;
+      }
       case 'sell': {
         const t = ev.tower;
         const y = this.tileGround(t.c, t.r);
@@ -521,7 +529,7 @@ export class Renderer3D {
     }
     const el = document.createElement('div');
     el.className = 'floater';
-    el.textContent = ev.text;
+    el.innerHTML = withIcons(ev.text);
     el.style.color = ev.color;
     el.style.fontSize = `${ev.size}px`;
     this.floaterLayer.appendChild(el);
@@ -530,7 +538,7 @@ export class Renderer3D {
   }
 
   clearDynamic() {
-    for (const v of this.towerViews.values()) this.dynamic.remove(v.group);
+    for (const v of this.towerViews.values()) { this.dynamic.remove(v.group); this.dynamic.remove(v.scaffold); this.dynamic.remove(v.bar); }
     for (const v of this.creepViews.values()) { if (v.shadow) this.dynamic.remove(v.shadow); this.removeCreepView(v); }
     for (const v of this.projViews.values()) this.dynamic.remove(v.mesh);
     for (const fx of this.effects) this.dynamic.remove(fx.obj);
@@ -572,25 +580,86 @@ export class Renderer3D {
       seen.add(t.id);
       let v = this.towerViews.get(t.id);
       if (!v || v.version !== t.version) {
-        if (v) this.dynamic.remove(v.group);
+        if (v) { this.dynamic.remove(v.group); this.dynamic.remove(v.scaffold); this.dynamic.remove(v.bar); }
         const built = buildTowerModel(t);
-        v = { ...built, version: t.version, recoil: 0, spawn: v ? 1 : 0 };
+        v = { ...built, version: t.version, recoil: 0 };
         v.group.position.set(wx(t.x), this.tileGround(t.c, t.r), wz(t.y));
         this.dynamic.add(v.group);
+        v.scaffold = this.makeScaffold(built.height);
+        v.scaffold.position.copy(v.group.position);
+        v.bar = this.makeProgressBar();
+        this.dynamic.add(v.scaffold, v.bar);
         this.towerViews.set(t.id, v);
       }
-      v.spawn = Math.min(1, v.spawn + dt * 4);
-      const pop = v.spawn < 1 ? 1 - Math.pow(1 - v.spawn, 3) : 1;
-      v.group.scale.setScalar(pop);
+      // ระหว่างก่อสร้าง: นั่งร้าน + แถบความคืบหน้า + ป้อมค่อย ๆ โผล่ขึ้นจากพื้น
+      const b = t.build;
+      const k = b ? 1 - Math.max(0, b.t) / b.total : 1;
+      v.scaffold.visible = !!b;
+      v.bar.visible = !!b;
+      if (b) {
+        const grow = b.kind === 'build' ? 0.12 + 0.88 * (1 - Math.pow(1 - k, 2)) : 1;
+        v.group.scale.set(1, grow, 1);
+        v.bar.position.set(v.group.position.x, v.group.position.y + v.height + 0.25, v.group.position.z);
+        v.bar.userData.fg.scale.x = v.bar.userData.w * k;
+        v.bar.userData.fg.material = b.kind === 'build' ? this.progMats.build : this.progMats.upgrade;
+        if (Math.random() < dt * 8) {
+          this.particles.emit(v.group.position.x + rand(-0.4, 0.4), v.group.position.y + 0.05, v.group.position.z + rand(-0.4, 0.4), rand(-0.2, 0.2), rand(0.3, 0.8), rand(-0.2, 0.2), b.kind === 'build' ? '#d8c6a0' : '#ffe680', 0.6, 0.14, -0.5, v.group.position.y);
+        }
+      } else {
+        v.group.scale.set(1, 1, 1);
+      }
       v.aim.rotation.y = -t.angle;
       v.recoil = Math.max(0, v.recoil - dt * 6);
       v.aim.position.x = -Math.cos(t.angle) * v.recoil * 0.04;
       v.aim.position.z = -Math.sin(t.angle) * v.recoil * 0.04;
-      for (const a of v.anims) a(this.time, dt, v.recoil);
+      if (!b || b.kind === 'upgrade') for (const a of v.anims) a(this.time, dt, v.recoil);
     }
     for (const [id, v] of this.towerViews) {
-      if (!seen.has(id)) { this.dynamic.remove(v.group); this.towerViews.delete(id); }
+      if (!seen.has(id)) { this.dynamic.remove(v.group); this.dynamic.remove(v.scaffold); this.dynamic.remove(v.bar); this.towerViews.delete(id); }
     }
+  }
+
+  makeScaffold(height) {
+    const g = new THREE.Group();
+    const wood = std(0xa07a4a, { roughness: 0.9 });
+    const pole = geo('scafPole', () => new THREE.BoxGeometry(0.035, 1, 0.035));
+    const h = Math.max(0.6, height * 0.85);
+    for (const [x, z] of [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]]) {
+      g.add(mesh(pole, wood, { x, y: h / 2, z, s: [1, h, 1] }));
+    }
+    for (const y of [0.25, h * 0.6, h - 0.04]) {
+      for (const [x, z, ry] of [[0, -0.42, 0], [0, 0.42, 0], [-0.42, 0, Math.PI / 2], [0.42, 0, Math.PI / 2]]) {
+        g.add(mesh(pole, wood, { x, y, z, rz: Math.PI / 2, ry, s: [1, 0.86, 1] }));
+      }
+    }
+    for (const [x, z, ry] of [[0, -0.42, 0], [0, 0.42, 0], [-0.42, 0, Math.PI / 2], [0.42, 0, Math.PI / 2]]) {
+      g.add(mesh(pole, wood, { x, y: h * 0.42, z, ry, rz: 0.75, s: [1, 1.05, 1] }));
+    }
+    g.visible = false;
+    return g;
+  }
+
+  makeProgressBar() {
+    if (!this.progMats) {
+      const sm = (c, o = 1) => new THREE.SpriteMaterial({ color: c, transparent: o < 1, opacity: o, depthTest: false });
+      this.progMats = { bg: sm(0x000000, 0.7), build: sm(0xffc94a), upgrade: sm(0x6ad8ff) };
+    }
+    const w = 0.7;
+    const g = new THREE.Group();
+    const bg = new THREE.Sprite(this.progMats.bg);
+    bg.center.set(0, 0.5);
+    bg.scale.set(w + 0.05, 0.11, 1);
+    bg.position.x = -w / 2 - 0.025;
+    const fg = new THREE.Sprite(this.progMats.build);
+    fg.center.set(0, 0.5);
+    fg.scale.set(0.001, 0.07, 1);
+    fg.position.x = -w / 2;
+    bg.renderOrder = 10;
+    fg.renderOrder = 11;
+    g.add(bg, fg);
+    g.userData = { fg, w };
+    g.visible = false;
+    return g;
   }
 
   syncCreeps(game, dt) {
@@ -821,6 +890,14 @@ export class Renderer3D {
     });
     this.particles.update(dt);
 
+    // ป้ายแนะนำหันหากล้อง
+    if (this.world && this.world.signs) {
+      const show = view.showSigns !== false;
+      for (const sg of this.world.signs) {
+        sg.visible = show;
+        if (show) sg.rotation.y = Math.atan2(this.camera.position.x - sg.position.x, this.camera.position.z - sg.position.z);
+      }
+    }
     if (this.world) {
       this.coreHit = Math.max(0, (this.coreHit || 0) - dt * 2);
       const cp = this.world.corePortal;

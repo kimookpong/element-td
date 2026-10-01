@@ -4,16 +4,20 @@
 import './style.css';
 import {
   COLS, ROWS, ELEMENTS, ELEMENT_ORDER, BEATS, BASIC, DUALS, TRIPLES, ABILITIES,
-  MAPS, DIFFICULTIES, TOTAL_WAVES, MAX_ELEMENT_LEVEL, ELEMENT_TOWER, MAX_TIER,
+  MAPS, DIFFICULTIES, TOTAL_WAVES, MAX_ELEMENT_LEVEL, MAX_TIER,
 } from './data.js';
 import { Sound } from './audio.js';
-import {
-  Game, parseMap, towerStats, towerName, buildCost, sellValue, TARGET_LABEL,
-} from './sim.js';
+import { Game, parseMap, towerStats, towerName, buildCost, sellValue, TARGET_LABEL } from './sim.js';
 import { Renderer3D } from './render3d.js';
+import { ico, iconUrl, withIcons } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const BUILD_TYPES = ['arrow', 'cannon', ...ELEMENT_ORDER];
+const typeIcon = (type) => (BASIC[type] ? BASIC[type].icon : ELEMENTS[type].icon);
+const towerIcon = (type) => (BASIC[type] ? BASIC[type].icon : 't_' + type);
+
+let showSigns = true;
+try { showSigns = localStorage.getItem('etd_signs') !== '0'; } catch (e) { /* ignore */ }
 
 const view = {
   game: null,
@@ -26,6 +30,7 @@ const view = {
   speed: 1,
   mapIndex: 0,
   diffKey: 'normal',
+  showSigns,
 };
 
 let renderer;
@@ -54,14 +59,13 @@ function saveBest(wave) {
 /* ---------------- บันทึกเกมอัตโนมัติ ---------------- */
 const SAVE_KEY = 'etd_save';
 let saveTimer = null;
-
 function readSave() {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; }
 }
 function clearSave() {
   try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
 }
-// บันทึกเฉพาะตอนไม่มีเวฟกำลังเล่น — ถ้ารีเฟรชกลางเวฟ จะกลับไปเริ่มเวฟนั้นใหม่
+// บันทึกเฉพาะตอนไม่มีมอนสเตอร์ในสนาม — ถ้ารีเฟรชกลางเวฟ จะกลับไปก่อนเวฟนั้น
 function saveGame() {
   const g = view.game;
   if (!g || g.over || g.waveActive) return;
@@ -71,16 +75,15 @@ function saveGame() {
     badge.classList.add('show');
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => badge.classList.remove('show'), 1500);
-  } catch (e) { /* พื้นที่เต็มหรือถูกบล็อก — เล่นต่อได้ตามปกติ */ }
+  } catch (e) { /* พื้นที่เต็มหรือถูกบล็อก */ }
 }
-
 function resumeGame() {
   const g = Game.restore(readSave());
   if (!g) { clearSave(); renderMenu(); showToast('ไฟล์บันทึกเสียหาย — เริ่มเกมใหม่', 1600); return; }
   view.mapIndex = g.mapIndex;
   view.diffKey = g.diffKey;
   startWithGame(g);
-  showToast(`▶ เล่นต่อเวฟ ${g.wave + 1} — ${MAPS[g.mapIndex].name}`, 1800);
+  showToast(`:play: เล่นต่อจากเวฟ ${g.wave} — ${MAPS[g.mapIndex].name}`, 1800);
 }
 
 /* ---------------- เริ่มเกม / เมนู ---------------- */
@@ -88,7 +91,7 @@ function newGame() {
   if (readSave() && !confirm('เริ่มเกมใหม่จะเขียนทับเกมที่บันทึกไว้ ต้องการเริ่มใหม่หรือไม่?')) return;
   clearSave();
   startWithGame(new Game(view.mapIndex, view.diffKey));
-  showToast(MAPS[view.mapIndex].name, 1600);
+  showToast(`${MAPS[view.mapIndex].name} — เตรียมสร้างป้อม!`, 2000);
 }
 
 function startWithGame(game) {
@@ -102,10 +105,9 @@ function startWithGame(game) {
   renderer.loadMap(view.mapIndex);
   renderer.clearDynamic();
   renderer.resetCamera();
-  ui.speed.textContent = '1×';
-  ui.pause.textContent = '⏸';
-  $('pauseOverlay').classList.remove('show');
   hideOverlays();
+  updatePauseUI();
+  updateSpeedUI();
   refreshAll();
   saveGame();
 }
@@ -117,14 +119,8 @@ function openMenu() {
   renderer.loadMap(view.mapIndex);
   hideOverlays();
   $('menu').classList.add('show');
+  $('infoCard').hidden = true;
   renderMenu();
-}
-
-function startWave() {
-  const g = view.game;
-  if (!g || view.menu) return;
-  Sound.unlock();
-  g.startWave();
 }
 
 /* ---------------- ลูปหลัก ---------------- */
@@ -155,14 +151,14 @@ function processEvents(g, visuals = true) {
       case 'toast': if (visuals) showToast(ev.text, ev.ms); break;
       case 'changed': changed = true; break;
       case 'waveEnd':
-        saveBest(g.wave);
-        if (visuals) showToast(`เวฟ ${g.wave} ผ่าน! +${ev.bonus} 🪙${ev.interest ? `  ดอกเบี้ย +${ev.interest}` : ''}`, 1600);
+        saveBest(ev.n);
+        if (visuals) showToast(`เวฟ ${ev.n} ผ่าน! +${ev.bonus} :gold:${ev.interest ? `  ดอกเบี้ย +${ev.interest}` : ''}`, 1600);
         changed = true;
         break;
       case 'elementPoint':
-        if (visuals) setTimeout(() => showToast('🔮 ได้รับผลึกธาตุ! เลือกธาตุที่แผงด้านข้าง', 2200), 1700);
+        if (visuals) setTimeout(() => showToast(':essence: ได้รับผลึกธาตุ! เลือกธาตุที่แถบด้านล่าง', 2200), 1700);
         break;
-      case 'win': if (visuals) showEnd(true); break;
+      case 'win': if (visuals) { view.paused = true; updatePauseUI(); showEnd(true); } break;
       case 'lose':
         clearSave();
         saveBest(Math.max(0, g.wave - 1));
@@ -186,19 +182,18 @@ function refreshAll() {
   renderElements();
   renderBuild();
   renderInfo();
-  renderNextWave();
+  renderWaveChip(true);
   updateHud(true);
 }
 
 /* ---------------- HUD ---------------- */
 const ui = {
   gold: $('gold'), lives: $('lives'), wave: $('wave'), waveTotal: $('waveTotal'), points: $('points'),
-  btnWave: $('btnWave'), speed: $('btnSpeed'), pause: $('btnPause'), mute: $('btnMute'),
-  quality: $('btnQuality'), info: $('infoPanel'), build: $('buildGrid'), elems: $('elemGrid'),
-  next: $('nextWave'), toast: $('toast'),
+  pause: $('btnPause'), speed: $('btnSpeed'), mute: $('btnMute'), quality: $('btnQuality'), signs: $('btnSigns'),
+  info: $('infoPanel'), card: $('infoCard'), build: $('buildGrid'), elems: $('elemGrid'),
+  timer: $('waveTimer'), next: $('waveNext'), pop: $('wavePop'), toast: $('toast'),
 };
 const hudCache = {};
-
 function setText(el, key, val) {
   if (hudCache[key] !== val) { hudCache[key] = val; el.textContent = val; }
 }
@@ -212,17 +207,24 @@ function updateHud(force) {
   setText(ui.wave, 'wave', String(g.wave));
   setText(ui.points, 'points', String(g.elemPoints));
   setText(ui.waveTotal, 'wt', g.endless ? ' ∞' : `/${TOTAL_WAVES}`);
-  setText(ui.btnWave, 'wbtn', g.waveActive ? `⚔️ เวฟ ${g.wave} …` : `▶ เริ่มเวฟ ${g.wave + 1}`);
-  const disabled = g.waveActive || g.over;
-  if (hudCache.wdis !== disabled) { hudCache.wdis = disabled; ui.btnWave.disabled = disabled; }
+  renderWaveChip(false);
   const goldKey = Math.floor(g.gold);
   if (hudCache.goldBtns !== goldKey) {
     hudCache.goldBtns = goldKey;
     refreshAffordability();
   }
+  // อัปเดตแถบก่อสร้างในการ์ด
+  const t = view.selectedTower;
+  if (t && t.build) {
+    const bar = document.querySelector('#infoPanel .building .bar i');
+    if (bar) bar.style.width = `${Math.round((1 - t.build.t / t.build.total) * 100)}%`;
+    const lbl = document.querySelector('#infoPanel .building .sec');
+    if (lbl) lbl.textContent = `${Math.max(0, t.build.t).toFixed(1)} วิ`;
+  } else if (t && document.querySelector('#infoPanel .building')) {
+    renderInfo();
+  }
 }
 
-// ปรับสถานะปุ่มตามทองที่มี โดยไม่สร้าง DOM ใหม่
 function refreshAffordability() {
   const g = view.game;
   if (!g) return;
@@ -231,7 +233,35 @@ function refreshAffordability() {
   });
 }
 
-/* ---------------- แผงธาตุ ---------------- */
+/* ---------------- เวลาเวฟ ---------------- */
+function renderWaveChip(force) {
+  const g = view.game;
+  if (!g) return;
+  let label;
+  if (g.over) label = 'จบเกม';
+  else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? `เวฟแรกใน ${Math.ceil(g.nextWaveIn)} วิ` : `เวฟ ${g.wave + 1} ใน ${Math.ceil(g.nextWaveIn)} วิ`;
+  else if (g.wave >= TOTAL_WAVES && !g.endless) label = 'เวฟสุดท้าย!';
+  else label = `เวฟ ${g.wave} กำลังบุก`;
+  setText(ui.timer, 'timer', label);
+  ui.timer.parentElement.classList.toggle('soon', g.nextWaveIn != null && g.nextWaveIn < 5);
+  const w = g.nextWaveData;
+  const key = w ? `${w.n}:${w.element}:${w.ability}` : 'none';
+  if (!force && hudCache.waveKey === key) return;
+  hudCache.waveKey = key;
+  if (!w || (g.wave >= TOTAL_WAVES && !g.endless)) { ui.next.innerHTML = ''; ui.pop.innerHTML = ''; return; }
+  const e = ELEMENTS[w.element];
+  const a = ABILITIES[w.ability];
+  const hp = Math.round(a.hp * w.hpScale);
+  const weak = Object.keys(BEATS).filter((k) => BEATS[k] === w.element);
+  ui.next.innerHTML = `${g.wave > 0 ? `<span class="muted">ถัดไป</span>` : ""}${ico(e.icon)}${ico(a.icon)}<span class="txt">${w.ability === 'boss' ? '<span class="boss">บอส!</span>' : a.creature}</span> ×${w.count}`;
+  ui.pop.innerHTML = `
+    <div class="row">${ico(a.icon)}<div><b>เวฟ ${w.n}: ${a.creature}</b><br><span class="muted">ธาตุ</span><b style="color:${e.color}"> ${e.th}</b> · ${a.th} · ×${w.count}</div></div>
+    <div>${ico('heart')} HP ${hp.toLocaleString()} ต่อตัว</div>
+    <div class="muted">${a.desc}</div>
+    <div>แพ้ทาง: ${weak.map((k) => `${ico(ELEMENTS[k].icon)} ${ELEMENTS[k].th}`).join(' ')}</div>`;
+}
+
+/* ---------------- ธาตุ ---------------- */
 function renderElements() {
   const g = view.game;
   if (!g) return;
@@ -247,8 +277,8 @@ function renderElements() {
     const b = document.createElement('button');
     b.className = `elemOrb lv${lv}${can ? ' can' : ''}`;
     b.style.setProperty('--c', e.color);
-    b.title = `${e.th} (${e.name}) เลเวล ${lv}/${MAX_ELEMENT_LEVEL}\n${e.desc}\nชนะทาง: ${ELEMENTS[BEATS[el]].th}${can ? '\nคลิกเพื่อใช้ผลึกธาตุ 1 ชิ้น' : ''}`;
-    b.innerHTML = `<span class="orb">${e.icon}</span><span class="nm">${e.th}</span><span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</span>`;
+    b.title = `ธาตุ${e.th} (${e.name}) เลเวล ${lv}/${MAX_ELEMENT_LEVEL}\n${e.desc}\nชนะทาง: ${ELEMENTS[BEATS[el]].th}${can ? '\nคลิกเพื่อใช้ผลึกธาตุ 1 ชิ้น' : ''}`;
+    b.innerHTML = `${ico(e.icon)}<span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</span>`;
     b.disabled = !can;
     b.addEventListener('click', () => { Sound.unlock(); g.buyElement(el); });
     ui.elems.appendChild(b);
@@ -269,8 +299,8 @@ function renderBuild() {
     b.style.borderColor = e.color;
     b.dataset.cost = cost;
     b.dataset.ok = locked ? '0' : '1';
-    b.title = `${basic ? basic.th : 'ป้อม' + e.th} — ${e.desc}${locked ? `\n🔒 ต้องปลดล็อกธาตุ${e.th}ด้วยผลึกธาตุ` : ''}`;
-    b.innerHTML = `<span class="k">${i + 1}</span><span class="e">${e.icon}</span><span class="n">${basic ? basic.th.replace('ป้อม', '') : e.th}</span><span class="c">🪙${cost}</span>`;
+    b.title = `${basic ? basic.th : 'ป้อม' + e.th} (${i + 1}) — ${e.desc}${locked ? `\nต้องปลดล็อกธาตุ${e.th}ด้วยผลึกธาตุ` : ''}`;
+    b.innerHTML = `<span class="k">${i + 1}</span>${ico(towerIcon(type))}${locked ? ico('lock', 'lockIco') : ''}<span class="c">${ico('gold')}${cost}</span>`;
     b.addEventListener('click', () => selectBuild(type));
     ui.build.appendChild(b);
   });
@@ -281,7 +311,7 @@ function selectBuild(type) {
   const g = view.game;
   if (!g) return;
   if (!BASIC[type] && g.elemLevel[type] < 1) {
-    showToast(`🔒 ปลดล็อกธาตุ${ELEMENTS[type].th}ก่อน (ใช้ผลึกธาตุ)`, 1400);
+    showToast(`:lock: ปลดล็อกธาตุ${ELEMENTS[type].th}ก่อน (ใช้ผลึกธาตุ)`, 1400);
     Sound.play('error');
     return;
   }
@@ -298,65 +328,66 @@ function clearBuild() {
   for (const btn of ui.build.children) btn.classList.remove('active');
 }
 
-/* ---------------- แผงข้อมูลป้อม ---------------- */
+/* ---------------- การ์ดข้อมูล ---------------- */
 const fmt = (n) => (n >= 100 ? Math.round(n).toString() : (Math.round(n * 10) / 10).toString());
 
 function effectLines(s) {
   const out = [];
-  if (s.splash) out.push(`💥 ระเบิดรัศมี ${Math.round(s.splash)}`);
-  if (s.burn) out.push(`🔥 เผา ${fmt(s.burn.dps)}/วิ (${s.burn.dur} วิ)`);
-  if (s.slow) out.push(`❄️ ชะลอ ${Math.round((1 - s.slow.factor) * 100)}% (${fmt(s.slow.dur)} วิ)`);
-  if (s.stun) out.push(`💫 มึนงง ${Math.round(s.stun.chance * 100)}%`);
-  if (s.multi) out.push(`🎯 ยิง ${s.multi} เป้าพร้อมกัน`);
-  if (s.knock) out.push(`💨 ผลักถอย ${Math.round(s.knock.chance * 100)}%`);
-  if (s.pierce) out.push('☄️ ลำแสงทะลุแนว');
-  if (s.curse) out.push(`☠️ สาป รับดาเมจ ×${fmt(s.curse.amp)}`);
-  if (s.percent) out.push(`🩸 +${fmt(s.percent * 100)}% ของ HP สูงสุด`);
+  if (s.splash) out.push(`${ico('fx_splash')} ระเบิดรัศมี ${Math.round(s.splash)}`);
+  if (s.burn) out.push(`${ico('fx_burn')} เผา ${fmt(s.burn.dps)}/วิ (${s.burn.dur} วิ)`);
+  if (s.slow) out.push(`${ico('fx_slow')} ชะลอ ${Math.round((1 - s.slow.factor) * 100)}% (${fmt(s.slow.dur)} วิ)`);
+  if (s.stun) out.push(`${ico('fx_stun')} มึนงง ${Math.round(s.stun.chance * 100)}%`);
+  if (s.multi) out.push(`${ico('fx_multi')} ยิง ${s.multi} เป้าพร้อมกัน`);
+  if (s.knock) out.push(`${ico('fx_knock')} ผลักถอย ${Math.round(s.knock.chance * 100)}%`);
+  if (s.pierce) out.push(`${ico('fx_pierce')} ลำแสงทะลุแนว`);
+  if (s.curse) out.push(`${ico('fx_curse')} สาป รับดาเมจ ×${fmt(s.curse.amp)}`);
+  if (s.percent) out.push(`${ico('fx_percent')} +${fmt(s.percent * 100)}% ของ HP สูงสุด`);
   return out.join('<br>');
 }
 
-const strongAgainst = (els) => (els.length ? [...new Set(els.map((e) => BEATS[e]))].map((e) => ELEMENTS[e].icon).join(' ') : '— (กลาง)');
-const stars = (n, max) => '★'.repeat(n) + '☆'.repeat(Math.max(0, max - n));
+const strongAgainst = (els) => (els.length ? [...new Set(els.map((e) => BEATS[e]))].map((e) => ico(ELEMENTS[e].icon)).join(' ') : '— (กลาง)');
+const stars = (n, max) => ico('star').repeat(n) + ico('star_empty').repeat(Math.max(0, max - n));
 
 function renderInfo() {
   const g = view.game;
   const t = view.selectedTower;
-  if (!g) { ui.info.innerHTML = ''; return; }
+  if (!g || (!t && !view.selectedBuild)) { ui.card.hidden = true; ui.info.innerHTML = ''; return; }
+  ui.card.hidden = false;
   if (view.selectedBuild && !t) {
     const type = view.selectedBuild;
     const basic = BASIC[type];
     const e = basic || ELEMENTS[type];
     const s = towerStats(basic ? { kind: 'basic', base: type, tier: 1 } : { kind: 'element', elements: [type], tier: 1 });
+    const hc = view.hoverCheck;
     ui.info.innerHTML = `
-      <div class="title"><span>${e.icon}</span><span>${basic ? basic.th : 'ป้อม' + e.th}</span><span class="lv">🪙${buildCost(type)}</span></div>
+      <div class="title"><img class="portrait" src="${iconUrl(towerIcon(type))}" alt=""><span>${basic ? basic.th : 'ป้อม' + e.th}</span><span class="lv">${ico('gold')} ${buildCost(type)}</span></div>
       <div class="effects">${e.desc}</div>
       <table>
         <tr><td>ดาเมจ/นัด</td><td>${fmt(s.dmg)}</td></tr>
         <tr><td>ความเร็วยิง</td><td>${fmt(s.rate)}/วิ</td></tr>
         <tr><td>ระยะ</td><td>${Math.round(s.range)}</td></tr>
         <tr><td>ชนะทาง (×2)</td><td>${strongAgainst(basic ? [] : [type])}</td></tr>
+        <tr><td>เวลาก่อสร้าง</td><td>${basic ? '2.5' : '3.5'} วิ</td></tr>
       </table>
       <div class="effects">${effectLines(s)}</div>
-      <div class="hint">${view.hoverCheck && !view.hoverCheck.ok && view.hoverCheck.reason ? `⚠️ ${view.hoverCheck.reason}<br>` : ''}คลิกเพื่อวาง · วางในลานหินเพื่อสร้างเขาวงกต · Esc ยกเลิก</div>`;
-    return;
-  }
-  if (!t) {
-    ui.info.innerHTML = `<div class="hint">🏹 เลือกป้อมแล้วคลิกบนพื้นเพื่อวาง<br>🧱 วางในลานหินเพื่อบังคับให้มอนสเตอร์เดินอ้อม (ลูกศรสีฟ้าคือเส้นทาง)<br>🔮 ใช้ผลึกธาตุปลดล็อกธาตุ แล้วอัปเกรด/เพิ่มธาตุให้ป้อม<br>🖱️ คลิกขวาลาก = หมุนกล้อง · ล้อเมาส์ = ซูม</div>`;
+      <div class="hint">${hc && !hc.ok && hc.reason ? `${ico('warning')} ${hc.reason}<br>` : ''}คลิกบนพื้นเพื่อวาง · วางในลานหินเพื่อทำเขาวงกต · Esc ยกเลิก</div>`;
     return;
   }
   const s = t.stats;
-  const icons = t.kind === 'basic' ? BASIC[t.base].icon : t.elements.map((e) => ELEMENTS[e].icon).join('');
   const maxT = t.kind === 'basic' ? 3 : MAX_TIER[t.elements.length];
   const opts = g.upgradeOptions(t);
   const tierOpt = opts.find((o) => o.type === 'tier');
   const addOpts = opts.filter((o) => o.type === 'add');
-  let preview = null;
-  if (tierOpt) preview = towerStats({ ...t, tier: t.tier + 1 });
+  const preview = tierOpt ? towerStats({ ...t, tier: t.tier + 1 }) : null;
   const up = (b, f = fmt) => (preview ? ` <span class="up">→ ${f(b)}</span>` : '');
   const kindLabel = t.kind === 'basic' ? 'ป้อมพื้นฐาน' : ['', 'ธาตุเดี่ยว', 'สองธาตุ', 'สามธาตุ'][t.elements.length];
+  const portrait = t.kind === 'basic' ? BASIC[t.base].icon : 't_' + t.elements[0];
+  const elIcons = t.elements.map((e) => ico(ELEMENTS[e].icon)).join('');
+  const b = t.build;
+  const building = b ? `<div class="building">${ico('hammer')} ${b.kind === 'build' ? 'กำลังก่อสร้าง' : 'กำลังอัปเกรด'} <span class="bar"><i style="width:${Math.round((1 - b.t / b.total) * 100)}%"></i></span><span class="sec">${b.t.toFixed(1)} วิ</span></div>` : '';
   ui.info.innerHTML = `
-    <div class="title"><span>${icons}</span><span>${towerName(t)}</span><span class="lv" title="ระดับ">${stars(t.tier, maxT)}</span></div>
-    <div class="effects">${kindLabel} · ระดับ ${t.tier}/${maxT}</div>
+    <div class="title"><img class="portrait" src="${iconUrl(portrait)}" alt=""><span>${towerName(t)}<br><small style="color:var(--muted);font-weight:400">${kindLabel} ${elIcons}</small></span><span class="lv">${stars(t.tier, maxT)}</span></div>
+    ${building}
     <table>
       <tr><td>ดาเมจ/นัด</td><td>${fmt(s.dmg)}${up(preview && preview.dmg)}</td></tr>
       <tr><td>ความเร็วยิง</td><td>${fmt(s.rate)}/วิ${up(preview && preview.rate)}</td></tr>
@@ -366,26 +397,26 @@ function renderInfo() {
     </table>
     <div class="effects">${effectLines(s)}</div>
     <div class="btnRow">
-      ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok ? 1 : 0}" title="${tierOpt.reason || ''}">⬆ อัปเกรดระดับ ${t.tier + 1} (🪙${tierOpt.cost})${tierOpt.ok ? '' : ' 🔒'}</button>` : '<button class="full" disabled>ระดับสูงสุดแล้ว</button>'}
+      ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok && !b ? 1 : 0}" title="${tierOpt.reason || ''}">${ico('upgrade')} อัปเกรดระดับ ${t.tier + 1} (${ico('gold')}${tierOpt.cost})${tierOpt.ok ? '' : ' ' + ico('lock')}</button>` : `<button class="full" disabled>${ico('crown')} ระดับสูงสุดแล้ว</button>`}
     </div>
-    ${tierOpt && !tierOpt.ok ? `<div class="effects" style="margin-top:4px">🔒 ${tierOpt.reason}</div>` : ''}
-    ${addOpts.length ? `<div class="sect">✦ เพิ่มธาตุ → ${t.elements.length === 1 ? 'ป้อมสองธาตุ' : 'ป้อมสามธาตุ'}</div><div class="addGrid" id="addGrid"></div>` : ''}
+    ${tierOpt && !tierOpt.ok ? `<div class="effects" style="margin-top:4px">${ico('lock')} ${tierOpt.reason}</div>` : ''}
+    ${addOpts.length ? `<div class="sect">${ico('sparkle')} เพิ่มธาตุ → ${t.elements.length === 1 ? 'ป้อมสองธาตุ' : 'ป้อมสามธาตุ'}</div><div class="addGrid" id="addGrid"></div>` : ''}
     <div class="btnRow" style="margin-top:8px">
-      <button id="bMode">🎯 ${TARGET_LABEL[t.mode]}</button>
-      <button id="bSell" class="danger">ขาย 🪙${sellValue(t)}</button>
+      <button id="bMode">${ico('target')} ${TARGET_LABEL[t.mode]}</button>
+      <button id="bSell" class="danger">${ico('sell')} ขาย ${b && b.kind === 'build' ? t.spent : sellValue(t)}</button>
     </div>`;
   if (tierOpt) $('bUp').addEventListener('click', () => g.applyUpgrade(t, tierOpt));
   const grid = $('addGrid');
   if (grid) {
     for (const o of addOpts) {
-      const b = document.createElement('button');
-      b.className = `addBtn${o.ok ? '' : ' need'}`;
-      b.dataset.cost = o.cost;
-      b.dataset.ok = o.ok ? 1 : 0;
-      b.title = o.ok ? `${o.label} ระดับ ${o.tier}` : o.reason;
-      b.innerHTML = `<span class="i">${ELEMENTS[o.el].icon}</span><span><span class="nm">${o.label}</span><span class="c">🪙${o.cost}</span>${o.ok ? '' : ' 🔒'}</span>`;
-      b.addEventListener('click', () => g.applyUpgrade(t, o));
-      grid.appendChild(b);
+      const btn = document.createElement('button');
+      btn.className = `addBtn${o.ok ? '' : ' need'}`;
+      btn.dataset.cost = o.cost;
+      btn.dataset.ok = o.ok && !b ? 1 : 0;
+      btn.title = o.ok ? `${o.label} ระดับ ${o.tier}` : o.reason;
+      btn.innerHTML = `${ico(ELEMENTS[o.el].icon)}<span><span class="nm">${o.label}</span><span class="c">${ico('gold')}${o.cost}</span>${o.ok ? '' : ' ' + ico('lock')}</span>`;
+      btn.addEventListener('click', () => g.applyUpgrade(t, o));
+      grid.appendChild(btn);
     }
   }
   $('bMode').addEventListener('click', () => g.cycleMode(t));
@@ -393,26 +424,9 @@ function renderInfo() {
   refreshAffordability();
 }
 
-/* ---------------- เวฟถัดไป ---------------- */
-function renderNextWave() {
-  const g = view.game;
-  const w = g && g.nextWaveData;
-  if (!w || g.over) { ui.next.innerHTML = ''; return; }
-  const e = ELEMENTS[w.element];
-  const a = ABILITIES[w.ability];
-  const hp = Math.round(a.hp * w.hpScale);
-  ui.next.innerHTML = `
-    <div class="lbl">เวฟถัดไป · ${w.n}</div>
-    <div class="row">
-      <span class="orb" style="--c:${e.color}">${e.icon}</span>
-      <div><b>${a.icon} ${a.creature}</b> <span style="opacity:.8">(${a.th})</span> ธาตุ<b style="color:${e.color}">${e.th}</b> ×${w.count}
-      <div class="desc">${w.ability === 'boss' ? '<span class="boss">⚠️ บอส!</span> ' : ''}HP ${hp.toLocaleString()} · ${a.desc} · แพ้ทาง ${Object.keys(BEATS).filter((k) => BEATS[k] === w.element).map((k) => ELEMENTS[k].icon).join('')}</div></div>
-    </div>`;
-}
-
 let toastTimer = null;
 function showToast(text, ms) {
-  ui.toast.textContent = text;
+  ui.toast.innerHTML = withIcons(text);
   ui.toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => ui.toast.classList.remove('show'), ms);
@@ -439,13 +453,9 @@ function updateHoverCheck() {
 
 canvas.addEventListener('pointerdown', (ev) => {
   pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-  if (pointers.size === 1) {
-    gesture = { x: ev.clientX, y: ev.clientY, t: performance.now(), button: ev.button, multi: false, moved: false };
-  } else if (gesture) {
-    gesture.multi = true;
-  }
+  if (pointers.size === 1) gesture = { x: ev.clientX, y: ev.clientY, t: performance.now(), button: ev.button, multi: false, moved: false };
+  else if (gesture) gesture.multi = true;
 });
-
 canvas.addEventListener('pointermove', (ev) => {
   if (pointers.has(ev.pointerId)) pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
   if (gesture && Math.hypot(ev.clientX - gesture.x, ev.clientY - gesture.y) > 8) gesture.moved = true;
@@ -459,7 +469,6 @@ canvas.addEventListener('pointermove', (ev) => {
     if (view.selectedBuild && !view.selectedTower && (view.hoverCheck && view.hoverCheck.ok) !== prevOk) renderInfo();
   }
 });
-
 const endPointer = (ev) => {
   pointers.delete(ev.pointerId);
   if (!gesture || pointers.size > 0) return;
@@ -477,7 +486,7 @@ renderer.controls.addEventListener('start', () => { renderer.userMovedCamera = t
 
 function handleTap(x, y) {
   const g = view.game;
-  if (!g || view.menu || view.paused) return;
+  if (!g || view.menu) return;
   Sound.unlock();
   const h = renderer.pickTile(x, y);
   view.hover = h;
@@ -512,103 +521,99 @@ document.addEventListener('keydown', (ev) => {
   if (k >= '1' && k <= '8') { selectBuild(BUILD_TYPES[Number(k) - 1]); return; }
   const t = view.selectedTower;
   switch (k) {
-    case ' ': ev.preventDefault(); startWave(); break;
+    case ' ': ev.preventDefault(); togglePause(); break;
+    case 'p': togglePause(); break;
     case 'escape': cancelAll(); break;
     case 'u': if (t) view.game.upgradeTier(t); break;
     case 's': if (t) view.game.sellTower(t); break;
     case 't': if (t) view.game.cycleMode(t); break;
     case 'f': cycleSpeed(); break;
-    case 'p': togglePause(); break;
     case 'm': toggleMute(); break;
     case 'h': openHelp(); break;
+    case 'g': toggleSigns(); break;
     case 'c': renderer.resetCamera(); break;
-    case 'b': togglePanel(); break;
     case 'z': toggleFullscreen(); break;
     default: break;
   }
 });
 
-function cycleSpeed() {
-  view.speed = view.speed >= 3 ? 1 : view.speed + 1;
-  ui.speed.textContent = `${view.speed}×`;
+/* ---------------- ปุ่มควบคุม ---------------- */
+const setIcon = (btn, name) => { btn.querySelector('img').src = iconUrl(name); };
+function updatePauseUI() {
+  setIcon(ui.pause, view.paused ? 'play' : 'pause');
+  ui.pause.title = view.paused ? 'เล่นต่อ (Space)' : 'หยุดชั่วคราว (Space)';
+  $('pauseOverlay').classList.toggle('show', view.paused && !!view.game && !view.menu);
 }
+function updateSpeedUI() { $('speedLbl').textContent = `${view.speed}×`; }
+function cycleSpeed() { view.speed = view.speed >= 3 ? 1 : view.speed + 1; updateSpeedUI(); }
 function togglePause() {
   if (!view.game || view.game.over) return;
+  Sound.unlock();
   view.paused = !view.paused;
-  ui.pause.textContent = view.paused ? '▶' : '⏸';
-  $('pauseOverlay').classList.toggle('show', view.paused);
+  updatePauseUI();
 }
-function toggleMute() { ui.mute.textContent = Sound.toggle() ? '🔇' : '🔊'; }
-function updateQualityLabel() {
+function toggleMute() { setIcon(ui.mute, Sound.toggle() ? 'mute' : 'sound'); }
+function updateQualityUI() {
   const high = renderer.quality === 'high';
-  ui.quality.textContent = high ? '✨' : '⚡';
-  ui.quality.title = high ? 'กราฟิก: สูง (เงา + แสงเรือง) — กดเพื่อสลับเป็นโหมดประหยัด' : 'กราฟิก: ประหยัด — กดเพื่อสลับเป็นคุณภาพสูง';
+  setIcon(ui.quality, high ? 'quality' : 'quality_low');
+  ui.quality.title = high ? 'กราฟิก: สูง (เงา + แสงเรือง) — กดเพื่อโหมดประหยัด' : 'กราฟิก: ประหยัด — กดเพื่อคุณภาพสูง';
 }
-
-ui.btnWave.addEventListener('click', startWave);
-ui.speed.addEventListener('click', cycleSpeed);
-ui.pause.addEventListener('click', togglePause);
-ui.mute.addEventListener('click', toggleMute);
-ui.mute.textContent = Sound.muted ? '🔇' : '🔊';
-ui.quality.addEventListener('click', () => {
-  renderer.setQuality(renderer.quality === 'high' ? 'low' : 'high');
-  updateQualityLabel();
-});
-updateQualityLabel();
-$('btnCamera').addEventListener('click', () => renderer.resetCamera());
-
-/* ---------------- เลย์เอาต์เต็มจอ ---------------- */
-// วัดพื้นที่ที่ HUD/แผงบังอยู่ เพื่อให้กล้องจัดกระดานไว้กลางส่วนที่มองเห็น
-function updateLayout() {
-  const hud = $('hud');
-  const side = $('side');
-  const hudBottom = hud.offsetTop + hud.offsetHeight;
-  document.documentElement.style.setProperty('--hudBottom', `${hudBottom + 8}px`);
-  const W = window.innerWidth, H = window.innerHeight;
-  const ins = { top: hudBottom + 6, right: 0, bottom: 0, left: 0 };
-  if (!document.body.classList.contains('panelHidden')) {
-    if (matchMedia('(max-width: 980px)').matches) ins.bottom = H - side.offsetTop + 6;
-    else ins.right = W - side.offsetLeft + 6;
-  }
-  renderer.setInsets(ins);
+function toggleSigns() {
+  view.showSigns = !view.showSigns;
+  ui.signs.classList.toggle('on', view.showSigns);
+  try { localStorage.setItem('etd_signs', view.showSigns ? '1' : '0'); } catch (e) { /* ignore */ }
 }
-
-function togglePanel() {
-  document.body.classList.toggle('panelHidden');
-  try { localStorage.setItem('etd_panel', document.body.classList.contains('panelHidden') ? '0' : '1'); } catch (e) { /* ignore */ }
-  updateLayout();
-}
-
 function toggleFullscreen() {
   const el = document.documentElement;
   if (!document.fullscreenElement) {
-    (el.requestFullscreen || el.webkitRequestFullscreen || (() => Promise.reject())).call(el)?.catch?.(() => showToast('เบราว์เซอร์นี้ไม่รองรับโหมดเต็มจอ', 1200));
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) Promise.resolve(req.call(el)).catch(() => showToast('เบราว์เซอร์นี้ไม่รองรับโหมดเต็มจอ', 1200));
   } else {
     (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   }
 }
 
-try { if (localStorage.getItem('etd_panel') === '0') document.body.classList.add('panelHidden'); } catch (e) { /* ignore */ }
-$('btnPanel').addEventListener('click', togglePanel);
+ui.pause.addEventListener('click', togglePause);
+ui.speed.addEventListener('click', cycleSpeed);
+ui.mute.addEventListener('click', toggleMute);
+setIcon(ui.mute, Sound.muted ? 'mute' : 'sound');
+ui.quality.addEventListener('click', () => { renderer.setQuality(renderer.quality === 'high' ? 'low' : 'high'); updateQualityUI(); });
+updateQualityUI();
+ui.signs.addEventListener('click', toggleSigns);
+ui.signs.classList.toggle('on', view.showSigns);
+$('btnCamera').addEventListener('click', () => renderer.resetCamera());
+$('btnHelp').addEventListener('click', openHelp);
 $('btnFull').addEventListener('click', toggleFullscreen);
+$('infoClose').addEventListener('click', cancelAll);
 document.addEventListener('fullscreenchange', () => {
-  $('btnFull').textContent = document.fullscreenElement ? '🗗' : '⛶';
-  setTimeout(updateLayout, 50);
+  setIcon($('btnFull'), document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen');
+  setTimeout(updateLayout, 60);
 });
+
+/* ---------------- เลย์เอาต์ ---------------- */
+// พื้นที่ที่ HUD (บน) และแถบล่างบัง — กล้องจะจัดกระดานไว้ตรงกลางส่วนที่เหลือ
+function updateLayout() {
+  const hud = $('hud');
+  const dock = $('dock');
+  const H = window.innerHeight;
+  const hudBottom = hud.offsetTop + hud.offsetHeight;
+  document.documentElement.style.setProperty('--hudH', `${hudBottom}px`);
+  const dockTop = dock.getBoundingClientRect().top;
+  renderer.setInsets({ top: hudBottom - 6, bottom: Math.max(0, H - dockTop - 4), left: 0, right: 0 });
+}
 window.addEventListener('resize', updateLayout);
 new ResizeObserver(updateLayout).observe($('hud'));
-updateLayout();
-$('btnHelp').addEventListener('click', openHelp);
+new ResizeObserver(updateLayout).observe($('dock'));
 
 /* ---------------- หน้าจอซ้อน ---------------- */
 let pausedByHelp = false;
 function openHelp() {
-  if (view.game && !view.menu && !view.paused) { view.paused = true; pausedByHelp = true; }
+  if (view.game && !view.menu && !view.paused) { view.paused = true; pausedByHelp = true; updatePauseUI(); }
   $('help').classList.add('show');
 }
 $('btnCloseHelp').addEventListener('click', () => {
   $('help').classList.remove('show');
-  if (pausedByHelp) { view.paused = false; pausedByHelp = false; }
+  if (pausedByHelp) { view.paused = false; pausedByHelp = false; updatePauseUI(); }
 });
 $('btnHowTo').addEventListener('click', openHelp);
 
@@ -619,7 +624,7 @@ function hideOverlays() {
 function showEnd(won) {
   const g = view.game;
   if (!g) return;
-  $('endTitle').textContent = won ? '🏆 ชัยชนะ!' : '💀 แกนกลางถูกทำลาย';
+  $('endTitle').innerHTML = won ? `${ico('trophy')} ชัยชนะ!` : `${ico('skull')} แกนกลางถูกทำลาย`;
   $('endText').innerHTML = won
     ? `คุณปกป้องแกนกลางได้ครบ ${TOTAL_WAVES} เวฟ!<br>กำจัดมอนสเตอร์ ${g.kills} ตัว · ชีวิตเหลือ ${g.lives}`
     : `คุณผ่านไปได้ ${Math.max(0, g.wave - 1)} เวฟ · กำจัดมอนสเตอร์ ${g.kills} ตัว`;
@@ -628,11 +633,13 @@ function showEnd(won) {
 }
 
 $('btnContinue').addEventListener('click', () => {
-  view.game.endless = true;
+  view.game.continueEndless();
+  view.paused = false;
+  updatePauseUI();
   $('endScreen').classList.remove('show');
   updateHud(true);
 });
-$('btnRetry').addEventListener('click', () => { Sound.unlock(); newGame(); });
+$('btnRetry').addEventListener('click', () => { Sound.unlock(); clearSave(); startWithGame(new Game(view.mapIndex, view.diffKey)); });
 $('btnMenu').addEventListener('click', openMenu);
 $('btnStart').addEventListener('click', () => { Sound.unlock(); newGame(); });
 $('btnResume').addEventListener('click', () => { Sound.unlock(); resumeGame(); });
@@ -641,7 +648,6 @@ $('btnDiscard').addEventListener('click', () => {
   clearSave();
   renderMenu();
 });
-// บันทึกครั้งสุดท้ายก่อนปิด/สลับแท็บ (ถ้าอยู่ระหว่างเวฟ)
 window.addEventListener('pagehide', saveGame);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
 
@@ -654,8 +660,7 @@ function drawThumb(def) {
   const colors = { '.': '#8a8378', '#': '#4f8f35', '=': '#a89a80', R: '#5a5a5a', W: '#6a5f50', S: '#3a9bff', C: '#ff3048' };
   for (let r = 0; r < ROWS; r++) {
     for (let col = 0; col < COLS; col++) {
-      const ch = m.tiles[r][col];
-      g.fillStyle = colors[ch] || '#ffd65a';
+      g.fillStyle = colors[m.tiles[r][col]] || '#ffd65a';
       g.fillRect(col * s, r * s, s, s);
     }
   }
@@ -667,7 +672,7 @@ function drawThumb(def) {
 function renderMenu() {
   $('menuElems').innerHTML = ELEMENT_ORDER.map((el) => {
     const e = ELEMENTS[el];
-    return `<span class="chip" style="--c:${e.color}">${e.icon} ${e.th}</span>`;
+    return `<span class="chip" style="--c:${e.color}">${ico(e.icon)} ${e.th}</span>`;
   }).join('');
   const mapList = $('mapList');
   mapList.innerHTML = '';
@@ -675,13 +680,9 @@ function renderMenu() {
     const b = document.createElement('button');
     b.className = 'choice' + (i === view.mapIndex ? ' selected' : '');
     const maze = m.layout.some((row) => row.includes('.'));
-    b.innerHTML = `<b>${m.name}</b><span>${m.desc}</span><span class="tag${maze ? '' : ' lane'}">${maze ? '🧱 สร้างเขาวงกต' : '🛤️ ทางตายตัว'}</span>`;
+    b.innerHTML = `<b>${m.name}</b><span>${m.desc}</span><span class="tag${maze ? '' : ' lane'}">${ico(maze ? 'map_maze' : 'map_lane')} ${maze ? 'สร้างเขาวงกต' : 'ทางตายตัว'}</span>`;
     b.appendChild(drawThumb(m));
-    b.addEventListener('click', () => {
-      view.mapIndex = i;
-      renderer.loadMap(i);
-      renderMenu();
-    });
+    b.addEventListener('click', () => { view.mapIndex = i; renderer.loadMap(i); renderMenu(); });
     mapList.appendChild(b);
   });
   const diffList = $('diffList');
@@ -698,26 +699,37 @@ function renderMenu() {
   if (save && MAPS[save.mapIndex] && DIFFICULTIES[save.diffKey]) {
     box.hidden = false;
     const when = save.savedAt ? new Date(save.savedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    $('resumeText').textContent = `${MAPS[save.mapIndex].name} · ${DIFFICULTIES[save.diffKey].th} · ผ่านแล้ว ${save.wave} เวฟ · ❤️ ${save.lives} · 🪙 ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
+    $('resumeText').innerHTML = `${MAPS[save.mapIndex].name} · ${DIFFICULTIES[save.diffKey].th} · ผ่านแล้ว ${save.wave} เวฟ · ${ico('heart')} ${save.lives} · ${ico('gold')} ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
   } else {
     box.hidden = true;
   }
   const best = loadBest()[MAPS[view.mapIndex].id + ':' + view.diffKey];
-  $('bestScore').textContent = best ? `🏅 สถิติสูงสุด: เวฟ ${best}` : '';
+  $('bestScore').innerHTML = best ? `${ico('trophy')} สถิติสูงสุด: เวฟ ${best}` : '';
 }
 
-function renderHelpTables() {
+function renderHelp() {
+  const items = [
+    ['play', 'กดเริ่มเกมแล้ว <b>เวฟจะมาเองตามเวลา</b> (ดูนาฬิกาด้านบน) — เวฟแรกให้เวลาเตรียมตัว 30 วิ ใช้ปุ่มหยุดชั่วคราวได้ทุกเมื่อ'],
+    ['hammer', '<b>การสร้างและอัปเกรดป้อมใช้เวลา</b> ระหว่างก่อสร้างป้อมจะ <b>ยิงไม่ได้</b> — วางแผนล่วงหน้าก่อนมอนสเตอร์มาถึง'],
+    ['essence', '<b>ผลึกธาตุ</b> — เริ่มเกมได้ 1 ชิ้น และได้เพิ่มทุก 5 เวฟ ใช้ <b>ปลดล็อกธาตุ</b> หรือ <b>เพิ่มเลเวลธาตุ</b> (สูงสุด 3) ที่แถบล่าง'],
+    ['t_arrow', '<b>ป้อมพื้นฐาน</b> ธนู/ปืนใหญ่ สร้างได้ทันที · <b>ป้อมธาตุ</b> สร้างได้เมื่อปลดล็อกธาตุนั้น · ระดับป้อมต้องไม่เกินเลเวลธาตุ'],
+    ['sparkle', '<b>เพิ่มธาตุ</b> ให้ป้อมเพื่อกลายเป็น <b>ป้อมสองธาตุ (15 แบบ)</b> และ <b>ป้อมสามธาตุ (20 แบบ)</b>'],
+    ['map_maze', '<b>สร้างเขาวงกต</b> — ในลานหิน มอนสเตอร์จะเดินอ้อมป้อม (ห้ามปิดทางทั้งหมด) และต้องผ่านจุดตรวจตามลำดับ'],
+    ['gold', 'จบแต่ละเวฟได้โบนัส + <b>ดอกเบี้ย 3%</b> ของทองที่เก็บไว้ · เกมบันทึกอัตโนมัติระหว่างเวฟ'],
+    ['sign', 'ป้ายไม้ในแผนที่มีคำแนะนำ — ซ่อน/แสดงได้ด้วยปุ่มป้ายด้านบน (G)'],
+  ];
+  $('helpList').innerHTML = items.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('');
+  $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss'].map((k) => {
+    const a = ABILITIES[k];
+    return `<div>${ico(a.icon)}<span><b>${a.creature}</b><br>${a.th} — ${a.desc}</span></div>`;
+  }).join('');
   $('elemTable').innerHTML = ELEMENT_ORDER.map((el) => {
     const e = ELEMENTS[el];
     const b = ELEMENTS[BEATS[el]];
-    return `<div style="border-color:${e.color}"><b>${e.icon} ${e.th} (${e.name})</b><br>${e.desc}<br><small>ชนะทาง: ${b.icon} ${b.th}</small></div>`;
+    return `<div style="border-color:${e.color}"><b>${ico(e.icon)} ${e.th} (${e.name})</b><br>${e.desc}<br><small>ชนะทาง: ${ico(b.icon)} ${b.th}</small></div>`;
   }).join('');
-  const icons = (k) => k.split('+').map((e) => ELEMENTS[e].icon).join('');
-  const entries = [
-    ...Object.entries(DUALS).map(([k, d]) => `<div><span class="ic">${icons(k)}</span>${d.th} <small>${d.name}</small></div>`),
-    ...Object.entries(TRIPLES).map(([k, d]) => `<div><span class="ic">${icons(k)}</span>${d.th} <small>${d.name}</small></div>`),
-  ];
-  $('compendium').innerHTML = entries.join('');
+  const icons = (k) => k.split('+').map((e) => ico(ELEMENTS[e].icon)).join('');
+  $('compendium').innerHTML = [...Object.entries(DUALS), ...Object.entries(TRIPLES)].map(([k, d]) => `<div>${icons(k)} ${d.th} <small>${d.name}</small></div>`).join('');
 }
 
 function drawCycle() {
@@ -733,37 +745,32 @@ function drawCycle() {
   for (const [a, b] of Object.entries(BEATS)) {
     const [x1, y1] = pos[a], [x2, y2] = pos[b];
     const ang = Math.atan2(y2 - y1, x2 - x1);
-    const sx = x1 + Math.cos(ang) * 24, sy = y1 + Math.sin(ang) * 24;
-    const ex = x2 - Math.cos(ang) * 24, ey = y2 - Math.sin(ang) * 24;
+    const sx = x1 + Math.cos(ang) * 26, sy = y1 + Math.sin(ang) * 26;
+    const ex = x2 - Math.cos(ang) * 26, ey = y2 - Math.sin(ang) * 26;
     g.strokeStyle = ELEMENTS[a].color; g.fillStyle = ELEMENTS[a].color; g.lineWidth = 3;
     g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke();
-    g.beginPath();
-    g.moveTo(ex, ey);
+    g.beginPath(); g.moveTo(ex, ey);
     g.lineTo(ex - Math.cos(ang - 0.45) * 11, ey - Math.sin(ang - 0.45) * 11);
     g.lineTo(ex - Math.cos(ang + 0.45) * 11, ey - Math.sin(ang + 0.45) * 11);
     g.closePath(); g.fill();
   }
-  g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [el, [x, y]] of Object.entries(pos)) {
-    const gr = g.createRadialGradient(x - 6, y - 6, 2, x, y, 21);
-    gr.addColorStop(0, '#ffffffcc');
-    gr.addColorStop(0.45, ELEMENTS[el].color);
-    gr.addColorStop(1, '#000000aa');
-    g.fillStyle = gr;
-    g.beginPath(); g.arc(x, y, 20, 0, Math.PI * 2); g.fill();
-    g.font = '18px sans-serif';
-    g.fillText(ELEMENTS[el].icon, x, y + 1);
+    const img = new Image();
+    img.onload = () => g.drawImage(img, x - 24, y - 24, 48, 48);
+    img.src = iconUrl(ELEMENTS[el].icon);
   }
   g.fillStyle = '#f3d98a';
-  g.font = '600 13px Kanit, sans-serif';
+  g.font = '600 14px Kanit, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText('×2', cx, cy);
 }
 
 /* ---------------- เริ่มต้น ---------------- */
-renderHelpTables();
+renderHelp();
 drawCycle();
 renderBuild();
 renderMenu();
+updateLayout();
 requestAnimationFrame(frame);
 
 // เปิดให้ทดสอบ/ดีบักผ่าน console

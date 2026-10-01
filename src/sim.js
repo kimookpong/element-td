@@ -8,6 +8,7 @@ import {
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL, DUALS, TRIPLES, comboKey,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES,
   ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
+  FIRST_WAVE_DELAY, WAVE_GAP, CLEAR_GAP, BUILD_TIME, upgradeTime,
 } from './data.js';
 
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
@@ -147,9 +148,9 @@ export class Game {
     this.gold = this.diff.gold;
     this.lives = this.diff.lives;
     this.wave = 0;
-    this.waveActive = false;
-    this.waveTime = 0;
     this.spawnQueue = [];
+    this.waveInfo = {};
+    this.nextWaveIn = FIRST_WAVE_DELAY;
     this.towers = [];
     this.creeps = [];
     this.projectiles = [];
@@ -168,9 +169,11 @@ export class Game {
     this.routeVersion = 0;
     this.recomputeFields();
     this.flyPath = this.computeFlyPath();
-    this.currentWave = null;
     this.nextWaveData = this.makeWave(1);
   }
+
+  // มีมอนสเตอร์ในสนามหรือรอออกมาอยู่หรือไม่
+  get waveActive() { return this.spawnQueue.length > 0 || this.creeps.some((e) => e.alive); }
 
   /* ---------- บันทึก / โหลดเกม ----------
    * บันทึกเฉพาะช่วงระหว่างเวฟ (ไม่มีมอนสเตอร์อยู่ในสนาม) เพื่อให้สถานะสมบูรณ์เสมอ
@@ -191,9 +194,11 @@ export class Game {
       lastElement: this.lastElement,
       nextWaveData: this.nextWaveData,
       nextId: this.nextId,
+      nextWaveIn: this.nextWaveIn,
       towers: this.towers.map((t) => ({
         c: t.c, r: t.r, kind: t.kind, base: t.base, elements: t.elements.slice(), tier: t.tier,
         spent: t.spent, mode: t.mode, kills: t.kills, dmgDealt: Math.round(t.dmgDealt),
+        build: t.build ? { ...t.build } : null,
       })),
     };
   }
@@ -201,7 +206,7 @@ export class Game {
   static restore(data) {
     if (!data || data.v !== SAVE_VERSION || !MAPS[data.mapIndex] || !DIFFICULTIES[data.diffKey]) return null;
     const g = new Game(data.mapIndex, data.diffKey);
-    for (const k of ['gold', 'lives', 'wave', 'kills', 'endless', 'won', 'elemPoints', 'lastElement', 'nextId']) {
+    for (const k of ['gold', 'lives', 'wave', 'kills', 'endless', 'won', 'elemPoints', 'lastElement', 'nextId', 'nextWaveIn']) {
       if (data[k] !== undefined) g[k] = data[k];
     }
     for (const e of ELEMENT_ORDER) g.elemLevel[e] = Math.max(0, Math.min(MAX_ELEMENT_LEVEL, data.elemLevel?.[e] | 0));
@@ -217,6 +222,7 @@ export class Game {
         elements: (s.elements || []).filter((e) => ELEMENTS[e]), tier: s.tier || 1,
         spent: s.spent || 0, cd: 0.3, angle: -Math.PI / 2,
         mode: TARGET_MODES.includes(s.mode) ? s.mode : 'first', kills: s.kills || 0, dmgDealt: s.dmgDealt || 0, version: 0,
+        build: s.build && s.build.t > 0 ? { t: s.build.t, total: s.build.total || s.build.t, kind: s.build.kind || 'build' } : null,
       };
       if (t.kind === 'basic' && !BASIC[t.base]) continue;
       if (t.kind === 'element' && !t.elements.length) continue;
@@ -225,6 +231,7 @@ export class Game {
       g.towerGrid[i] = t;
       if (g.map.walk[i]) g.blocked[i] = 1;
     }
+    if (typeof g.nextWaveIn !== 'number' || g.nextWaveIn < 0) g.nextWaveIn = CLEAR_GAP * 2;
     g.recomputeFields();
     return g;
   }
@@ -314,7 +321,7 @@ export class Game {
     this.elemPoints -= 1;
     this.elemLevel[el] += 1;
     const lv = this.elemLevel[el];
-    this.toast(`${ELEMENTS[el].icon} ธาตุ${ELEMENTS[el].th} เลเวล ${lv}!`, 1400);
+    this.toast(`:${ELEMENTS[el].icon}: ธาตุ${ELEMENTS[el].th} เลเวล ${lv}!`, 1400);
     this.emit('elementUp', { el, lv });
     this.sound('fuse');
     this.emit('changed');
@@ -345,6 +352,7 @@ export class Game {
       elements: basic ? [] : [type], tier: 1,
       spent: cost, cd: 0.3, angle: -Math.PI / 2,
       mode: 'first', kills: 0, dmgDealt: 0, version: 0,
+      build: { t: basic ? BUILD_TIME.basic : BUILD_TIME.element, total: basic ? BUILD_TIME.basic : BUILD_TIME.element, kind: 'build' },
     };
     t.stats = towerStats(t);
     this.towers.push(t);
@@ -393,17 +401,20 @@ export class Game {
   }
 
   applyUpgrade(t, opt) {
+    if (t.build) { this.sound('error'); this.toast('ป้อมกำลังก่อสร้างอยู่', 1000); return false; }
     if (!opt.ok) { this.sound('error'); this.toast(opt.reason, 1400); return false; }
     if (this.gold < opt.cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
     this.gold -= opt.cost;
     t.spent += opt.cost;
+    const bt = upgradeTime(opt.type, t.tier, t.elements.length);
     if (opt.type === 'tier') t.tier += 1;
     else { t.elements = opt.els; t.tier = opt.tier; }
     t.stats = towerStats(t);
     t.version += 1;
+    t.build = { t: bt, total: bt, kind: 'upgrade' };
     if (opt.type === 'add') {
       this.emit('fuse', { tower: t, els: t.elements });
-      this.toast(`✦ ${towerName(t)} ✦`, 1600);
+      this.toast(`กำลังหลอมรวม: ${towerName(t)}`, 1600);
       this.sound('fuse');
     } else {
       this.emit('upgrade', { tower: t });
@@ -419,7 +430,8 @@ export class Game {
   }
 
   sellTower(t) {
-    const v = sellValue(t);
+    // ขายระหว่างสร้างครั้งแรก ได้เงินคืนเต็มจำนวน
+    const v = t.build && t.build.kind === 'build' ? t.spent : sellValue(t);
     this.gold += v;
     this.towers = this.towers.filter((x) => x !== t);
     this.towerGrid[t.i] = null;
@@ -464,41 +476,62 @@ export class Game {
   }
 
   startWave() {
-    if (this.over || this.waveActive) return false;
+    if (this.over) return false;
+    if (this.wave >= TOTAL_WAVES && !this.endless) return false;
     this.wave += 1;
-    const w = this.nextWaveData || this.makeWave(this.wave);
-    this.currentWave = w;
-    this.waveActive = true;
-    this.waveTime = 0;
-    this.spawnQueue = w.entries.map((e) => ({ ...e }));
-    this.nextWaveData = this.makeWave(this.wave + 1);
+    const n = this.wave;
+    const w = this.nextWaveData || this.makeWave(n);
+    for (const e of w.entries) this.spawnQueue.push({ ...e, t: this.time + e.t, wave: n, hpScale: w.hpScale });
+    this.spawnQueue.sort((a, b) => a.t - b.t);
+    this.waveInfo[n] = { pending: w.entries.length, alive: 0 };
+    this.nextWaveData = this.makeWave(n + 1);
+    this.nextWaveIn = null;
+    const A = ABILITIES[w.ability];
     if (w.ability === 'boss') {
       this.sound('boss');
-      this.toast(`⚠️ มังกรโบราณธาตุ${ELEMENTS[w.element].th}กำลังมา!`, 2000);
+      this.toast(`:warning: มังกรโบราณธาตุ${ELEMENTS[w.element].th}กำลังมา!`, 2200);
     } else {
       this.sound('wave');
-      this.toast(`เวฟ ${this.wave}: ${ABILITIES[w.ability].icon} ${ABILITIES[w.ability].creature}ธาตุ${ELEMENTS[w.element].th}`, 1400);
+      this.toast(`เวฟ ${n}: :${A.icon}: ${A.creature}ธาตุ${ELEMENTS[w.element].th}`, 1500);
     }
+    this.emit('waveStart', { n });
     this.emit('changed');
     return true;
   }
 
-  endWave() {
-    this.waveActive = false;
-    const bonus = 20 + this.wave * 4;
-    const interest = Math.floor(Math.min(this.gold * INTEREST_RATE, 20 + this.wave * 5));
+  // เมื่อมอนสเตอร์ของเวฟหนึ่งหมดสนาม
+  creepRemoved(e) {
+    const info = this.waveInfo[e.wave];
+    if (!info) return;
+    info.alive -= 1;
+    if (info.alive <= 0 && info.pending <= 0) {
+      delete this.waveInfo[e.wave];
+      this.waveCleared(e.wave);
+    }
+  }
+
+  waveCleared(n) {
+    if (this.over) return;
+    const bonus = 20 + n * 4;
+    const interest = Math.floor(Math.min(this.gold * INTEREST_RATE, 20 + n * 5));
     this.gold += bonus + interest;
-    this.emit('waveEnd', { bonus, interest });
-    if (this.wave % ELEMENT_POINT_EVERY === 0) {
+    this.emit('waveEnd', { n, bonus, interest });
+    if (n % ELEMENT_POINT_EVERY === 0) {
       this.elemPoints += 1;
       this.emit('elementPoint');
       this.sound('win');
     }
-    if (this.wave >= TOTAL_WAVES && !this.endless && !this.won) {
+    if (n >= TOTAL_WAVES && !this.endless && !this.won && !this.waveActive) {
       this.won = true;
       this.sound('win');
       this.emit('win');
     }
+    this.emit('changed');
+  }
+
+  continueEndless() {
+    this.endless = true;
+    if (this.nextWaveIn == null || this.nextWaveIn <= 0) this.nextWaveIn = WAVE_GAP;
     this.emit('changed');
   }
 
@@ -518,11 +551,13 @@ export class Game {
       stage: 0, wp: 0, flying: entry.ability === 'flying', progress: 0,
       slowT: 0, slowF: 1, stunT: 0, burnT: 0, burnDps: 0, burnSrc: null,
       curseT: 0, curseAmp: 1, alive: true, flash: 0, revived: false, moving: 1,
+      wave: entry.wave || (from && from.wave) || this.wave,
     };
     if (from) {
       e.x = from.x + rand(-8, 8); e.y = from.y + rand(-8, 8);
       e.stage = from.stage; e.wp = from.wp; e.angle = from.angle;
     }
+    if (this.waveInfo[e.wave]) this.waveInfo[e.wave].alive += 1;
     this.creeps.push(e);
     this.emit('spawn', { creep: e });
     return e;
@@ -606,6 +641,7 @@ export class Game {
       }
     }
     if (e.ability === 'boss') this.toast('บอสถูกกำจัด!', 1400);
+    this.creepRemoved(e);
   }
 
   updateCreep(e, dt) {
@@ -667,8 +703,9 @@ export class Game {
       this.lives -= e.lives;
       this.sound('leak');
       this.emit('leak', { lives: e.lives, creep: e });
-      this.floater(e.x, e.y, `-${e.lives} ❤️`, '#ff5a6a', 18);
+      this.floater(e.x, e.y, `-${e.lives} :heart:`, '#ff5a6a', 18);
       if (this.lives <= 0) { this.lives = 0; this.gameOver(); }
+      this.creepRemoved(e);
       this.emit('changed');
       return;
     }
@@ -713,6 +750,17 @@ export class Game {
   }
 
   updateTower(t, dt) {
+    if (t.build) {
+      t.build.t -= dt;
+      if (t.build.t <= 0) {
+        t.build = null;
+        t.cd = 0.2;
+        this.emit('built', { tower: t });
+        this.sound('upgrade');
+        this.emit('changed');
+      }
+      return;
+    }
     t.cd -= dt;
     const s = t.stats;
     const targets = this.findTargets(t, s.multi || 1);
@@ -803,10 +851,21 @@ export class Game {
   /* ---------- ลูปหลัก ---------- */
   update(dt) {
     this.time += dt;
-    if (this.waveActive) {
-      this.waveTime += dt;
-      while (this.spawnQueue.length && this.spawnQueue[0].t <= this.waveTime) {
-        this.spawnCreep(this.spawnQueue.shift(), this.currentWave.hpScale);
+    // ปล่อยมอนสเตอร์ตามคิว (อาจมีหลายเวฟซ้อนกัน)
+    while (this.spawnQueue.length && this.spawnQueue[0].t <= this.time) {
+      const entry = this.spawnQueue.shift();
+      const info = this.waveInfo[entry.wave];
+      if (info) info.pending -= 1;
+      this.spawnCreep(entry, entry.hpScale);
+    }
+    // นับถอยหลังเวฟถัดไป
+    if (!this.over) {
+      const lastInfo = this.waveInfo[this.wave];
+      if (this.nextWaveIn == null && (!lastInfo || lastInfo.pending <= 0)) this.nextWaveIn = WAVE_GAP;
+      if (this.nextWaveIn != null && (this.wave < TOTAL_WAVES || this.endless)) {
+        if (this.wave > 0 && !this.waveActive) this.nextWaveIn = Math.min(this.nextWaveIn, CLEAR_GAP);
+        this.nextWaveIn -= dt;
+        if (this.nextWaveIn <= 0) this.startWave();
       }
     }
     for (const e of this.creeps) if (e.alive) this.updateCreep(e, dt);
@@ -817,8 +876,8 @@ export class Game {
     for (const t of this.towers) this.updateTower(t, dt);
     this.projectiles = this.projectiles.filter((p) => this.updateProjectile(p, dt));
     this.creeps = this.creeps.filter((e) => e.alive);
-    if (this.waveActive && !this.spawnQueue.length && !this.creeps.length) this.endWave();
   }
+
 }
 
 function distToSegment(px, py, ax, ay, bx, by) {

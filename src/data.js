@@ -19,32 +19,32 @@ export const ELEMENT_ORDER = ['light', 'dark', 'water', 'fire', 'wind', 'earth']
 /* โปรไฟล์ธาตุ: rate = นัด/วินาที, range = พิกเซล, dpsF = ตัวคูณ DPS ต่อเป้า */
 export const ELEMENTS = {
   fire: {
-    name: 'Fire', th: 'ไฟ', icon: '🔥', color: '#ff5a2a', glow: '#ffb347',
+    name: 'Fire', th: 'ไฟ', icon: 'el_fire', color: '#ff5a2a', glow: '#ffb347',
     rate: 1.0, range: 100, dpsF: 0.85,
     desc: 'ระเบิดวงกว้าง + เผาไหม้ต่อเนื่อง',
   },
   water: {
-    name: 'Water', th: 'น้ำ', icon: '💧', color: '#2f8fff', glow: '#8fd3ff',
+    name: 'Water', th: 'น้ำ', icon: 'el_water', color: '#2f8fff', glow: '#8fd3ff',
     rate: 1.2, range: 105, dpsF: 0.95,
     desc: 'ทำให้มอนสเตอร์ช้าลง',
   },
   earth: {
-    name: 'Earth', th: 'ดิน', icon: '🪨', color: '#c08a42', glow: '#e9c27a',
+    name: 'Earth', th: 'ดิน', icon: 'el_earth', color: '#c08a42', glow: '#e9c27a',
     rate: 0.55, range: 92, dpsF: 1.25,
     desc: 'ดาเมจหนัก มีโอกาสทำให้มึนงง',
   },
   wind: {
-    name: 'Wind', th: 'ลม', icon: '🌪️', color: '#3fe0a8', glow: '#b6ffe3',
+    name: 'Wind', th: 'ลม', icon: 'el_wind', color: '#3fe0a8', glow: '#b6ffe3',
     rate: 2.4, range: 115, dpsF: 0.5,
     desc: 'ยิงรัวหลายเป้าพร้อมกัน ผลักถอยหลัง',
   },
   light: {
-    name: 'Light', th: 'แสง', icon: '✨', color: '#ffe14a', glow: '#fffbd0',
+    name: 'Light', th: 'แสง', icon: 'el_light', color: '#ffe14a', glow: '#fffbd0',
     rate: 0.8, range: 150, dpsF: 0.8,
     desc: 'ลำแสงระยะไกล ทะลุทุกตัวในแนว',
   },
   dark: {
-    name: 'Dark', th: 'มืด', icon: '🌑', color: '#a24dff', glow: '#d6b3ff',
+    name: 'Dark', th: 'มืด', icon: 'el_dark', color: '#a24dff', glow: '#d6b3ff',
     rate: 0.9, range: 105, dpsF: 0.9,
     desc: 'สาปให้รับดาเมจเพิ่ม + ดาเมจตาม % HP',
   },
@@ -85,12 +85,12 @@ export function elementEffects(el, lv, dps) {
 /* ป้อมพื้นฐาน (ไม่มีธาตุ) */
 export const BASIC = {
   arrow: {
-    th: 'ป้อมธนู', name: 'Arrow', icon: '🏹', color: '#d9b26a',
+    th: 'ป้อมธนู', name: 'Arrow', icon: 't_arrow', color: '#d9b26a',
     cost: [50, 60, 150], dps: [15, 33, 75], rate: 1.4, range: 120,
     desc: 'ยิงเร็ว เป้าเดียว ราคาถูก',
   },
   cannon: {
-    th: 'ป้อมปืนใหญ่', name: 'Cannon', icon: '💣', color: '#8a8f99',
+    th: 'ป้อมปืนใหญ่', name: 'Cannon', icon: 't_cannon', color: '#8a8f99',
     cost: [70, 80, 200], dps: [14, 30, 70], rate: 0.6, range: 100, splash: [40, 46, 52],
     desc: 'ระเบิดวงกว้าง ยิงช้า',
   },
@@ -150,15 +150,15 @@ export const comboKey = (els) => els.slice().sort().join('+');
 
 /* ความสามารถของมอนสเตอร์ */
 export const ABILITIES = {
-  normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: '🐺', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' },
-  fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: '🦄', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' },
-  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: '🐢', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' },
-  regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: '🐍', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' },
-  split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: '🦊', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' },
-  undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: '🔥', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' },
-  flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: '🦅', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
-  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: '🐉', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
-  child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: '🦊', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
+  normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: 'c_wolf', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' },
+  fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: 'c_unicorn', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' },
+  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: 'c_turtle', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' },
+  regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: 'c_hydra', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' },
+  split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: 'c_kitsune', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' },
+  undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' },
+  flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
+  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
+  child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
 };
 
 /* รูปแบบความสามารถตามเวฟ (วนทุก 10 เวฟ) */
@@ -198,6 +198,13 @@ function laneLayout(points) {
 export const MAPS = [
   {
     id: 'meadow',
+    signs: [
+      { c: -2.1, r: 4.2, title: 'จุดเกิดมอนสเตอร์', lines: ['มอนสเตอร์ออกจาก', 'พอร์ทัลสีฟ้าตรงนี้'] },
+      { c: 5.5, r: -1.6, title: 'สร้างเขาวงกต', lines: ['วางป้อมบนลานหิน', 'บังคับให้มอนสเตอร์เดินอ้อม'] },
+      { c: 11.5, r: -1.6, title: 'ห้ามปิดทาง', lines: ['ลูกศรฟ้าคือเส้นทางปัจจุบัน', 'ต้องเหลือทางเดินเสมอ'] },
+      { c: 17.5, r: -1.6, title: 'จุดตรวจ ① ②', lines: ['มอนสเตอร์ต้องเดินผ่าน', 'ตามลำดับหมายเลข'] },
+      { c: 21.1, r: 6.6, title: 'ประตูแกนกลาง', lines: ['อย่าให้มอนสเตอร์', 'หลุดเข้าประตูแดง!'] },
+    ],
     name: 'ลานวงกตแห่งทุ่งหญ้า',
     desc: 'สนามเปิดแบบ Element TD — วางป้อมสร้างเขาวงกตเอง',
     theme: 'meadow',
@@ -218,6 +225,13 @@ export const MAPS = [
   },
   {
     id: 'ruins',
+    signs: [
+      { c: -2.1, r: 4.2, title: 'จุดเกิดมอนสเตอร์', lines: ['มอนสเตอร์ออกจาก', 'พอร์ทัลสีฟ้าตรงนี้'] },
+      { c: 4.5, r: -1.6, title: 'ซากกำแพงโบราณ', lines: ['ใช้กำแพงช่วยกั้นทาง', 'ประหยัดป้อมตอนทำวงกต'] },
+      { c: 11.5, r: -1.6, title: 'จุดตรวจ 2 จุด', lines: ['ต้องผ่าน ① ก่อน', 'แล้วจึงไป ②'] },
+      { c: 17.5, r: -1.6, title: 'ผลึกธาตุ', lines: ['ได้ 1 ชิ้นทุก 5 เวฟ', 'ปลดล็อกธาตุที่แถบล่าง'] },
+      { c: 21.1, r: 7.6, title: 'ประตูแกนกลาง', lines: ['อย่าให้มอนสเตอร์', 'หลุดเข้าประตูแดง!'] },
+    ],
     name: 'ซากปราการโบราณ',
     desc: 'เขาวงกตกลางซากกำแพง มีจุดตรวจ 2 จุด',
     theme: 'ruins',
@@ -238,6 +252,13 @@ export const MAPS = [
   },
   {
     id: 'canyon',
+    signs: [
+      { c: -2.1, r: 8.4, title: 'จุดเกิดมอนสเตอร์', lines: ['มอนสเตอร์ออกจาก', 'พอร์ทัลสีฟ้าตรงนี้'] },
+      { c: 4, r: -1.6, title: 'ทางเดินตายตัว', lines: ['วางป้อมบนเนินหญ้า', 'สองข้างทางเดิน'] },
+      { c: 10, r: -1.6, title: 'มุมโค้งคือจุดทอง', lines: ['ป้อมตรงโค้ง', 'ยิงได้หลายช่วงทาง'] },
+      { c: 15.5, r: -1.6, title: 'ธาตุชนะทาง ×2', lines: ['ดูธาตุเวฟถัดไป', 'ที่มุมซ้ายบนก่อนสร้าง'] },
+      { c: 21.1, r: 1.6, title: 'ประตูแกนกลาง', lines: ['อย่าให้มอนสเตอร์', 'หลุดเข้าประตูแดง!'] },
+    ],
     name: 'หุบเขาคดเคี้ยว',
     desc: 'ทางเดินตายตัว วางป้อมบนเนินสองข้างทาง',
     theme: 'canyon',
@@ -245,6 +266,12 @@ export const MAPS = [
   },
   {
     id: 'spiral',
+    signs: [
+      { c: -2.1, r: 3.2, title: 'จุดเกิดมอนสเตอร์', lines: ['มอนสเตอร์ออกจาก', 'พอร์ทัลสีฟ้าตรงนี้'] },
+      { c: 5, r: -1.6, title: 'ทางสั้น ระวัง!', lines: ['ใช้ป้อมน้ำชะลอ', 'ป้อมแสงยิงทะลุทั้งแนว'] },
+      { c: 12, r: -1.6, title: 'กลางวังวน', lines: ['ป้อมตรงกลาง', 'ยิงได้รอบทิศทาง'] },
+      { c: 21.1, r: 5.5, title: 'ระวังตัวบินได้', lines: ['กริฟฟินบินลัด', 'ตามมุมของถนน'] },
+    ],
     name: 'วังวนแห่งห้วงมืด',
     desc: 'ทางวนสั้นยามค่ำคืน — ยาก',
     theme: 'night',
@@ -263,3 +290,10 @@ export const ELEMENT_POINT_EVERY = 5;
 export const START_ELEMENT_POINTS = 1;
 export const SELL_RATIO = 0.75;
 export const INTEREST_RATE = 0.03;
+
+/* เวลา (วินาที) */
+export const FIRST_WAVE_DELAY = 30;   // ช่วงเตรียมตัวก่อนเวฟแรก
+export const WAVE_GAP = 16;           // หลังมอนสเตอร์ตัวสุดท้ายของเวฟออกมา
+export const CLEAR_GAP = 6;           // ถ้าเคลียร์สนามหมดแล้ว เวฟถัดไปมาเร็วขึ้น
+export const BUILD_TIME = { basic: 2.5, element: 3.5 };
+export const upgradeTime = (type, tier, n) => (type === 'tier' ? 2 + tier * 1.5 : 4 + n * 2);

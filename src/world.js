@@ -341,6 +341,14 @@ export function buildWorld(map, themeKey) {
   // ---- ของตกแต่งรอบนอก ----
   decorate(group, map, theme, walk, anim);
 
+  // ---- ป้ายแนะนำ ----
+  const signs = (map.def.signs || []).map((sg) => {
+    const s = makeSign(sg);
+    s.position.set(tileX(sg.c), 0, tileZ(sg.r));
+    group.add(s);
+    return s;
+  });
+
   // ---- ท้องฟ้า ----
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(150, 24, 12),
@@ -367,7 +375,7 @@ export function buildWorld(map, themeKey) {
 
   return {
     group, theme, anim,
-    spawnPortal, corePortal, coreCrystal,
+    spawnPortal, corePortal, coreCrystal, signs,
     update(t) { for (const a of anim) a(t); },
   };
 }
@@ -377,7 +385,8 @@ function decorate(group, map, theme, walk, anim) {
   const B = { x0: -COLS / 2, x1: COLS / 2, z0: -ROWS / 2, z1: ROWS / 2 };
   const inBoard = (x, z, m = 0.5) => x > B.x0 - m && x < B.x1 + m && z > B.z0 - m && z < B.z1 + m;
   const portals = [map.spawn, map.core].map((i) => ({ x: tileX(i % COLS), z: tileZ(Math.floor(i / COLS)) }));
-  const nearPortal = (x, z, d = 2.2) => portals.some((p) => Math.hypot(p.x - x, p.z - z) < d);
+  const signPts = (map.def.signs || []).map((sg) => ({ x: tileX(sg.c), z: tileZ(sg.r) }));
+  const nearPortal = (x, z, d = 2.2) => portals.some((p) => Math.hypot(p.x - x, p.z - z) < d) || signPts.some((p) => Math.hypot(p.x - x, p.z - z) < 1.4);
   const scatter = (n, minD, maxD, margin = 0.9) => {
     const pts = [];
     let guard = 0;
@@ -578,4 +587,68 @@ function decorate(group, map, theme, walk, anim) {
   group.add(instanced(geo('barrel', () => new THREE.CylinderGeometry(0.16, 0.14, 0.38, 10)), std(0x7a5232, { roughness: 0.8 }), okProps, (d, it) => {
     d.position.set(it.x, 0.19, it.z);
   }));
+}
+
+/* ---------- ป้ายไม้แนะนำ (หันหากล้องเสมอ) ---------- */
+function drawSign(c, sg) {
+  const g = c.getContext('2d');
+  const W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  const r = 26;
+  const path = () => {
+    g.beginPath();
+    g.moveTo(r, 6); g.lineTo(W - r, 6); g.quadraticCurveTo(W - 6, 6, W - 6, r);
+    g.lineTo(W - 6, H - r); g.quadraticCurveTo(W - 6, H - 6, W - r, H - 6);
+    g.lineTo(r, H - 6); g.quadraticCurveTo(6, H - 6, 6, H - r);
+    g.lineTo(6, r); g.quadraticCurveTo(6, 6, r, 6); g.closePath();
+  };
+  path();
+  const wood = g.createLinearGradient(0, 0, 0, H);
+  wood.addColorStop(0, '#8a5a32'); wood.addColorStop(0.5, '#6e4426'); wood.addColorStop(1, '#5a361c');
+  g.fillStyle = wood; g.fill();
+  g.save(); path(); g.clip();
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 3;
+  for (let y = H / 4; y < H; y += H / 4) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.strokeStyle = 'rgba(255,220,160,0.06)'; g.lineWidth = 2;
+  for (let i = 0; i < 40; i++) { const y = (i * 37) % H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W / 3, y + 6, (2 * W) / 3, y - 6, W, y + 3); g.stroke(); }
+  g.restore();
+  path(); g.lineWidth = 10; g.strokeStyle = '#d9b45a'; g.stroke();
+  path(); g.lineWidth = 3; g.strokeStyle = '#5a3a12'; g.stroke();
+  for (const [x, y] of [[26, 26], [W - 26, 26], [26, H - 26], [W - 26, H - 26]]) {
+    g.fillStyle = '#e8c870'; g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.fill();
+  }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '600 46px Kanit, "Noto Sans Thai", sans-serif';
+  g.lineWidth = 6; g.strokeStyle = 'rgba(40,20,0,0.8)';
+  g.strokeText(sg.title, W / 2, 62); g.fillStyle = '#ffe08a'; g.fillText(sg.title, W / 2, 62);
+  g.font = '500 32px Kanit, "Noto Sans Thai", sans-serif';
+  sg.lines.forEach((ln, i) => {
+    g.lineWidth = 5; g.strokeStyle = 'rgba(40,20,0,0.7)';
+    g.strokeText(ln, W / 2, 128 + i * 46); g.fillStyle = '#fbf0d8'; g.fillText(ln, W / 2, 128 + i * 46);
+  });
+}
+
+function makeSign(sg) {
+  const g = new THREE.Group();
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  drawSign(c, sg);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawSign(c, sg); tex.needsUpdate = true; });
+  const woodM = std(0x5a3a20, { roughness: 0.9 });
+  const face = new THREE.Group();
+  face.position.y = 1.15;
+  face.rotation.x = -0.18;
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, transparent: true }));
+  board.position.z = 0.03;
+  face.add(board);
+  face.add(mesh(G.box(), woodM, { s: [1.72, 0.87, 0.05] }));
+  g.add(face);
+  for (const x of [-0.62, 0.62]) g.add(mesh(G.box(), woodM, { x, y: 0.55, s: [0.07, 1.1, 0.07] }));
+  g.add(mesh(G.box(), std(0x8a8478, { flatShading: true }), { y: 0.03, s: [1.5, 0.06, 0.25] }));
+  g.userData.isSign = true;
+  g.scale.setScalar(1.5);
+  return g;
 }
