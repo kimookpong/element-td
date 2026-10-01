@@ -1,22 +1,21 @@
-'use strict';
 /* ============================================================
  *  Element TD — ข้อมูลเกม (ธาตุ, การหลอมรวม, ศัตรู, แผนที่)
  * ============================================================ */
 
-const TILE = 40;
-const COLS = 20;
-const ROWS = 12;
-const WIDTH = COLS * TILE;
-const HEIGHT = ROWS * TILE;
+export const TILE = 40;
+export const COLS = 20;
+export const ROWS = 12;
+export const WIDTH = COLS * TILE;
+export const HEIGHT = ROWS * TILE;
 
-const ELEMENT_ORDER = ['fire', 'water', 'earth', 'wind', 'light', 'dark'];
+export const ELEMENT_ORDER = ['fire', 'water', 'earth', 'wind', 'light', 'dark'];
 
 /*
  * ป้อมธาตุพื้นฐาน — แต่ละธาตุมีความสามารถเฉพาะตัว
  *  rate  = จำนวนนัดต่อวินาที
  *  range = ระยะยิง (px)
  */
-const ELEMENTS = {
+export const ELEMENTS = {
   fire: {
     name: 'Fire', th: 'ไฟ', icon: '🔥', color: '#ff5a36', glow: '#ffb347',
     cost: 60, dmg: 13, range: 95, rate: 1.0,
@@ -59,7 +58,7 @@ const ELEMENTS = {
  * วงจรธาตุ:  ไฟ → ลม → ดิน → น้ำ → ไฟ   และ   แสง ⇄ มืด
  * ธาตุทางซ้ายชนะธาตุทางขวา
  */
-const BEATS = {
+export const BEATS = {
   fire: 'wind',
   wind: 'earth',
   earth: 'water',
@@ -68,11 +67,11 @@ const BEATS = {
   dark: 'light',
 };
 
-const MULT_STRONG = 1.75;
-const MULT_WEAK = 0.65;
-const MULT_SAME = 0.5;
+export const MULT_STRONG = 1.75;
+export const MULT_WEAK = 0.65;
+export const MULT_SAME = 0.5;
 
-function elementMultiplier(atk, def) {
+export function elementMultiplier(atk, def) {
   if (!def) return 1;
   if (atk === def) return MULT_SAME;
   if (BEATS[atk] === def) return MULT_STRONG;
@@ -81,7 +80,7 @@ function elementMultiplier(atk, def) {
 }
 
 /* ป้อมหลอมรวม — รวมป้อมเลเวล 3 สองธาตุเข้าด้วยกัน */
-const FUSIONS = {
+export const FUSIONS = {
   'fire+water': { name: 'Steam', th: 'ไอน้ำเดือด' },
   'earth+fire': { name: 'Magma', th: 'แมกมา' },
   'fire+wind': { name: 'Wildfire', th: 'พายุเพลิง' },
@@ -99,15 +98,15 @@ const FUSIONS = {
   'dark+light': { name: 'Eclipse', th: 'สุริยคราส' },
 };
 
-const FUSION_COST = 150;
-const MAX_LEVEL = 3;
+export const FUSION_COST = 150;
+export const MAX_LEVEL = 3;
 
-function fusionKey(a, b) {
+export function fusionKey(a, b) {
   return [a, b].sort().join('+');
 }
 
 /* ชนิดศัตรู */
-const ENEMY_TYPES = {
+export const ENEMY_TYPES = {
   grunt:  { th: 'ทหาร',     hp: 1.0,  speed: 48, size: 11, reward: 1.0, lives: 1 },
   runner: { th: 'นักวิ่ง',   hp: 0.55, speed: 88, size: 9,  reward: 0.8, lives: 1 },
   tank:   { th: 'ยักษ์',     hp: 3.2,  speed: 30, size: 15, reward: 2.2, lives: 2 },
@@ -116,7 +115,7 @@ const ENEMY_TYPES = {
 };
 
 /* แผนที่ — waypoint เป็นพิกัดช่อง (col,row) เส้นทางต้องเป็นแนวตรงแกน x/y */
-const MAPS = [
+export const MAPS = [
   {
     id: 'meadow',
     name: 'ทุ่งหญ้าเริ่มต้น',
@@ -143,10 +142,10 @@ const MAPS = [
   },
 ];
 
-const DIFFICULTIES = {
+export const DIFFICULTIES = {
   easy:   { th: 'ง่าย',   hp: 0.75, gold: 260, lives: 30 },
   normal: { th: 'ปกติ',   hp: 1.0,  gold: 200, lives: 20 },
   hard:   { th: 'ยาก',    hp: 1.5,  gold: 170, lives: 10 },
 };
 
-const TOTAL_WAVES = 30;
+export const TOTAL_WAVES = 30;

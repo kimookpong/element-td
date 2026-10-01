@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Element TD — หกธาตุพิทักษ์</title>
+  <title>Element TD 3D — หกธาตุพิทักษ์</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%AE%3C/text%3E%3C/svg%3E">
   <meta name="description" content="เกม Tower Defense บนเบราว์เซอร์ ใช้พลังธาตุทั้ง 6: ดิน น้ำ ลม ไฟ แสง มืด">
-  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div id="app">
@@ -21,13 +21,17 @@
         <button id="btnSpeed" title="ความเร็ว (F)">1×</button>
         <button id="btnPause" title="หยุดชั่วคราว (P)">⏸</button>
         <button id="btnMute" title="เสียง (M)">🔊</button>
+        <button id="btnQuality" title="คุณภาพกราฟิก">✨</button>
+        <button id="btnCamera" title="รีเซ็ตมุมกล้อง (C)">🎥</button>
         <button id="btnHelp" title="วิธีเล่น (H)">?</button>
       </div>
     </header>
 
     <main id="main">
       <div id="stageWrap">
-        <canvas id="game" width="800" height="480"></canvas>
+        <div id="stage"></div>
+        <div id="floaters"></div>
+        <div id="pauseOverlay">⏸ หยุดชั่วคราว</div>
         <div id="nextWave"></div>
         <div id="toast"></div>
       </div>
@@ -80,7 +84,9 @@
       </ul>
       <div class="elemTable" id="elemTable"></div>
       <h3>คีย์ลัด</h3>
-      <p class="small">1–6 เลือกธาตุ · Space เริ่มเวฟ · U อัปเกรด · S ขาย · T เปลี่ยนโหมดเล็งเป้า · F ความเร็ว · P หยุด · Esc ยกเลิก</p>
+      <p class="small">1–6 เลือกธาตุ · Space เริ่มเวฟ · U อัปเกรด · S ขาย · T เปลี่ยนโหมดเล็งเป้า · F ความเร็ว · P หยุด · C รีเซ็ตกล้อง · Esc ยกเลิก</p>
+      <h3>กล้อง 3D</h3>
+      <p class="small">🖱️ คลิกขวาค้างแล้วลาก = หมุนกล้อง · ล้อเมาส์ = ซูม · 📱 ใช้สองนิ้วเพื่อหมุน/ซูม</p>
       <button id="btnCloseHelp" class="primary">เข้าใจแล้ว</button>
     </div>
   </div>
@@ -98,8 +104,6 @@
     </div>
   </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/game.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -1,6 +1,5 @@
-'use strict';
 /* เสียงเอฟเฟกต์สังเคราะห์ด้วย WebAudio (ไม่ต้องโหลดไฟล์เสียง) */
-const Sound = (() => {
+export const Sound = (() => {
   let ctx = null;
   let master = null;
   let muted = false;
