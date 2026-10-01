@@ -155,13 +155,15 @@ export class Renderer3D {
     const controls = new OrbitControls(this.camera, this.canvas);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.enablePan = false;
+    controls.enablePan = true;
+    controls.screenSpacePanning = false; // เลื่อนขนานพื้น
     controls.minDistance = 6;
     controls.maxDistance = 40;
     controls.minPolarAngle = 0.15;
     controls.maxPolarAngle = 1.2;
-    controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
-    controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+    // คลิกซ้ายค้างลาก = เลื่อนกระดาน · คลิกขวาลาก = หมุน · มือถือ: นิ้วเดียวลาก = เลื่อน, สองนิ้ว = หมุน/ซูม
+    controls.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+    controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
     controls.autoRotateSpeed = 0.5;
     this.controls = controls;
 
@@ -890,6 +892,13 @@ export class Renderer3D {
     const game = view.game;
     this.controls.autoRotate = !!view.menu;
     this.controls.update();
+    // จำกัดการเลื่อนไม่ให้กระดานหลุดออกนอกจอ
+    const tg = this.controls.target;
+    const cx = Math.max(-COLS / 2, Math.min(COLS / 2, tg.x)), cz = Math.max(-ROWS / 2, Math.min(ROWS / 2, tg.z));
+    if (cx !== tg.x || cz !== tg.z || tg.y !== 0) {
+      this.camera.position.x += cx - tg.x; this.camera.position.z += cz - tg.z; this.camera.position.y -= tg.y;
+      tg.set(cx, 0, cz);
+    }
     // ปรับระยะหมอกตามระยะกล้อง เพื่อไม่ให้ฉากจางเมื่อซูมออกไกล
     if (this.scene.fog) {
       const d = this.camera.position.distanceTo(this.controls.target);
