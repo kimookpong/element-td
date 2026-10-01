@@ -124,6 +124,14 @@ function openMenu() {
   hideOverlays();
   $('menu').classList.add('show');
   $('infoCard').hidden = true;
+  showMenuPage('main');
+}
+
+// หน้าแรกของเมนู (3 ปุ่ม) ↔ หน้าเลือกแผนที่/ความยาก
+function showMenuPage(page) {
+  $('menuMain').hidden = page !== 'main';
+  $('menuNew').hidden = page !== 'new';
+  $('menu').querySelector('.menuCard').classList.toggle('wide', page === 'new');
   renderMenu();
 }
 
@@ -682,11 +690,8 @@ $('btnRetry').addEventListener('click', () => { Sound.unlock(); clearSave(); sta
 $('btnMenu').addEventListener('click', openMenu);
 $('btnStart').addEventListener('click', () => { Sound.unlock(); newGame(); });
 $('btnResume').addEventListener('click', () => { Sound.unlock(); resumeGame(); });
-$('btnDiscard').addEventListener('click', () => {
-  if (!confirm(T('confirm.discard'))) return;
-  clearSave();
-  renderMenu();
-});
+$('btnNew').addEventListener('click', () => { Sound.unlock(); showMenuPage('new'); });
+$('btnBack').addEventListener('click', () => showMenuPage('main'));
 window.addEventListener('pagehide', saveGame);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
 
@@ -728,15 +733,12 @@ function renderMenu() {
     b.addEventListener('click', () => { view.diffKey = key; renderMenu(); });
     diffList.appendChild(b);
   });
+  // ปุ่มเล่นต่อแสดงเฉพาะเมื่อมีเกมค้าง
   const save = readSave();
-  const box = $('resumeBox');
-  if (save && MAPS[save.mapIndex] && DIFFICULTIES[save.diffKey]) {
-    box.hidden = false;
-    const when = save.savedAt ? new Date(save.savedAt).toLocaleString(getLang() === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    $('resumeText').innerHTML = `${T('menu.resumeText', { map: tr(MAPS[save.mapIndex], 'name'), diff: tr(DIFFICULTIES[save.diffKey], 'th'), wave: save.wave })} · ${ico('heart')} ${save.lives} · ${ico('gold')} ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
-  } else {
-    box.hidden = true;
-  }
+  const has = !!(save && MAPS[save.mapIndex] && DIFFICULTIES[save.diffKey]);
+  const btn = $('btnResume');
+  btn.hidden = !has;
+  btn.title = has ? T('menu.resumeText', { map: tr(MAPS[save.mapIndex], 'name'), diff: tr(DIFFICULTIES[save.diffKey], 'th'), wave: save.wave }) : '';
 }
 
 function renderHelp() {

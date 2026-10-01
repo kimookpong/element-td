@@ -68,21 +68,23 @@
 
   <!-- เมนูเริ่มเกม -->
   <div id="menu" class="overlay show">
-    <div class="card frame wide menuCard">
+    <div class="card frame menuCard">
       <button id="btnLangMenu" class="langBtn menuLang" data-i18n-title="btn.lang" title="Language"><span class="langLbl">TH</span></button>
       <div class="logo"><span class="t1">Element</span> <span class="t2">TD</span></div>
-      <div id="resumeBox" class="resumeBox" hidden>
-        <div class="resumeInfo"><b><img class="ico" src="icons/save.png" alt=""> <span data-i18n="menu.saved">มีเกมที่บันทึกไว้</span></b><span id="resumeText"></span></div>
-        <div class="resumeBtns">
-          <button id="btnResume" class="primary big"><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.resume">เล่นต่อ</span></button>
-          <button id="btnDiscard" class="danger iconBtn" data-i18n-title="menu.discard" title="ลบเกมที่บันทึกไว้"><img class="ico" src="icons/trash.png" alt=""></button>
-        </div>
-      </div>
-      <div id="mapList" class="choiceRow"></div>
-      <div id="diffList" class="choiceRow diffRow"></div>
-      <div class="menuActions">
-        <button id="btnStart" class="primary big"><img class="ico" src="icons/swords.png" alt=""> <span data-i18n="menu.start">เริ่มเกมใหม่</span></button>
+      <!-- หน้าแรก: 3 ปุ่ม -->
+      <div id="menuMain" class="menuMain">
+        <button id="btnResume" class="primary big" hidden><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.resume">เล่นต่อ</span></button>
+        <button id="btnNew" class="big"><img class="ico" src="icons/swords.png" alt=""> <span data-i18n="menu.new">เริ่มใหม่</span></button>
         <button id="btnHowTo" class="big"><img class="ico" src="icons/scroll.png" alt=""> <span data-i18n="menu.howto">วิธีเล่น</span></button>
+      </div>
+      <!-- เริ่มใหม่: เลือกแผนที่ + ความยาก -->
+      <div id="menuNew" class="menuNew" hidden>
+        <div id="mapList" class="choiceRow"></div>
+        <div id="diffList" class="choiceRow diffRow"></div>
+        <div class="menuActions">
+          <button id="btnBack" class="big"><img class="ico" src="icons/close.png" alt=""> <span data-i18n="menu.back">ย้อนกลับ</span></button>
+          <button id="btnStart" class="primary big"><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.start">เริ่มเกม</span></button>
+        </div>
       </div>
     </div>
   </div>
