@@ -12,7 +12,8 @@ import { TILE, COLS, ROWS, ELEMENTS, BASIC, MAPS } from './data.js';
 import { parseMap, tileCenter } from './sim.js';
 import { FLOOR, FLY_HEIGHT, wx, wz, tileX, tileZ, rand, glow, mesh, G, geo, std } from './gfx.js';
 import { buildWorld } from './world.js';
-import { buildTowerModel, buildCreatureModel } from './models.js';
+import { buildTowerModel } from './models.js';
+import { buildCreatureModel } from './creatures.js';
 
 /* ---------------- ระบบอนุภาค ---------------- */
 class Particles {
@@ -544,6 +545,20 @@ export class Renderer3D {
     this.chevrons.count = 0;
   }
 
+  makeBlobMat() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(0,0,0,0.55)');
+    gr.addColorStop(0.6, 'rgba(0,0,0,0.3)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(c);
+    return new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  }
+
   removeCreepView(v) {
     this.dynamic.remove(v.group);
     this.dynamic.remove(v.bar);
@@ -588,13 +603,12 @@ export class Renderer3D {
         v = buildCreatureModel(e);
         v.bar = this.makeBar(e);
         v.r = e.size / TILE;
-        if (e.flying) {
-          v.shadow = new THREE.Mesh(geo('blob', () => new THREE.CircleGeometry(1, 20)), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false }));
-          v.shadow.rotation.x = -Math.PI / 2;
-          v.shadow.scale.setScalar(v.r * 1.4);
-          v.mats.push(v.shadow.material);
-          this.dynamic.add(v.shadow);
-        }
+        // เงาแบบวงกลมนุ่ม (ถูกกว่าเงาจริงมาก เมื่อมีมอนสเตอร์จำนวนมาก)
+        v.shadow = new THREE.Mesh(geo('blob', () => new THREE.CircleGeometry(1, 24)), this.blobMat || (this.blobMat = this.makeBlobMat()));
+        v.shadow.rotation.x = -Math.PI / 2;
+        v.shadow.scale.set(v.r * 2.4, v.r * 1.7, 1);
+        v.shadow.renderOrder = 1;
+        this.dynamic.add(v.shadow);
         this.dynamic.add(v.group, v.bar);
         this.creepViews.set(e.id, v);
       }
@@ -603,11 +617,18 @@ export class Renderer3D {
       g.position.set(wx(e.x), baseY, wz(e.y));
       g.rotation.y = -e.angle;
       v.anim(dt, this.time, e.moving);
-      if (v.shadow) v.shadow.position.set(g.position.x, this.groundAt(e.x, e.y) + 0.02, g.position.z);
+      if (v.shadow) {
+        v.shadow.position.set(g.position.x, this.groundAt(e.x, e.y) + 0.015, g.position.z);
+        v.shadow.rotation.z = e.angle;
+      }
+      if (e.ability === 'undead' && Math.random() < dt * 18) {
+        const c = ELEMENTS[e.element];
+        this.particles.emit(g.position.x + rand(-0.15, 0.15), baseY + v.height * rand(0.4, 0.9), g.position.z + rand(-0.15, 0.15), rand(-0.2, 0.2), rand(0.4, 1.0), rand(-0.2, 0.2), Math.random() < 0.5 ? c.color : c.glow, 0.5, 0.11, 1.2);
+      }
       const mtl = v.body;
       if (e.flash > 0) { mtl.emissive.setRGB(1, 1, 1); mtl.emissiveIntensity = 0.22; }
       else if (e.slowT > 0) { mtl.emissive.setRGB(0.3, 0.7, 1); mtl.emissiveIntensity = 0.45; }
-      else { mtl.emissive.set(ELEMENTS[e.element].color); mtl.emissiveIntensity = e.ability === 'undead' ? 0.08 : 0.15; }
+      else { mtl.emissive.set(ELEMENTS[e.element].color); mtl.emissiveIntensity = 0.12; }
       const r = v.r;
       this.statusFx(v, 'slow', e.slowT > 0, () => mesh(G.torus(), glow(0x9ad8ff, 2.5), { rx: Math.PI / 2, y: 0.05, s: r + 0.15, shadow: false }));
       this.statusFx(v, 'curse', e.curseT > 0, () => mesh(G.sph(), glow(0x9b4dff, 1.4, 0.25), { y: v.height * 0.5, s: Math.max(r * 1.6, v.height * 0.6), shadow: false }));

@@ -150,15 +150,15 @@ export const comboKey = (els) => els.slice().sort().join('+');
 
 /* ความสามารถของมอนสเตอร์ */
 export const ABILITIES = {
-  normal:  { th: 'ปกติ', icon: '🐺', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' },
-  fast:    { th: 'ว่องไว', icon: '💨', model: 'wolf', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' },
-  armored: { th: 'เกราะหิน', icon: '🛡️', model: 'golem', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' },
-  regen:   { th: 'ฟื้นฟู', icon: '💚', model: 'wolf', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' },
-  split:   { th: 'แยกร่าง', icon: '🫧', model: 'slime', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแตกเป็น 2 ตัวเล็ก' },
-  undead:  { th: 'อมตะ', icon: '💀', model: 'wolf', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพครั้งเดียวด้วย HP 50%' },
-  flying:  { th: 'บินได้', icon: '🦇', model: 'drake', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
-  boss:    { th: 'บอสมังกร', icon: '🐉', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
-  child:   { th: 'ร่างแยก', icon: '🫧', model: 'slime', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
+  normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: '🐺', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' },
+  fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: '🦄', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' },
+  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: '🐢', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' },
+  regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: '🐍', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' },
+  split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: '🦊', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' },
+  undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: '🔥', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' },
+  flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: '🦅', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
+  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: '🐉', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
+  child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: '🦊', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
 };
 
 /* รูปแบบความสามารถตามเวฟ (วนทุก 10 เวฟ) */

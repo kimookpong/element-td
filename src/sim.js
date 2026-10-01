@@ -474,10 +474,10 @@ export class Game {
     this.nextWaveData = this.makeWave(this.wave + 1);
     if (w.ability === 'boss') {
       this.sound('boss');
-      this.toast(`⚠️ บอสมังกร${ELEMENTS[w.element].th}กำลังมา!`, 2000);
+      this.toast(`⚠️ มังกรโบราณธาตุ${ELEMENTS[w.element].th}กำลังมา!`, 2000);
     } else {
       this.sound('wave');
-      this.toast(`เวฟ ${this.wave}: ${ELEMENTS[w.element].icon} ${ABILITIES[w.ability].th}`, 1300);
+      this.toast(`เวฟ ${this.wave}: ${ABILITIES[w.ability].icon} ${ABILITIES[w.ability].creature}ธาตุ${ELEMENTS[w.element].th}`, 1400);
     }
     this.emit('changed');
     return true;

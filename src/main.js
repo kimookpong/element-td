@@ -405,7 +405,7 @@ function renderNextWave() {
     <div class="lbl">เวฟถัดไป · ${w.n}</div>
     <div class="row">
       <span class="orb" style="--c:${e.color}">${e.icon}</span>
-      <div><b>${a.icon} ${a.th}</b> ธาตุ<b style="color:${e.color}">${e.th}</b> ×${w.count}
+      <div><b>${a.icon} ${a.creature}</b> <span style="opacity:.8">(${a.th})</span> ธาตุ<b style="color:${e.color}">${e.th}</b> ×${w.count}
       <div class="desc">${w.ability === 'boss' ? '<span class="boss">⚠️ บอส!</span> ' : ''}HP ${hp.toLocaleString()} · ${a.desc} · แพ้ทาง ${Object.keys(BEATS).filter((k) => BEATS[k] === w.element).map((k) => ELEMENTS[k].icon).join('')}</div></div>
     </div>`;
 }
