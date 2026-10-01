@@ -319,3 +319,8 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .langBtn { font-family: var(--title, serif); font-weight: 700; letter-spacing: 1px; font-size: .8rem; }
 #btnLang { min-width: 38px; }
 .menuLang { position: absolute; top: 12px; right: 12px; padding: 6px 10px; border-radius: 8px; }
+
+/* ---------- โลโก้เกม ---------- */
+.logoImg { display: block; width: min(330px, 72vw); height: auto; margin: -18px auto -10px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .55)); user-select: none; }
+.menuCard.wide .logoImg { width: min(210px, 50vw); margin: -14px auto -8px; }
+@media (max-height: 700px) { .logoImg { width: min(240px, 60vw); } .menuCard.wide .logoImg { width: 150px; } }

@@ -136,6 +136,8 @@ src/icons.js       ตัวช่วยไอคอน PNG (แทน emoji ท
 public/icons/      ไอคอน PNG ที่สร้างด้วยโค้ด
 tools/icons.html   หน้าสร้างไอคอน (วาด canvas + เรนเดอร์โมเดล 3D เป็นรูปประจำตัว)
 tools/export-icons.cjs  สคริปต์ Playwright บันทึกไอคอนลง public/icons
+tools/logo.html    หน้าสร้างโลโก้เกม (canvas) — node tools/export-logo.cjs → public/logo.png, logo-640.png, logo-256.png
+tools/fonts/       ฟอนต์ Luckiest Guy (OFL) ใช้สร้างโลโก้
 ```
 
 ### แผนที่
