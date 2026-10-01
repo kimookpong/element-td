@@ -100,6 +100,13 @@ npm run preview   # ทดลองเปิดไฟล์ที่ build แ�
 - 4 ฉาก: ลานวงกตทุ่งหญ้า, ซากปราการโบราณกลางทะเลทราย (พีระมิด สฟิงซ์ เสาโอเบลิสก์ โอเอซิสต้นปาล์ม), หุบเขาคดเคี้ยว, ห้วงมืดกลางคืน
 - ปุ่ม ✨/⚡ สลับคุณภาพกราฟิก (โหมดประหยัดปิดเงาและ bloom)
 
+## SEO และการแชร์
+
+- `index.html`: title/description ภาษาไทย+อังกฤษ, keywords, canonical, hreflang (`?lang=th` / `?lang=en`), Open Graph + Twitter Card (รูปแชร์ `public/og-image.jpg` 1200×630), ข้อมูลโครงสร้าง JSON-LD แบบ `VideoGame` และข้อความอธิบายเกมแบบซ่อน (`.srOnly`) ให้เครื่องมือค้นหาอ่านได้
+- `public/robots.txt`, `public/sitemap.xml` (รวม hreflang และรูปภาพ), `public/manifest.webmanifest` (ติดตั้งเป็นแอปบนมือถือได้) และไอคอน `icon-192.png` / `icon-512.png`
+- ลิงก์ `?lang=en` เปิดเกมเป็นภาษาอังกฤษทันที (ใช้แชร์ให้ผู้เล่นต่างชาติ)
+- หลัง deploy แนะนำให้ส่ง sitemap ที่ Google Search Console: `https://kimookpong.github.io/element-td/sitemap.xml`
+
 ## การควบคุม
 
 | การกระทำ | เมาส์ | มือถือ |

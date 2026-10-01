@@ -6,7 +6,9 @@ export const LANGS = ['th', 'en'];
 
 let lang = 'th';
 try {
-  const saved = localStorage.getItem('etd_lang');
+  // ?lang=th | ?lang=en ในลิงก์ (ใช้กับ hreflang) มาก่อนค่าที่บันทึกไว้
+  const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lang') : null;
+  const saved = LANGS.includes(q) ? q : localStorage.getItem('etd_lang');
   if (LANGS.includes(saved)) lang = saved;
   else if (typeof navigator !== 'undefined' && navigator.language && !navigator.language.toLowerCase().startsWith('th')) lang = 'en';
 } catch (e) { /* ignore */ }
@@ -35,7 +37,8 @@ export function t(key, vars) {
 
 const STR = {
   th: {
-    'doc.title': 'Element TD 3D — หกธาตุพิทักษ์',
+    'doc.title': 'Element TD 3D — เกม Tower Defense หกธาตุ เล่นฟรีบนเว็บ',
+    'doc.desc': 'Element TD 3D เกม Tower Defense สามมิติ เล่นฟรีบนเบราว์เซอร์ — เรียกพลัง 6 ธาตุ แสง มืด น้ำ ไฟ ลม ดิน สร้างเขาวงกต หลอมรวมป้อม 25 แบบ ปราบภูตธาตุและมังกร',
     'hud.gold': 'ทอง', 'hud.lives': 'พลังชีวิตแกนกลาง', 'hud.wave': 'เวฟ',
     'hud.essence': 'ผลึกธาตุ — ใช้เรียกภูตธาตุเพื่อปลดล็อกธาตุ', 'hud.saved': 'บันทึกอัตโนมัติ',
     'btn.speed': 'ความเร็ว (F)', 'btn.mute': 'เสียง (M)', 'btn.signs': 'ป้ายผู้สร้าง (G)', 'btn.camera': 'รีเซ็ตมุมกล้อง (C)',
@@ -109,7 +112,8 @@ const STR = {
     'sign.l1': 'เกมนี้คิดและพัฒนาโดย', 'sign.l3': 'สนใจติดต่อได้เลย!', 'sign.l4': '▶ คลิกที่ป้ายนี้',
   },
   en: {
-    'doc.title': 'Element TD 3D — Six Elements',
+    'doc.title': 'Element TD 3D — Free 3D Elemental Tower Defense Game',
+    'doc.desc': 'Element TD 3D is a free 3D tower defense browser game — summon six elements, build mazes and fuse 25 unique towers to defend the core from mythical creatures.',
     'hud.gold': 'Gold', 'hud.lives': 'Core lives', 'hud.wave': 'Wave',
     'hud.essence': 'Essence — summon an elemental guardian to unlock an element', 'hud.saved': 'Autosaved',
     'btn.speed': 'Speed (F)', 'btn.mute': 'Sound (M)', 'btn.signs': 'Creator sign (G)', 'btn.camera': 'Reset camera (C)',

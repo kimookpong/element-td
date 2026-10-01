@@ -830,6 +830,8 @@ function applyLang() {
   const L = getLang();
   document.documentElement.lang = L;
   document.title = T('doc.title');
+  const md = document.querySelector('meta[name="description"]');
+  if (md) md.content = T('doc.desc');
   for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = T(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = T(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('#langLbl, .langLbl')) el.textContent = L === 'th' ? 'EN' : 'TH';

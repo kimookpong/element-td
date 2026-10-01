@@ -3,16 +3,81 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Element TD 3D — หกธาตุพิทักษ์</title>
-  <link rel="icon" type="image/png" href="logo-256.png">
-  <link rel="apple-touch-icon" href="logo-256.png">
-  <meta property="og:image" content="logo.png">
-  <meta name="description" content="Element TD 3D — tower defense with six elements (light, dark, water, fire, wind, earth), mazing and 25 unique towers. เกม Tower Defense 3D หกธาตุ">
+  <title>Element TD 3D — เกม Tower Defense หกธาตุ เล่นฟรีบนเว็บ | 3D Elemental Tower Defense</title>
+  <meta name="description" content="Element TD 3D เกม Tower Defense สามมิติ เล่นฟรีบนเบราว์เซอร์ — เรียกพลัง 6 ธาตุ แสง มืด น้ำ ไฟ ลม ดิน สร้างเขาวงกต หลอมรวมป้อม 25 แบบ ปราบภูตธาตุและมังกร · Free 3D elemental tower defense: 6 elements, 25 towers, mazing, TH/EN.">
+  <meta name="keywords" content="Element TD, tower defense, เกม tower defense, เกมป้องกันฐาน, เกมเล่นฟรี, เกมบนเว็บ, browser game, 3D tower defense, elemental tower defense, maze tower defense, เกมสามมิติ, HTML5 game, WebGL game, Three.js">
+  <meta name="author" content="kimookpong">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#1c1a16">
+  <meta name="color-scheme" content="dark">
+  <link rel="canonical" href="https://kimookpong.github.io/element-td/">
+  <link rel="alternate" hreflang="th" href="https://kimookpong.github.io/element-td/?lang=th">
+  <link rel="alternate" hreflang="en" href="https://kimookpong.github.io/element-td/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://kimookpong.github.io/element-td/">
+  <link rel="icon" type="image/png" sizes="256x256" href="logo-256.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Element TD">
+  <!-- Open Graph / แชร์ลิงก์ -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Element TD 3D">
+  <meta property="og:title" content="Element TD 3D — เกม Tower Defense หกธาตุ เล่นฟรีบนเว็บ">
+  <meta property="og:description" content="สร้างเขาวงกต เรียกพลัง 6 ธาตุ หลอมรวมป้อม 25 แบบ ปราบภูตธาตุและมังกร — 3D elemental tower defense, free in your browser.">
+  <meta property="og:url" content="https://kimookpong.github.io/element-td/">
+  <meta property="og:image" content="https://kimookpong.github.io/element-td/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Element TD 3D — 3D elemental tower defense">
+  <meta property="og:locale" content="th_TH">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Element TD 3D — 3D Elemental Tower Defense">
+  <meta name="twitter:description" content="6 elements · 25 unique towers · mazing · free browser game (TH/EN)">
+  <meta name="twitter:image" content="https://kimookpong.github.io/element-td/og-image.jpg">
+  <!-- ข้อมูลโครงสร้างสำหรับเครื่องมือค้นหา -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Element TD 3D",
+    "alternateName": "หกธาตุพิทักษ์",
+    "url": "https://kimookpong.github.io/element-td/",
+    "image": "https://kimookpong.github.io/element-td/og-image.jpg",
+    "logo": "https://kimookpong.github.io/element-td/logo.png",
+    "description": "Free 3D elemental tower defense browser game: summon six elements (light, dark, water, fire, wind, earth), build mazes and fuse 25 unique towers to defend the core from mythical creatures.",
+    "genre": ["Tower defense", "Strategy"],
+    "gamePlatform": "Web browser",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "Any (WebGL browser)",
+    "inLanguage": ["th", "en"],
+    "playMode": "SinglePlayer",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "kimookpong", "url": "https://kimookpong.github.io/" },
+    "creator": { "@type": "Person", "name": "kimookpong", "url": "https://kimookpong.github.io/" }
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 </head>
 <body class="menuOpen">
+  <!-- คำอธิบายเกมสำหรับเครื่องมือค้นหาและโปรแกรมอ่านหน้าจอ -->
+  <header class="srOnly">
+    <h1>Element TD 3D — เกม Tower Defense หกธาตุ เล่นฟรีบนเว็บ (3D Elemental Tower Defense)</h1>
+    <p>Element TD 3D คือเกม Tower Defense สามมิติที่เล่นได้ทันทีบนเบราว์เซอร์ ทั้งคอมพิวเตอร์และมือถือ ใช้ผลึกธาตุเรียกภูตพิทักษ์ธาตุ เมื่อปราบได้จะปลดล็อกพลังธาตุแสง มืด น้ำ ไฟ ลม และดิน วางป้อมสร้างเขาวงกตบังคับเส้นทางมอนสเตอร์ และหลอมรวมธาตุเป็นป้อมสองธาตุ 15 แบบ และป้อมสามธาตุ 4 แบบ รวม 25 ป้อมที่มีวิธีโจมตีต่างกัน</p>
+    <p>Element TD 3D is a free 3D tower defense game that runs in your browser on desktop and mobile. Spend essence to summon elemental guardians, defeat them to unlock light, dark, water, fire, wind and earth, build mazes to control the monster path, and fuse elements into 15 dual and 4 triple towers — 25 towers with unique attacks such as map-wide sun beams, chain prisms, lava pools, fire tornadoes, freezing storms and meteor rain.</p>
+    <ul>
+      <li>6 ธาตุ / 6 elements · วงจรธาตุชนะทาง ×2 / elemental advantage cycle</li>
+      <li>25 ป้อม / 25 unique towers · 4 แผนที่ / 4 maps · 3 ระดับความยาก / 3 difficulties</li>
+      <li>มอนสเตอร์ในเทพนิยาย / mythical creatures: crystal wolf, unicorn, dragon turtle, hydra, kitsune, phoenix, griffin, ancient dragon</li>
+      <li>รองรับภาษาไทยและอังกฤษ / Thai &amp; English · บันทึกเกมอัตโนมัติ / autosave</li>
+    </ul>
+    <p>พัฒนาโดย / Made by <a href="https://kimookpong.github.io/">kimookpong</a></p>
+  </header>
+  <noscript><p style="padding:24px;color:#eee;font-family:sans-serif">Element TD 3D ต้องเปิด JavaScript และ WebGL เพื่อเล่น — Please enable JavaScript and WebGL to play.</p></noscript>
   <div id="app">
     <div id="stage"></div>
     <div id="floaters"></div>
@@ -72,7 +137,7 @@
   <div id="menu" class="overlay show">
     <div class="card frame menuCard">
       <button id="btnLangMenu" class="langBtn menuLang" data-i18n-title="btn.lang" title="Language"><span class="langLbl">TH</span></button>
-      <img class="logoImg" src="logo-640.png" alt="Element TD" draggable="false">
+      <img class="logoImg" src="logo-640.png" alt="Element TD 3D logo" width="330" height="330" draggable="false">
       <!-- หน้าแรก: 3 ปุ่ม -->
       <div id="menuMain" class="menuMain">
         <button id="btnResume" class="primary big" hidden><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.resume">เล่นต่อ</span></button>
