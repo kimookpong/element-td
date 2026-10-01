@@ -273,3 +273,54 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   #nextWave { max-width: 80%; font-size: .72rem; }
   #toast { font-size: 1.1rem; }
 }
+
+/* ============================================================
+ *  เลย์เอาต์เต็มจอ: ฉาก 3D เต็มหน้าต่าง, HUD และแผงลอยทับด้านบน
+ * ============================================================ */
+html, body { height: 100%; overflow: hidden; }
+#app { position: fixed; inset: 0; max-width: none; margin: 0; padding: 0; }
+#main { position: absolute; inset: 0; display: block; }
+#stageWrap { position: absolute; inset: 0; }
+#stage { width: 100%; height: 100%; aspect-ratio: auto; border: none; border-radius: 0; box-shadow: none; }
+#floaters, #pauseOverlay { border-radius: 0; }
+
+#hud {
+  position: absolute; top: 8px; left: 8px; right: 8px; z-index: 20; margin: 0;
+  background: linear-gradient(180deg, rgba(41, 36, 28, .9), rgba(28, 26, 22, .86));
+  backdrop-filter: blur(6px);
+}
+#side {
+  position: absolute; z-index: 20; top: var(--hudBottom, 76px); right: 8px; bottom: 8px; width: 310px;
+  overflow-y: auto; overflow-x: hidden; padding: 2px 2px 2px 0;
+  transition: transform .25s ease, opacity .25s ease;
+  scrollbar-width: thin; scrollbar-color: var(--goldDark) transparent;
+}
+#side .panel { background: linear-gradient(180deg, rgba(41, 36, 28, .9), rgba(28, 26, 22, .88)); backdrop-filter: blur(6px); }
+body.panelHidden #side { transform: translateX(calc(100% + 16px)); opacity: 0; pointer-events: none; }
+body.panelHidden #btnPanel { box-shadow: 0 0 0 2px var(--gold2); }
+#nextWave { top: calc(var(--hudBottom, 76px) + 2px); left: 10px; }
+#toast { top: 32%; }
+
+@media (max-width: 980px) {
+  #main { display: block; }
+  #side {
+    top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 40vh;
+    display: grid; grid-template-columns: 1fr 1fr; align-content: start;
+  }
+  body.panelHidden #side { transform: translateY(calc(100% + 16px)); }
+  #stage { aspect-ratio: auto; }
+}
+@media (max-width: 600px) {
+  #side { grid-template-columns: 1fr; height: 38vh; gap: 6px; }
+  .stats { gap: 5px; }
+  .stat { font-size: .85rem; padding: 2px 8px; }
+  .stat b { font-size: .95rem; }
+  #hud .controls { flex-wrap: nowrap; gap: 4px; }
+  #hud #btnWave { flex: 2 1 auto; font-size: .78rem; padding: 6px 4px; white-space: nowrap; }
+  #hud .controls button:not(#btnWave) { flex: 1 1 0; min-width: 0; padding: 6px 2px; font-size: .85rem; }
+  #btnCamera, #btnQuality { display: none; }
+  #nextWave { left: 6px; }
+  #hud { padding: 6px 8px; gap: 6px; top: 4px; left: 4px; right: 4px; }
+  #side .panel { padding: 8px 10px; }
+  #side .panel .small { display: none; }
+}

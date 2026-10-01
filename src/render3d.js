@@ -275,19 +275,36 @@ export class Renderer3D {
     this.resize();
   }
 
-  resize() {
+  // พื้นที่ที่ถูก UI บังอยู่ (px) — กล้องจะจัดกระดานให้อยู่กลางส่วนที่มองเห็น
+  setInsets(ins) {
+    const prev = this.insets || {};
+    this.insets = { top: 0, right: 0, bottom: 0, left: 0, ...ins };
+    if (['top', 'right', 'bottom', 'left'].every((k) => Math.round(prev[k] || 0) === Math.round(this.insets[k]))) return;
+    this.resize();
+  }
+
+  applyViewOffset() {
+    const w = this.width, h = this.height;
+    const ins = this.insets || { top: 0, right: 0, bottom: 0, left: 0 };
+    const sx = (ins.left - ins.right) / 2, sy = (ins.top - ins.bottom) / 2;
+    const fullW = w + 2 * Math.abs(sx), fullH = h + 2 * Math.abs(sy);
+    this.camera.aspect = fullW / fullH;
+    this.camera.setViewOffset(fullW, fullH, Math.abs(sx) - sx, Math.abs(sy) - sy, w, h);
+    this.camera.updateProjectionMatrix();
+    const ph = fullH * this.renderer.getPixelRatio();
+    this.particles.material.uniforms.scale.value = ph / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
+  }
+
+  resize(forceCamera = false) {
     const w = Math.max(1, this.container.clientWidth);
     const h = Math.max(1, this.container.clientHeight);
     this.renderer.setSize(w, h, false);
     this.composer.setSize(w, h);
     this.composer.setPixelRatio(this.renderer.getPixelRatio());
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    const ph = h * this.renderer.getPixelRatio();
-    this.particles.material.uniforms.scale.value = ph / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
     this.width = w;
     this.height = h;
-    if (!this.userMovedCamera) this.resetCamera();
+    this.applyViewOffset();
+    if (!this.userMovedCamera || forceCamera === true) this.resetCamera();
   }
 
   resetCamera() {
@@ -295,15 +312,20 @@ export class Renderer3D {
     const target = new THREE.Vector3(0, -0.2, 0.3);
     const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => new THREE.Vector3(sx * (COLS / 2 + 0.2), 0, sz * (ROWS / 2 + 0.2)));
     const dir = new THREE.Vector3(0, Math.cos(polar), Math.sin(polar));
-    let lo = 4, hi = 60;
-    for (let i = 0; i < 24; i++) {
+    // ขอบเขตส่วนที่มองเห็นในพิกัด NDC (หักพื้นที่ที่ UI บัง)
+    const ins = this.insets || { top: 0, right: 0, bottom: 0, left: 0 };
+    const w = this.width || 1, h = this.height || 1;
+    const xmin = (2 * ins.left) / w - 1 + 0.02, xmax = 1 - (2 * ins.right) / w - 0.02;
+    const ymin = (2 * ins.bottom) / h - 1 + 0.03, ymax = 1 - (2 * ins.top) / h - 0.03;
+    let lo = 4, hi = 80;
+    for (let i = 0; i < 26; i++) {
       const d = (lo + hi) / 2;
       this.camera.position.copy(target).addScaledVector(dir, d);
       this.camera.lookAt(target);
       this.camera.updateMatrixWorld();
       const fits = corners.every((c) => {
         const p = c.clone().project(this.camera);
-        return Math.abs(p.x) <= 0.98 && Math.abs(p.y) <= 0.96;
+        return p.x >= xmin && p.x <= xmax && p.y >= ymin && p.y <= ymax;
       });
       if (fits) hi = d; else lo = d;
     }
@@ -748,6 +770,12 @@ export class Renderer3D {
     const game = view.game;
     this.controls.autoRotate = !!view.menu;
     this.controls.update();
+    // ปรับระยะหมอกตามระยะกล้อง เพื่อไม่ให้ฉากจางเมื่อซูมออกไกล
+    if (this.scene.fog) {
+      const d = this.camera.position.distanceTo(this.controls.target);
+      this.scene.fog.near = d + 6;
+      this.scene.fog.far = d + 55;
+    }
     if (this.world) this.world.update(this.time);
 
     if (game) {

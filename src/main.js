@@ -481,6 +481,8 @@ document.addEventListener('keydown', (ev) => {
     case 'm': toggleMute(); break;
     case 'h': openHelp(); break;
     case 'c': renderer.resetCamera(); break;
+    case 'b': togglePanel(); break;
+    case 'z': toggleFullscreen(); break;
     default: break;
   }
 });
@@ -513,6 +515,48 @@ ui.quality.addEventListener('click', () => {
 });
 updateQualityLabel();
 $('btnCamera').addEventListener('click', () => renderer.resetCamera());
+
+/* ---------------- เลย์เอาต์เต็มจอ ---------------- */
+// วัดพื้นที่ที่ HUD/แผงบังอยู่ เพื่อให้กล้องจัดกระดานไว้กลางส่วนที่มองเห็น
+function updateLayout() {
+  const hud = $('hud');
+  const side = $('side');
+  const hudBottom = hud.offsetTop + hud.offsetHeight;
+  document.documentElement.style.setProperty('--hudBottom', `${hudBottom + 8}px`);
+  const W = window.innerWidth, H = window.innerHeight;
+  const ins = { top: hudBottom + 6, right: 0, bottom: 0, left: 0 };
+  if (!document.body.classList.contains('panelHidden')) {
+    if (matchMedia('(max-width: 980px)').matches) ins.bottom = H - side.offsetTop + 6;
+    else ins.right = W - side.offsetLeft + 6;
+  }
+  renderer.setInsets(ins);
+}
+
+function togglePanel() {
+  document.body.classList.toggle('panelHidden');
+  try { localStorage.setItem('etd_panel', document.body.classList.contains('panelHidden') ? '0' : '1'); } catch (e) { /* ignore */ }
+  updateLayout();
+}
+
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || (() => Promise.reject())).call(el)?.catch?.(() => showToast('เบราว์เซอร์นี้ไม่รองรับโหมดเต็มจอ', 1200));
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
+}
+
+try { if (localStorage.getItem('etd_panel') === '0') document.body.classList.add('panelHidden'); } catch (e) { /* ignore */ }
+$('btnPanel').addEventListener('click', togglePanel);
+$('btnFull').addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', () => {
+  $('btnFull').textContent = document.fullscreenElement ? '🗗' : '⛶';
+  setTimeout(updateLayout, 50);
+});
+window.addEventListener('resize', updateLayout);
+new ResizeObserver(updateLayout).observe($('hud'));
+updateLayout();
 $('btnHelp').addEventListener('click', openHelp);
 
 /* ---------------- หน้าจอซ้อน ---------------- */
