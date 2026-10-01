@@ -445,7 +445,7 @@ export class Renderer3D {
       case 'death': {
         const e = ev.creep;
         const y = this.creepY(e);
-        const boss = e.ability === 'boss';
+        const boss = e.boss;
         P.burst(wx(e.x), y + 0.3, wz(e.y), ELEMENTS[e.element].color, boss ? 140 : 26, boss ? 5 : 2.8, boss ? 0.24 : 0.16, -5, FLOOR);
         P.burst(wx(e.x), y + 0.3, wz(e.y), '#ffffff', boss ? 40 : 6, 2, 0.12, -3, FLOOR);
         if (boss) { this.addRing(wx(e.x), FLOOR + 0.06, wz(e.y), 3, ELEMENTS[e.element].color, 0.8); this.shake = 0.4; }
@@ -487,6 +487,13 @@ export class Renderer3D {
       case 'shot': {
         const v = this.towerViews.get(ev.tower.id);
         if (v) v.recoil = 1;
+        break;
+      }
+      case 'loop': {
+        // มอนสเตอร์ที่หลุดวนกลับมาเกิดที่ประตูทางเข้า
+        const e = ev.creep;
+        P.burst(wx(e.x), this.creepY(e) + 0.4, wz(e.y), '#7ac0ff', 24, 2.2, 0.16, -2);
+        this.addRing(wx(e.x), this.creepY(e) + 0.05, wz(e.y), 0.9, '#7ac0ff', 0.5);
         break;
       }
       case 'leak':
@@ -738,7 +745,7 @@ export class Renderer3D {
       if (e.ability === 'regen' && Math.random() < dt * 6) {
         this.particles.emit(g.position.x + rand(-0.2, 0.2), baseY + 0.1, g.position.z + rand(-0.2, 0.2), 0, rand(0.5, 1), 0, '#7dff7a', 0.8, 0.12, 0);
       }
-      const showBar = e.hp < e.maxHp || e.ability === 'boss';
+      const showBar = e.hp < e.maxHp || e.boss;
       v.bar.visible = showBar;
       if (showBar) {
         v.bar.position.set(g.position.x, baseY + v.height + 0.22, g.position.z);
@@ -769,7 +776,7 @@ export class Renderer3D {
       const sm = (c, o = 1) => new THREE.SpriteMaterial({ color: c, transparent: o < 1, opacity: o, depthTest: false });
       this.barMats = { bg: sm(0x000000, 0.7), good: sm(0x57e08a), mid: sm(0xffcf4a), low: sm(0xff5a6a) };
     }
-    const w = e.ability === 'boss' ? 1.2 : Math.max(0.45, (e.size / TILE) * 1.9);
+    const w = e.boss ? 1.2 : Math.max(0.45, (e.size / TILE) * 1.9);
     const g = new THREE.Group();
     const bg = new THREE.Sprite(this.barMats.bg);
     bg.center.set(0, 0.5);

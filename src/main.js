@@ -242,11 +242,13 @@ function renderWaveChip(force) {
   if (!g) return;
   let label;
   if (g.over) label = 'จบเกม';
-  else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? `เวฟแรกใน ${Math.ceil(g.nextWaveIn)} วิ` : `เวฟ ${g.wave + 1} ใน ${Math.ceil(g.nextWaveIn)} วิ`;
-  else if (g.wave >= TOTAL_WAVES && !g.endless) label = 'เวฟสุดท้าย!';
-  else label = `เวฟ ${g.wave} กำลังบุก`;
+  else if (g.waveActive) {
+    const fromWave = g.creeps.some((e) => e.alive && e.ability !== 'elemental') || g.spawnQueue.length;
+    label = fromWave ? `เวฟ ${g.wave} · เหลือ ${g.creeps.filter((e) => e.alive && e.ability !== 'elemental').length + g.spawnQueue.length} ตัว` : 'กำจัดภูตธาตุก่อน!';
+  } else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? `เวฟแรกใน ${Math.ceil(g.nextWaveIn)} วิ` : `เวฟ ${g.wave + 1} ใน ${Math.ceil(g.nextWaveIn)} วิ`;
+  else label = 'เวฟสุดท้าย!';
   setText(ui.timer, 'timer', label);
-  ui.timer.parentElement.classList.toggle('soon', g.nextWaveIn != null && g.nextWaveIn < 5);
+  ui.timer.parentElement.classList.toggle('soon', !g.waveActive && g.nextWaveIn != null && g.nextWaveIn < 5);
   const w = g.nextWaveData;
   const key = w ? `${w.n}:${w.element}:${w.ability}` : 'none';
   if (!force && hudCache.waveKey === key) return;
@@ -276,12 +278,14 @@ function renderElements() {
   for (const el of ELEMENT_ORDER) {
     const e = ELEMENTS[el];
     const lv = g.elemLevel[el];
-    const can = g.elemPoints > 0 && lv < MAX_ELEMENT_LEVEL;
+    const pend = g.pendingElem[el];
+    const can = g.elemPoints > 0 && lv < MAX_ELEMENT_LEVEL && !pend;
     const b = document.createElement('button');
-    b.className = `elemOrb lv${lv}${can ? ' can' : ''}`;
+    b.className = `elemOrb lv${lv}${can ? ' can' : ''}${pend ? ' pending' : ''}`;
     b.style.setProperty('--c', e.color);
-    b.title = `ธาตุ${e.th} (${e.name}) เลเวล ${lv}/${MAX_ELEMENT_LEVEL}\n${e.desc}\nชนะทาง: ${ELEMENTS[BEATS[el]].th}${can ? '\nคลิกเพื่อใช้ผลึกธาตุ 1 ชิ้น' : ''}`;
-    b.innerHTML = `${ico(e.icon)}<span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</span>`;
+    b.title = `ธาตุ${e.th} (${e.name}) เลเวล ${lv}/${MAX_ELEMENT_LEVEL}\n${e.desc}\nชนะทาง: ${ELEMENTS[BEATS[el]].th}`
+      + (pend ? `\nภูตธาตุ${e.th} Lv.${pend} อยู่ในสนาม — กำจัดเพื่อปลดล็อก` : can ? `\nคลิกใช้ผลึกธาตุ 1 ชิ้น เพื่อเรียกภูตธาตุ${e.th} Lv.${lv + 1} — กำจัดได้จึงปลดล็อก` : '');
+    b.innerHTML = `${ico(e.icon)}<span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= lv ? 'on' : i === pend ? 'pend' : ''}"></i>`).join('')}</span>`;
     b.disabled = !can;
     b.addEventListener('click', () => { Sound.unlock(); g.buyElement(el); });
     ui.elems.appendChild(b);
@@ -742,9 +746,10 @@ function renderMenu() {
 
 function renderHelp() {
   const items = [
-    ['play', 'กดเริ่มเกมแล้ว <b>เวฟจะมาเองตามเวลา</b> (ดูนาฬิกาด้านบน) — เวฟแรกให้เวลาเตรียมตัว 30 วิ ใช้ปุ่มหยุดชั่วคราวได้ทุกเมื่อ'],
+    ['play', 'กดเริ่มเกมแล้วเวฟแรกมาใน 30 วิ — <b>เวฟถัดไปจะมาหลังเคลียร์สนามหมดแล้ว 10 วิ</b> เท่านั้น ใช้ปุ่มหยุดชั่วคราวได้ทุกเมื่อ'],
+    ['heart', 'มอนสเตอร์ที่หลุดถึงประตูแกนกลางจะทำให้เสียชีวิต แล้ว <b>วนกลับไปเริ่มที่ประตูทางเข้าใหม่</b> จนกว่าจะถูกกำจัด'],
     ['hammer', '<b>การสร้างและอัปเกรดป้อมใช้เวลา</b> ระหว่างก่อสร้างป้อมจะ <b>ยิงไม่ได้</b> — วางแผนล่วงหน้าก่อนมอนสเตอร์มาถึง'],
-    ['essence', '<b>ผลึกธาตุ</b> — เริ่มเกมได้ 1 ชิ้น และได้เพิ่มทุก 5 เวฟ ใช้ <b>ปลดล็อกธาตุ</b> หรือ <b>เพิ่มเลเวลธาตุ</b> (สูงสุด 3) ที่แถบล่าง'],
+    ['essence', '<b>ผลึกธาตุ</b> — เริ่มเกมได้ 1 ชิ้น และได้เพิ่มทุก 5 เวฟ กดที่ธาตุเพื่อ <b>เรียกภูตพิทักษ์ธาตุ</b> ออกมา เมื่อกำจัดได้จึง <b>ปลดล็อก/เพิ่มเลเวลธาตุ</b> นั้น (สูงสุด 3) — ภูตยิ่งเลเวลสูงยิ่งอึด'],
     ['t_arrow', '<b>ป้อมพื้นฐาน</b> ธนู/ปืนใหญ่ สร้างได้ทันที · <b>ป้อมธาตุ</b> สร้างได้เมื่อปลดล็อกธาตุนั้น · ระดับป้อมต้องไม่เกินเลเวลธาตุ'],
     ['sparkle', '<b>เพิ่มธาตุ</b> ให้ป้อมเพื่อกลายเป็น <b>ป้อมสองธาตุ (15 แบบ)</b> และ <b>ป้อมสามธาตุ (4 แบบ)</b> — รวมทั้งหมด 25 ป้อม แต่ละแบบมีวิธีโจมตีและจุดอ่อนต่างกัน'],
     ['map_maze', '<b>สร้างเขาวงกต</b> — ในลานหิน มอนสเตอร์จะเดินอ้อมป้อม (ห้ามปิดทางทั้งหมด) และต้องผ่านจุดตรวจตามลำดับ'],
@@ -752,7 +757,7 @@ function renderHelp() {
     ['sign', 'ป้ายผู้สร้างเกมที่มุมแผนที่ คลิกเพื่อไปหน้าเว็บผู้พัฒนา — ซ่อน/แสดงได้ด้วยปุ่มป้ายด้านบน (G)'],
   ];
   $('helpList').innerHTML = items.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('');
-  $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss'].map((k) => {
+  $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss', 'elemental'].map((k) => {
     const a = ABILITIES[k];
     return `<div>${ico(a.icon)}<span><b>${a.creature}</b><br>${a.th} — ${a.desc}</span></div>`;
   }).join('');

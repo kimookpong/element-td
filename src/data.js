@@ -106,6 +106,7 @@ export const ABILITIES = {
   undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' },
   flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
   boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
+  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 2, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' },
   child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
 };
 
@@ -214,7 +215,7 @@ export const INTEREST_RATE = 0.03;
 
 /* เวลา (วินาที) */
 export const FIRST_WAVE_DELAY = 30;   // ช่วงเตรียมตัวก่อนเวฟแรก
-export const WAVE_GAP = 16;           // หลังมอนสเตอร์ตัวสุดท้ายของเวฟออกมา
-export const CLEAR_GAP = 6;           // ถ้าเคลียร์สนามหมดแล้ว เวฟถัดไปมาเร็วขึ้น
+export const CLEAR_GAP = 10;          // เวฟถัดไปจะนับถอยหลังเมื่อเคลียร์สนามหมดแล้วเท่านั้น
+export const ELEMENTAL_HP = [5, 10, 16]; // HP ภูตธาตุ (×HP มอนสเตอร์เวฟถัดไป) ตามเลเวลที่จะปลดล็อก
 export const BUILD_TIME = { basic: 2.5, element: 3.5 };
 export const upgradeTime = (type, tier, n) => (type === 'tier' ? 2 + tier * 1.5 : 4 + n * 2);

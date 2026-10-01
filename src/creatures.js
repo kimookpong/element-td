@@ -540,7 +540,7 @@ const DEFS = {
 /* ability → แบบจำลอง */
 const MODEL_OF = {
   normal: 'wolf', fast: 'wolf', armored: 'turtle', regen: 'hydra', split: 'kitsune', child: 'kitsune',
-  undead: 'phoenix', flying: 'griffin', boss: 'dragon',
+  undead: 'phoenix', flying: 'griffin', boss: 'dragon', elemental: 'dragon',
 };
 MODEL_OF.fast = 'unicorn';
 
@@ -614,7 +614,7 @@ export function buildCreatureModel(e) {
   group.add(inst);
   const def = DEFS[model];
   let anim = (dt, t, mv) => def.anim(B, st, dt, t, mv, info, e.ability === 'fast');
-  if (e.ability === 'boss') {
+  if (e.boss) {
     const aura = new THREE.Mesh(new THREE.TorusGeometry(1, 0.035, 6, 48), shared.glow);
     aura.rotation.x = PI / 2;
     aura.position.y = 0.06;

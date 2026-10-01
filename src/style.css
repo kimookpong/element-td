@@ -162,6 +162,11 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .elemOrb .pips i { width: 7px; height: 7px; border-radius: 50%; background: #0008; border: 1px solid #7a6a4a; }
 .elemOrb .pips i.on { background: var(--c); border-color: #fff8; box-shadow: 0 0 5px var(--c); }
 .elemOrb.can { border-color: #b070ff; animation: pulse 1.4s infinite; }
+.elemOrb.pending { border-color: var(--c); box-shadow: 0 0 10px var(--c); }
+.elemOrb.pending .ico { animation: pendSpin 2.4s linear infinite; filter: none; }
+.elemOrb .pips i.pend { background: var(--c); animation: pendBlink .7s infinite alternate; }
+@keyframes pendSpin { to { transform: rotate(360deg); } }
+@keyframes pendBlink { from { opacity: .25; } to { opacity: 1; } }
 .elemOrb:disabled { opacity: 1; filter: none; cursor: default; }
 
 .buildBtn { position: relative; flex-direction: column; gap: 0; padding: 3px 4px 2px; width: 56px; height: 58px; border-width: 1px; border-radius: 10px; }

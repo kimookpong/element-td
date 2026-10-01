@@ -8,7 +8,7 @@ import {
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES,
   ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
-  FIRST_WAVE_DELAY, WAVE_GAP, CLEAR_GAP, BUILD_TIME, upgradeTime,
+  FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
 } from './data.js';
 import { towerDef } from './towers.js';
 
@@ -167,6 +167,7 @@ export class Game {
     this.recomputeFields();
     this.flyPath = this.computeFlyPath();
     this.nextWaveData = this.makeWave(1);
+    this.pendingElem = {};
   }
 
   // มีมอนสเตอร์ในสนามหรือรอออกมาอยู่หรือไม่
@@ -317,20 +318,34 @@ export class Game {
   buyElement(el) {
     if (this.elemPoints <= 0) { this.sound('error'); this.toast('ไม่มีผลึกธาตุเหลือ', 900); return false; }
     if (this.elemLevel[el] >= MAX_ELEMENT_LEVEL) { this.sound('error'); return false; }
+    if (this.pendingElem[el]) { this.sound('error'); this.toast(`ภูตธาตุ${ELEMENTS[el].th}ยังอยู่ในสนาม`, 1100); return false; }
+    // ใช้ผลึก = เรียกภูตพิทักษ์ธาตุ ต้องกำจัดให้ได้ก่อนจึงปลดล็อก/อัปเลเวล
     this.elemPoints -= 1;
-    this.elemLevel[el] += 1;
-    const lv = this.elemLevel[el];
-    this.toast(`:${ELEMENTS[el].icon}: ธาตุ${ELEMENTS[el].th} เลเวล ${lv}!`, 1400);
+    const lv = this.elemLevel[el] + 1;
+    this.pendingElem[el] = lv;
+    const hp = this.waveHp(this.wave + 1) * ELEMENTAL_HP[lv - 1];
+    this.spawnCreep({ ability: 'elemental', element: el, wave: -1, unlock: lv }, hp);
+    this.toast(`:${ELEMENTS[el].icon}: ภูตธาตุ${ELEMENTS[el].th} Lv.${lv} ปรากฏ! กำจัดเพื่อปลดล็อก`, 2000);
+    this.sound('boss');
+    this.emit('changed');
+    return true;
+  }
+
+  // ภูตธาตุถูกกำจัด → ได้เลเวลธาตุ
+  elementalDefeated(e) {
+    const el = e.element, lv = e.unlock;
+    delete this.pendingElem[el];
+    this.elemLevel[el] = Math.max(this.elemLevel[el], lv);
+    this.toast(`:${ELEMENTS[el].icon}: ปราบภูตธาตุ${ELEMENTS[el].th}! ธาตุ${ELEMENTS[el].th} เลเวล ${lv}`, 1800);
     this.emit('elementUp', { el, lv });
     this.sound('fuse');
     this.emit('changed');
-    return true;
   }
 
   /* ---------- ป้อม ---------- */
   canBuildType(type) {
     if (BASIC[type]) return { ok: true };
-    if (this.elemLevel[type] < 1) return { ok: false, reason: `ต้องปลดล็อกธาตุ${ELEMENTS[type].th}ก่อน` };
+    if (this.elemLevel[type] < 1) return { ok: false, reason: this.pendingElem[type] ? `ต้องกำจัดภูตธาตุ${ELEMENTS[type].th}ก่อน` : `ใช้ผลึกธาตุเรียกภูตธาตุ${ELEMENTS[type].th}แล้วกำจัดเพื่อปลดล็อก` };
     return { ok: true };
   }
 
@@ -451,6 +466,8 @@ export class Game {
   }
 
   /* ---------- เวฟ ---------- */
+  waveHp(n) { return (32 * Math.pow(1.17, n - 1) + n * 6) * this.diff.hp; }
+
   makeWave(n) {
     let ability;
     if (n <= 3) ability = n === 2 ? 'fast' : 'normal';
@@ -459,7 +476,7 @@ export class Game {
     let element;
     do { element = pick(ELEMENT_ORDER); } while (element === this.lastElement);
     this.lastElement = element;
-    const hpScale = (32 * Math.pow(1.17, n - 1) + n * 6) * this.diff.hp;
+    const hpScale = this.waveHp(n);
     const entries = [];
     let t = 0;
     const add = (ab, gap) => { entries.push({ ability: ab, element, t }); t += gap; };
@@ -531,7 +548,7 @@ export class Game {
 
   continueEndless() {
     this.endless = true;
-    if (this.nextWaveIn == null || this.nextWaveIn <= 0) this.nextWaveIn = WAVE_GAP;
+    if (this.nextWaveIn == null || this.nextWaveIn <= 0) this.nextWaveIn = CLEAR_GAP;
     this.emit('changed');
   }
 
@@ -543,8 +560,9 @@ export class Game {
     const sc = tileCenter(m.spawn);
     const e = {
       id: this.nextId++, ability: entry.ability, element: entry.element, model: A.model,
+      boss: entry.ability === 'boss' || entry.ability === 'elemental', unlock: entry.unlock || 0,
       hp, maxHp: hp, speed: A.speed * rand(0.95, 1.05), size: A.size,
-      reward: Math.max(1, Math.round((3 + this.wave * 0.5) * A.reward)),
+      reward: entry.ability === 'elemental' ? 10 + this.wave * 2 : Math.max(1, Math.round((3 + this.wave * 0.5) * A.reward)),
       lives: A.lives,
       x: sc.x + m.spawnOut.x * TILE * 0.45, y: sc.y + m.spawnOut.y * TILE * 0.45,
       angle: Math.atan2(-m.spawnOut.y, -m.spawnOut.x),
@@ -572,11 +590,11 @@ export class Game {
    */
   isImmune(e) { return e.ability === 'armored' && !(e.shredT > 0); }
   silenced(e) { return e.silenceT > 0 || e.stunT > 0 || e.freezeT > 0; }
-  ccMul(e) { return e.ability === 'boss' ? 0.3 : 1; }
+  ccMul(e) { return e.boss ? 0.3 : 1; }
 
   setSlow(e, factor, dur) {
     if (this.isImmune(e)) return;
-    const f = e.ability === 'boss' ? Math.sqrt(factor) : factor;
+    const f = e.boss ? Math.sqrt(factor) : factor;
     e.slowF = e.slowT > 0 ? Math.min(e.slowF, f) : f;
     e.slowT = Math.max(e.slowT, dur);
   }
@@ -627,11 +645,11 @@ export class Game {
     if (s.expose) { e.exposeAmp = Math.max(e.exposeT > 0 ? e.exposeAmp : 1, s.expose.amp); e.exposeT = s.expose.dur; }
     if (s.shred) { e.shredAmp = Math.max(e.shredT > 0 ? e.shredAmp : 1, s.shred.amp); e.shredT = s.shred.dur; }
     if (s.chill && e.freezeT <= 0 && e.freezeImm <= 0 && !immune) {
-      e.chill += s.chill.add * mul * (e.ability === 'boss' ? 0.5 : 1);
+      e.chill += s.chill.add * mul * (e.boss ? 0.5 : 1);
       e.chillT = 1.5;
       if (e.chill >= 100) {
         e.chill = 0;
-        e.freezeT = s.chill.freeze * (e.ability === 'boss' ? 0.35 : 1);
+        e.freezeT = s.chill.freeze * (e.boss ? 0.35 : 1);
         e.freezeImm = e.freezeT + s.chill.imm;
         this.emit('freeze', { creep: e });
       }
@@ -641,7 +659,7 @@ export class Game {
       e.markT = s.marks.dur;
       if (e.marks >= s.marks.need) {
         e.marks = 0;
-        const dmg = Math.min((e.maxHp - e.hp) * s.marks.pct * (e.ability === 'boss' ? 0.5 : 1), s.marks.cap);
+        const dmg = Math.min((e.maxHp - e.hp) * s.marks.pct * (e.boss ? 0.5 : 1), s.marks.cap);
         this.emit('eclipse', { x: e.x, y: e.y, fly: e.flying });
         if (dmg > 0) this.dealDamage(e, dmg, t, { direct: true, big: true });
         if (!e.alive) return;
@@ -718,6 +736,7 @@ export class Game {
       }
     }
     if (e.ability === 'boss') this.toast('บอสถูกกำจัด!', 1400);
+    if (e.ability === 'elemental') this.elementalDefeated(e);
     this.creepRemoved(e);
   }
 
@@ -760,7 +779,7 @@ export class Game {
     }
     if (e.corrodeT > 0) {
       e.corrodeT -= dt;
-      const d = Math.min(e.hp * e.corrodePct * (e.ability === 'boss' ? 0.3 : 1), e.corrodeCap);
+      const d = Math.min(e.hp * e.corrodePct * (e.boss ? 0.3 : 1), e.corrodeCap);
       this.dealDamage(e, d * dt, e.corrodeSrc, { quiet: true });
       if (!e.alive) return;
     }
@@ -809,13 +828,18 @@ export class Game {
       }
     }
     if (arrive) {
-      e.alive = false;
+      // หลุดถึงประตูแกนกลาง: เสียชีวิต แล้ววนกลับไปเริ่มที่ประตูทางเข้าใหม่
       this.lives -= e.lives;
       this.sound('leak');
       this.emit('leak', { lives: e.lives, creep: e });
       this.floater(e.x, e.y, `-${e.lives} :heart:`, '#ff5a6a', 18);
       if (this.lives <= 0) { this.lives = 0; this.gameOver(); }
-      this.creepRemoved(e);
+      const sc = tileCenter(m.spawn);
+      e.x = sc.x + m.spawnOut.x * TILE * 0.45; e.y = sc.y + m.spawnOut.y * TILE * 0.45;
+      e.angle = Math.atan2(-m.spawnOut.y, -m.spawnOut.x);
+      e.stage = 0; e.wp = 0; e.progress = 0;
+      e.laps = (e.laps || 0) + 1;
+      this.emit('loop', { creep: e });
       this.emit('changed');
       return;
     }
@@ -905,7 +929,7 @@ export class Game {
       if (t.gustN >= s.gust.every) {
         t.gustN = 0;
         for (const e of this.creeps) {
-          if (!e.alive || e.ability === 'boss' || this.isImmune(e)) continue;
+          if (!e.alive || e.boss || this.isImmune(e)) continue;
           if (dist2(t.x, t.y, e.x, e.y) <= (s.range + e.size * 0.5) ** 2) this.pushBack(e, s.gust.dist);
         }
         this.emit('gust', { x: t.x, y: t.y, r: s.range });
@@ -1081,18 +1105,18 @@ export class Game {
       let d = z.dps;
       if (z.kind === 'abyss') {
         e.poolT = Math.min(10, (e.poolT || 0) + dt * 2);
-        const pct = Math.min(z.capPct, z.pct + z.grow * e.poolT) * (e.ability === 'boss' ? 0.25 : 1);
+        const pct = Math.min(z.capPct, z.pct + z.grow * e.poolT) * (e.boss ? 0.25 : 1);
         d += Math.min(e.hp * pct, z.cap);
       } else if (z.kind === 'lava') {
-        if (!immune) e.zoneF = Math.min(e.zoneF, e.ability === 'boss' ? Math.max(z.sticky, 0.7) : z.sticky);
+        if (!immune) e.zoneF = Math.min(e.zoneF, e.boss ? Math.max(z.sticky, 0.7) : z.sticky);
         if (z.burn) this.setBurn(e, z.burn, t);
       } else if (z.kind === 'mud') {
         e.mudT = Math.min(4, (e.mudT || 0) + dt * 2);
         const f = Math.max(z.minF, 1 - z.sink * e.mudT);
-        e.zoneF = Math.min(e.zoneF, e.ability === 'boss' ? Math.max(f, 0.7) : immune ? Math.sqrt(f) : f);
+        e.zoneF = Math.min(e.zoneF, e.boss ? Math.max(f, 0.7) : immune ? Math.sqrt(f) : f);
       } else if (z.kind === 'void') {
         // ถูกดึงต่อเนื่อง 0.8 วิ แล้วต้านแรงดึง 2 วิ
-        const k = e.ability === 'boss' ? 0.15 : immune ? 0.25 : 1;
+        const k = e.boss ? 0.15 : immune ? 0.25 : 1;
         const dx = z.x - e.x, dy = z.y - e.y, dd = Math.hypot(dx, dy);
         if (e.pullImm <= 0) {
           e.pullT = (e.pullT || 0) + dt;
@@ -1200,12 +1224,13 @@ export class Game {
     }
     // นับถอยหลังเวฟถัดไป
     if (!this.over) {
-      const lastInfo = this.waveInfo[this.wave];
-      if (this.nextWaveIn == null && (!lastInfo || lastInfo.pending <= 0)) this.nextWaveIn = WAVE_GAP;
-      if (this.nextWaveIn != null && (this.wave < TOTAL_WAVES || this.endless)) {
-        if (this.wave > 0 && !this.waveActive) this.nextWaveIn = Math.min(this.nextWaveIn, CLEAR_GAP);
-        this.nextWaveIn -= dt;
-        if (this.nextWaveIn <= 0) this.startWave();
+      // เวฟถัดไปปล่อยเมื่อสนามว่างเท่านั้น (รวมภูตธาตุ) — ระหว่างนั้นการนับถอยหลังหยุดไว้
+      if (!this.waveActive) {
+        if (this.nextWaveIn == null) this.nextWaveIn = CLEAR_GAP;
+        if (this.wave < TOTAL_WAVES || this.endless) {
+          this.nextWaveIn -= dt;
+          if (this.nextWaveIn <= 0) this.startWave();
+        }
       }
     }
     for (const e of this.creeps) e.zoneF = 1;
