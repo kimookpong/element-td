@@ -303,3 +303,12 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   .resumeBtns button.big { flex: 1; }
   #toast { font-size: 1.1rem; }
 }
+
+/* ---------- เมนูแบบมินิมอล + ปุ่มภาษา ---------- */
+.menuCard { position: relative; display: flex; flex-direction: column; gap: 16px; padding-top: 28px; }
+.menuCard .logo { font-size: 3.4rem; margin-bottom: 4px; }
+.menuCard .choice { text-align: center; }
+.diffRow .choice { min-width: 0; max-width: 140px; padding: 10px; align-items: center; }
+.langBtn { font-family: var(--title, serif); font-weight: 700; letter-spacing: 1px; font-size: .8rem; }
+#btnLang { min-width: 38px; }
+.menuLang { position: absolute; top: 12px; right: 12px; padding: 6px 10px; border-radius: 8px; }

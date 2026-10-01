@@ -2,6 +2,7 @@
  *  สร้างฉากของแผนที่: ภูมิประเทศ, ทางเดินหินที่ลึกลงไปพร้อมกำแพงอิฐ,
  *  พอร์ทัล, จุดตรวจ, ต้นไม้ ตะเกียง และของตกแต่งรอบ ๆ
  * ============================================================ */
+import { t } from './i18n.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { COLS, ROWS, ELEMENTS, ELEMENT_ORDER } from './data.js';
@@ -639,10 +640,10 @@ function drawCreator(c, img) {
     g.strokeText(t, x, y); g.fillStyle = fill; g.fillText(t, x, y);
   };
   g.textAlign = 'left'; g.textBaseline = 'middle';
-  text('เกมนี้คิดและพัฒนาโดย', 58, '500 28px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
+  text(t('sign.l1'), 58, '500 28px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
   text(CREATOR.name, 108, '700 46px Kanit, "Noto Sans Thai", sans-serif', '#ffe08a', 6);
-  text('สนใจติดต่อได้เลย!', 160, '600 30px Kanit, "Noto Sans Thai", sans-serif', '#b6ffb0');
-  text('▶ คลิกที่ป้ายนี้', 206, '500 26px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
+  text(t('sign.l3'), 160, '600 30px Kanit, "Noto Sans Thai", sans-serif', '#b6ffb0');
+  text(t('sign.l4'), 206, '500 26px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
 }
 
 function makeCreatorSign() {
@@ -672,6 +673,7 @@ function makeCreatorSign() {
   for (const x of [-0.62, 0.62]) g.add(mesh(G.box(), woodM, { x, y: 0.58, s: [0.07, 1.16, 0.07] }));
   g.add(mesh(G.box(), std(0x8a8478, { flatShading: true }), { y: 0.03, s: [1.5, 0.06, 0.25] }));
   g.userData.link = CREATOR.url;
+  g.userData.redraw = redraw;
   g.scale.setScalar(1.6);
   return g;
 }

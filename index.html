@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Element TD 3D — หกธาตุพิทักษ์</title>
   <link rel="icon" type="image/png" href="icons/essence.png">
-  <meta name="description" content="เกม Tower Defense 3D แนว Element TD: ดิน น้ำ ลม ไฟ แสง มืด สร้างเขาวงกต หลอมรวมป้อม 35 แบบ">
+  <meta name="description" content="Element TD 3D — tower defense with six elements (light, dark, water, fire, wind, earth), mazing and 25 unique towers. เกม Tower Defense 3D หกธาตุ">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
@@ -19,11 +19,11 @@
     <header id="hud">
       <div class="brand"><img class="ico" src="icons/essence.png" alt=""><span class="t1">Element</span><span class="t2">TD</span></div>
       <div class="stats">
-        <div class="stat gold" title="ทอง"><img class="ico" src="icons/gold.png" alt=""><b id="gold">0</b></div>
-        <div class="stat life" title="พลังชีวิตแกนกลาง"><img class="ico" src="icons/heart.png" alt=""><b id="lives">0</b></div>
-        <div class="stat wave" title="เวฟ"><img class="ico" src="icons/swords.png" alt=""><b id="wave">0</b><small id="waveTotal">/30</small></div>
-        <div class="stat essence" title="ผลึกธาตุ — ใช้ปลดล็อก/อัปเลเวลธาตุ"><img class="ico" src="icons/essence.png" alt=""><b id="points">0</b></div>
-        <div id="saveBadge" class="saveBadge" title="บันทึกอัตโนมัติ"><img class="ico" src="icons/save.png" alt=""></div>
+        <div class="stat gold" data-i18n-title="hud.gold" title="ทอง"><img class="ico" src="icons/gold.png" alt=""><b id="gold">0</b></div>
+        <div class="stat life" data-i18n-title="hud.lives" title="พลังชีวิตแกนกลาง"><img class="ico" src="icons/heart.png" alt=""><b id="lives">0</b></div>
+        <div class="stat wave" data-i18n-title="hud.wave" title="เวฟ"><img class="ico" src="icons/swords.png" alt=""><b id="wave">0</b><small id="waveTotal">/30</small></div>
+        <div class="stat essence" data-i18n-title="hud.essence" title="ผลึกธาตุ — ใช้ปลดล็อก/อัปเลเวลธาตุ"><img class="ico" src="icons/essence.png" alt=""><b id="points">0</b></div>
+        <div id="saveBadge" class="saveBadge" data-i18n-title="hud.saved" title="บันทึกอัตโนมัติ"><img class="ico" src="icons/save.png" alt=""></div>
       </div>
       <div id="waveChip" tabindex="0">
         <div class="timer"><img class="ico" src="icons/clock.png" alt=""><span id="waveTimer">—</span></div>
@@ -31,98 +31,94 @@
         <div class="pop" id="wavePop"></div>
       </div>
       <div class="controls">
-        <button id="btnPause" class="iconBtn primary" title="หยุด / เล่นต่อ (Space)"><img class="ico" src="icons/pause.png" alt=""></button>
-        <button id="btnSpeed" class="iconBtn" title="ความเร็ว (F)"><img class="ico" src="icons/speed.png" alt=""><span id="speedLbl">1×</span></button>
-        <button id="btnMute" class="iconBtn" title="เสียง (M)"><img class="ico" src="icons/sound.png" alt=""></button>
-        <button id="btnQuality" class="iconBtn" title="คุณภาพกราฟิก"><img class="ico" src="icons/quality.png" alt=""></button>
-        <button id="btnSigns" class="iconBtn" title="ป้ายผู้สร้าง (G)"><img class="ico" src="icons/sign.png" alt=""></button>
-        <button id="btnCamera" class="iconBtn" title="รีเซ็ตมุมกล้อง (C)"><img class="ico" src="icons/camera.png" alt=""></button>
-        <button id="btnHelp" class="iconBtn" title="วิธีเล่น (H)"><img class="ico" src="icons/help.png" alt=""></button>
-        <button id="btnFull" class="iconBtn" title="เต็มจอ (Z)"><img class="ico" src="icons/fullscreen.png" alt=""></button>
+        <button id="btnPause" class="iconBtn primary" data-i18n-title="btn.pause" title="หยุด / เล่นต่อ (Space)"><img class="ico" src="icons/pause.png" alt=""></button>
+        <button id="btnSpeed" class="iconBtn" data-i18n-title="btn.speed" title="ความเร็ว (F)"><img class="ico" src="icons/speed.png" alt=""><span id="speedLbl">1×</span></button>
+        <button id="btnMute" class="iconBtn" data-i18n-title="btn.mute" title="เสียง (M)"><img class="ico" src="icons/sound.png" alt=""></button>
+        <button id="btnQuality" class="iconBtn" data-i18n-title="btn.qHigh" title="คุณภาพกราฟิก"><img class="ico" src="icons/quality.png" alt=""></button>
+        <button id="btnSigns" class="iconBtn" data-i18n-title="btn.signs" title="ป้ายผู้สร้าง (G)"><img class="ico" src="icons/sign.png" alt=""></button>
+        <button id="btnCamera" class="iconBtn" data-i18n-title="btn.camera" title="รีเซ็ตมุมกล้อง (C)"><img class="ico" src="icons/camera.png" alt=""></button>
+        <button id="btnHelp" class="iconBtn" data-i18n-title="btn.help" title="วิธีเล่น (H)"><img class="ico" src="icons/help.png" alt=""></button>
+        <button id="btnLang" class="iconBtn langBtn" data-i18n-title="btn.lang" title="Language"><span id="langLbl">TH</span></button>
+        <button id="btnFull" class="iconBtn" data-i18n-title="btn.full" title="เต็มจอ (Z)"><img class="ico" src="icons/fullscreen.png" alt=""></button>
       </div>
     </header>
 
     <!-- แถบล่าง: ธาตุ + สร้างป้อม -->
     <nav id="dock">
       <div class="dockGroup">
-        <div class="dockLabel">ธาตุ <span class="badge" id="pointsBadge">0</span></div>
+        <div class="dockLabel"><span data-i18n="dock.elements">ธาตุ</span> <span class="badge" id="pointsBadge">0</span></div>
         <div id="elemGrid"></div>
       </div>
       <div class="dockSep"></div>
       <div class="dockGroup">
-        <div class="dockLabel">สร้างป้อม</div>
+        <div class="dockLabel" data-i18n="dock.build">สร้างป้อม</div>
         <div id="buildGrid"></div>
       </div>
     </nav>
 
     <!-- การ์ดข้อมูลป้อม (แสดงเมื่อเลือก) -->
     <aside id="infoCard" class="frame" hidden>
-      <button id="infoClose" class="iconBtn small" title="ปิด (Esc)"><img class="ico" src="icons/close.png" alt=""></button>
+      <button id="infoClose" class="iconBtn small" data-i18n-title="btn.close" title="ปิด (Esc)"><img class="ico" src="icons/close.png" alt=""></button>
       <div id="infoPanel"></div>
     </aside>
 
     <div id="toast"></div>
-    <div id="pauseOverlay"><img class="ico" src="icons/pause.png" alt=""> หยุดชั่วคราว</div>
+    <div id="pauseOverlay"><img class="ico" src="icons/pause.png" alt=""> <span data-i18n="paused">หยุดชั่วคราว</span></div>
   </div>
 
   <!-- เมนูเริ่มเกม -->
   <div id="menu" class="overlay show">
-    <div class="card frame wide">
+    <div class="card frame wide menuCard">
+      <button id="btnLangMenu" class="langBtn menuLang" data-i18n-title="btn.lang" title="Language"><span class="langLbl">TH</span></button>
       <div class="logo"><span class="t1">Element</span> <span class="t2">TD</span></div>
-      <p class="sub">หกธาตุพิทักษ์ — ปกป้องประตูแกนกลางด้วยพลังแห่ง แสง · มืด · น้ำ · ไฟ · ลม · ดิน</p>
-      <div class="elemRow" id="menuElems"></div>
       <div id="resumeBox" class="resumeBox" hidden>
-        <div class="resumeInfo"><b><img class="ico" src="icons/save.png" alt=""> มีเกมที่บันทึกไว้</b><span id="resumeText"></span></div>
+        <div class="resumeInfo"><b><img class="ico" src="icons/save.png" alt=""> <span data-i18n="menu.saved">มีเกมที่บันทึกไว้</span></b><span id="resumeText"></span></div>
         <div class="resumeBtns">
-          <button id="btnResume" class="primary big"><img class="ico" src="icons/play.png" alt=""> เล่นต่อ</button>
-          <button id="btnDiscard" class="danger iconBtn" title="ลบเกมที่บันทึกไว้"><img class="ico" src="icons/trash.png" alt=""></button>
+          <button id="btnResume" class="primary big"><img class="ico" src="icons/play.png" alt=""> <span data-i18n="menu.resume">เล่นต่อ</span></button>
+          <button id="btnDiscard" class="danger iconBtn" data-i18n-title="menu.discard" title="ลบเกมที่บันทึกไว้"><img class="ico" src="icons/trash.png" alt=""></button>
         </div>
       </div>
-      <h3>เลือกสมรภูมิ</h3>
       <div id="mapList" class="choiceRow"></div>
-      <h3>ระดับความยาก</h3>
-      <div id="diffList" class="choiceRow"></div>
+      <div id="diffList" class="choiceRow diffRow"></div>
       <div class="menuActions">
-        <button id="btnStart" class="primary big"><img class="ico" src="icons/swords.png" alt=""> เริ่มเกมใหม่</button>
-        <button id="btnHowTo" class="big"><img class="ico" src="icons/scroll.png" alt=""> วิธีเล่น</button>
+        <button id="btnStart" class="primary big"><img class="ico" src="icons/swords.png" alt=""> <span data-i18n="menu.start">เริ่มเกมใหม่</span></button>
+        <button id="btnHowTo" class="big"><img class="ico" src="icons/scroll.png" alt=""> <span data-i18n="menu.howto">วิธีเล่น</span></button>
       </div>
-      <p class="small" id="bestScore"></p>
     </div>
   </div>
 
   <!-- วิธีเล่น -->
   <div id="help" class="overlay">
     <div class="card frame wide">
-      <h2><img class="ico" src="icons/scroll.png" alt=""> วิธีเล่น</h2>
+      <h2><img class="ico" src="icons/scroll.png" alt=""> <span data-i18n="help.title">วิธีเล่น</span></h2>
       <div class="helpCols">
         <ul class="helpList" id="helpList"></ul>
         <div class="cycleBox">
           <canvas id="cycleCanvas" width="260" height="240"></canvas>
-          <p class="small">ลูกศรชี้ไปยังธาตุที่แพ้ทาง<br>ชนะทาง ×2 · โดนแพ้ทาง ×0.5</p>
+          <p class="small" data-i18n="help.cycle"></p>
         </div>
       </div>
-      <h3>มอนสเตอร์ในเทพนิยาย</h3>
+      <h3 data-i18n="help.creatures"></h3>
       <div class="creatureTable" id="creatureTable"></div>
-      <h3>ป้อมธาตุเดี่ยว</h3>
+      <h3 data-i18n="help.singles"></h3>
       <div class="elemTable" id="elemTable"></div>
-      <h3>ตำราป้อมผสม — สองธาตุ 15 · สามธาตุ 4</h3>
+      <h3 data-i18n="help.combos"></h3>
       <div id="compendium"></div>
-      <h3>คีย์ลัด & กล้อง</h3>
-      <p class="small">1–8 เลือกป้อม · Space หยุด/เล่นต่อ · U อัปเกรด · S ขาย · T โหมดเล็งเป้า · F ความเร็ว · G ป้ายผู้สร้าง · C รีเซ็ตกล้อง · Z เต็มจอ · Esc ยกเลิก<br>
-      คลิกซ้ายค้างลาก = เลื่อนกระดาน · คลิกขวาลาก = หมุนกล้อง · ล้อเมาส์ = ซูม · มือถือ: นิ้วเดียวลาก = เลื่อน, สองนิ้ว = หมุน/ซูม</p>
-      <button id="btnCloseHelp" class="primary"><img class="ico" src="icons/check.png" alt=""> เข้าใจแล้ว</button>
+      <h3 data-i18n="help.keys"></h3>
+      <p class="small" data-i18n="help.keysText"></p>
+      <button id="btnCloseHelp" class="primary"><img class="ico" src="icons/check.png" alt=""> <span data-i18n="help.ok">เข้าใจแล้ว</span></button>
     </div>
   </div>
 
   <!-- จบเกม -->
   <div id="endScreen" class="overlay">
     <div class="card frame">
-      <h2 id="endTitle">จบเกม</h2>
+      <h2 id="endTitle" data-i18n="end.over">จบเกม</h2>
       <p id="endText"></p>
       <div class="menuActions">
-        <button id="btnContinue" class="primary">เล่นต่อ (ไม่รู้จบ)</button>
-        <button id="btnRetry" class="primary">เล่นอีกครั้ง</button>
-        <button id="btnMenu">เมนูหลัก</button>
+        <button id="btnContinue" class="primary" data-i18n="end.continue">เล่นต่อ (ไม่รู้จบ)</button>
+        <button id="btnRetry" class="primary" data-i18n="end.retry">เล่นอีกครั้ง</button>
+        <button id="btnMenu" data-i18n="end.menu">เมนูหลัก</button>
       </div>
     </div>
   </div>

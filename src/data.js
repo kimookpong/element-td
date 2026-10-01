@@ -21,32 +21,32 @@ export const ELEMENTS = {
   fire: {
     name: 'Fire', th: 'ไฟ', icon: 'el_fire', color: '#ff5a2a', glow: '#ffb347',
     rate: 1.0, range: 100, dpsF: 0.85,
-    desc: 'ระเบิดวงกว้าง เผาไหม้ต่อเนื่อง',
+    desc: 'ระเบิดวงกว้าง เผาไหม้ต่อเนื่อง', en: { desc: 'Wide explosions with lasting burn' },
   },
   water: {
     name: 'Water', th: 'น้ำ', icon: 'el_water', color: '#2f8fff', glow: '#8fd3ff',
     rate: 1.2, range: 105, dpsF: 0.95,
-    desc: 'กระจายเป็นวง ทำให้เปียกชุ่มและช้าลง',
+    desc: 'กระจายเป็นวง ทำให้เปียกชุ่มและช้าลง', en: { desc: 'Splashes in a ring, soaking and slowing' },
   },
   earth: {
     name: 'Earth', th: 'ดิน', icon: 'el_earth', color: '#c08a42', glow: '#e9c27a',
     rate: 0.55, range: 92, dpsF: 1.25,
-    desc: 'ดาเมจหนัก มีโอกาสทำให้มึนงง',
+    desc: 'ดาเมจหนัก มีโอกาสทำให้มึนงง', en: { desc: 'Heavy damage with a chance to stun' },
   },
   wind: {
     name: 'Wind', th: 'ลม', icon: 'el_wind', color: '#3fe0a8', glow: '#b6ffe3',
     rate: 2.4, range: 115, dpsF: 0.5,
-    desc: 'ยิงรัวหลายเป้า สะสมพลังปล่อยลมผลักถอย',
+    desc: 'ยิงรัวหลายเป้า สะสมพลังปล่อยลมผลักถอย', en: { desc: 'Rapid multi-target fire, builds up knock-back gusts' },
   },
   light: {
     name: 'Light', th: 'แสง', icon: 'el_light', color: '#ffe14a', glow: '#fffbd0',
     rate: 0.8, range: 150, dpsF: 0.8,
-    desc: 'ลำแสงชาร์จยิงได้ทั่วแผนที่ ดาเมจต่อนัดสูง',
+    desc: 'ลำแสงชาร์จยิงได้ทั่วแผนที่ ดาเมจต่อนัดสูง', en: { desc: 'Charged map-wide beam with huge single hits' },
   },
   dark: {
     name: 'Dark', th: 'มืด', icon: 'el_dark', color: '#a24dff', glow: '#d6b3ff',
     rate: 0.9, range: 105, dpsF: 0.9,
-    desc: 'กัดกร่อนชีวิตตาม % HP ปัจจุบัน',
+    desc: 'กัดกร่อนชีวิตตาม % HP ปัจจุบัน', en: { desc: 'Corrodes a % of current HP' },
   },
 };
 
@@ -74,12 +74,12 @@ export const BASIC = {
   arrow: {
     th: 'ป้อมธนู', name: 'Arrow', icon: 't_arrow', color: '#d9b26a',
     cost: [50, 60, 150], dps: [15, 33, 75], rate: 1.4, range: 120,
-    desc: 'ยิงเร็ว เป้าเดียว ราคาถูก',
+    desc: 'ยิงเร็ว เป้าเดียว ราคาถูก', en: { th: 'Arrow Tower', desc: 'Fast, single target, cheap' },
   },
   cannon: {
     th: 'ป้อมปืนใหญ่', name: 'Cannon', icon: 't_cannon', color: '#8a8f99',
     cost: [70, 80, 200], dps: [14, 30, 70], rate: 0.6, range: 100, splash: [40, 46, 52],
-    desc: 'ระเบิดวงกว้าง ยิงช้า',
+    desc: 'ระเบิดวงกว้าง ยิงช้า', en: { th: 'Cannon Tower', desc: 'Wide splash, slow fire' },
   },
 };
 
@@ -98,16 +98,16 @@ export const comboKey = (els) => els.slice().sort().join('+');
 
 /* ความสามารถของมอนสเตอร์ */
 export const ABILITIES = {
-  normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: 'c_wolf', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' },
-  fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: 'c_unicorn', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' },
-  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: 'c_turtle', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' },
-  regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: 'c_hydra', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' },
-  split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: 'c_kitsune', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' },
-  undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' },
-  flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' },
-  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' },
-  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 2, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' },
-  child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' },
+  normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: 'c_wolf', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' , en: { th: 'Normal', creature: 'Crystal Wolf', desc: 'An ordinary monster' } },
+  fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: 'c_unicorn', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' , en: { th: 'Fast', creature: 'Unicorn', desc: 'Moves very fast' } },
+  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: 'c_turtle', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' , en: { th: 'Stone armor', creature: 'Dragon Turtle', desc: 'Immune to slow/stun/knock-back and takes 20% less damage' } },
+  regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: 'c_hydra', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' , en: { th: 'Regenerate', creature: 'Hydra', desc: 'Regenerates 2.5% HP per second' } },
+  split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: 'c_kitsune', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' , en: { th: 'Split', creature: 'Kitsune', desc: 'Splits into 2 foxes on death' } },
+  undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' , en: { th: 'Undying', creature: 'Phoenix', desc: 'Rises from its ashes once with 50% HP' } },
+  flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' , en: { th: 'Flying', creature: 'Griffin', desc: 'Flies straight over mazes' } },
+  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' , en: { th: 'Dragon boss', creature: 'Ancient Dragon', desc: 'Massive HP, resists status effects' } },
+  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 2, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' , en: { th: 'Guardian', creature: 'Elemental Guardian', desc: 'Summoned with essence — defeat it to unlock / level up its element' } },
+  child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' , en: { th: 'Split spawn', creature: 'Fox Spawn', desc: '' } },
 };
 
 /* รูปแบบความสามารถตามเวฟ (วนทุก 10 เวฟ) */
@@ -147,7 +147,7 @@ function laneLayout(points) {
 export const MAPS = [
   {
     id: 'meadow',
-    name: 'ลานวงกตแห่งทุ่งหญ้า',
+    name: 'ลานวงกตแห่งทุ่งหญ้า', en: { name: 'Meadow Maze', desc: 'Open field in classic Element TD style — build your own maze' },
     desc: 'สนามเปิดแบบ Element TD — วางป้อมสร้างเขาวงกตเอง',
     theme: 'meadow',
     layout: [
@@ -167,7 +167,7 @@ export const MAPS = [
   },
   {
     id: 'ruins',
-    name: 'ซากปราการโบราณ',
+    name: 'ซากปราการโบราณ', en: { name: 'Ancient Ruins', desc: 'A maze among ruined walls with 2 checkpoints' },
     desc: 'เขาวงกตกลางซากกำแพง มีจุดตรวจ 2 จุด',
     theme: 'ruins',
     layout: [
@@ -187,14 +187,14 @@ export const MAPS = [
   },
   {
     id: 'canyon',
-    name: 'หุบเขาคดเคี้ยว',
+    name: 'หุบเขาคดเคี้ยว', en: { name: 'Winding Canyon', desc: 'Fixed path — build on the ridges along the road' },
     desc: 'ทางเดินตายตัว วางป้อมบนเนินสองข้างทาง',
     theme: 'canyon',
     layout: laneLayout([[0, 6], [2, 6], [2, 1], [6, 1], [6, 10], [10, 10], [10, 1], [14, 1], [14, 10], [17, 10], [17, 4], [19, 4]]),
   },
   {
     id: 'spiral',
-    name: 'วังวนแห่งห้วงมืด',
+    name: 'วังวนแห่งห้วงมืด', en: { name: 'Abyss Spiral', desc: 'A short spiral path at night — hard' },
     desc: 'ทางวนสั้นยามค่ำคืน — ยาก',
     theme: 'night',
     layout: laneLayout([[0, 1], [18, 1], [18, 10], [1, 10], [1, 4], [15, 4], [15, 7], [6, 7]]),
@@ -202,9 +202,9 @@ export const MAPS = [
 ];
 
 export const DIFFICULTIES = {
-  easy:   { th: 'ง่าย', hp: 0.75, gold: 280, lives: 30 },
-  normal: { th: 'ปกติ', hp: 1.0, gold: 220, lives: 20 },
-  hard:   { th: 'ยาก', hp: 1.4, gold: 190, lives: 10 },
+  easy:   { en: { th: 'Easy' }, th: 'ง่าย', hp: 0.75, gold: 280, lives: 30 },
+  normal: { en: { th: 'Normal' }, th: 'ปกติ', hp: 1.0, gold: 220, lives: 20 },
+  hard:   { en: { th: 'Hard' }, th: 'ยาก', hp: 1.4, gold: 190, lives: 10 },
 };
 
 export const TOTAL_WAVES = 30;

@@ -11,6 +11,7 @@ import { Game, parseMap, towerStats, towerName, buildCost, sellValue, TARGET_LAB
 import { Renderer3D } from './render3d.js';
 import { ico, iconUrl, withIcons } from './icons.js';
 import { TOWERS, towerDef } from './towers.js';
+import { t as T, tr, elName, getLang, setLang } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const BUILD_TYPES = ['arrow', 'cannon', ...ELEMENT_ORDER];
@@ -41,7 +42,7 @@ try {
   renderer = new Renderer3D($('stage'), $('floaters'));
 } catch (err) {
   console.error(err);
-  $('stage').innerHTML = '<div class="nogl">เบราว์เซอร์นี้ไม่รองรับ WebGL — ลองเปิดด้วย Chrome, Edge, Firefox หรือ Safari รุ่นใหม่</div>';
+  $('stage').innerHTML = `<div class="nogl">${T('nogl')}</div>`;
   throw err;
 }
 renderer.loadMap(view.mapIndex);
@@ -82,19 +83,19 @@ function saveGame() {
 }
 function resumeGame() {
   const g = Game.restore(readSave());
-  if (!g) { clearSave(); renderMenu(); showToast('ไฟล์บันทึกเสียหาย — เริ่มเกมใหม่', 1600); return; }
+  if (!g) { clearSave(); renderMenu(); showToast(T('toast.saveBroken'), 1600); return; }
   view.mapIndex = g.mapIndex;
   view.diffKey = g.diffKey;
   startWithGame(g);
-  showToast(`:play: เล่นต่อจากเวฟ ${g.wave} — ${MAPS[g.mapIndex].name}`, 1800);
+  showToast(T('toast.resumed', { wave: g.wave, map: tr(MAPS[g.mapIndex], 'name') }), 1800);
 }
 
 /* ---------------- เริ่มเกม / เมนู ---------------- */
 function newGame() {
-  if (readSave() && !confirm('เริ่มเกมใหม่จะเขียนทับเกมที่บันทึกไว้ ต้องการเริ่มใหม่หรือไม่?')) return;
+  if (readSave() && !confirm(T('confirm.overwrite'))) return;
   clearSave();
   startWithGame(new Game(view.mapIndex, view.diffKey));
-  showToast(`${MAPS[view.mapIndex].name} — เตรียมสร้างป้อม!`, 2000);
+  showToast(T('toast.mapStart', { map: tr(MAPS[view.mapIndex], 'name') }), 2000);
 }
 
 function startWithGame(game) {
@@ -155,11 +156,11 @@ function processEvents(g, visuals = true) {
       case 'changed': changed = true; break;
       case 'waveEnd':
         saveBest(ev.n);
-        if (visuals) showToast(`เวฟ ${ev.n} ผ่าน! +${ev.bonus} :gold:${ev.interest ? `  ดอกเบี้ย +${ev.interest}` : ''}`, 1600);
+        if (visuals) showToast(T('toast.waveDone', { n: ev.n, bonus: ev.bonus }) + (ev.interest ? T('toast.interest', { n: ev.interest }) : ''), 1600);
         changed = true;
         break;
       case 'elementPoint':
-        if (visuals) setTimeout(() => showToast(':essence: ได้รับผลึกธาตุ! เลือกธาตุที่แถบด้านล่าง', 2200), 1700);
+        if (visuals) setTimeout(() => showToast(T('toast.essence'), 2200), 1700);
         break;
       case 'win': if (visuals) { view.paused = true; updatePauseUI(); showEnd(true); } break;
       case 'lose':
@@ -222,7 +223,7 @@ function updateHud(force) {
     const bar = document.querySelector('#infoPanel .building .bar i');
     if (bar) bar.style.width = `${Math.round((1 - t.build.t / t.build.total) * 100)}%`;
     const lbl = document.querySelector('#infoPanel .building .sec');
-    if (lbl) lbl.textContent = `${Math.max(0, t.build.t).toFixed(1)} วิ`;
+    if (lbl) lbl.textContent = T('sec', { n: Math.max(0, t.build.t).toFixed(1) });
   } else if (t && document.querySelector('#infoPanel .building')) {
     renderInfo();
   }
@@ -241,16 +242,16 @@ function renderWaveChip(force) {
   const g = view.game;
   if (!g) return;
   let label;
-  if (g.over) label = 'จบเกม';
+  if (g.over) label = T('wave.over');
   else if (g.waveActive) {
     const fromWave = g.creeps.some((e) => e.alive && e.ability !== 'elemental') || g.spawnQueue.length;
-    label = fromWave ? `เวฟ ${g.wave} · เหลือ ${g.creeps.filter((e) => e.alive && e.ability !== 'elemental').length + g.spawnQueue.length} ตัว` : 'กำจัดภูตธาตุก่อน!';
-  } else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? `เวฟแรกใน ${Math.ceil(g.nextWaveIn)} วิ` : `เวฟ ${g.wave + 1} ใน ${Math.ceil(g.nextWaveIn)} วิ`;
-  else label = 'เวฟสุดท้าย!';
+    label = fromWave ? T('wave.left', { n: g.wave, left: g.creeps.filter((e) => e.alive && e.ability !== 'elemental').length + g.spawnQueue.length }) : T('wave.guardian');
+  } else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? T('wave.first', { s: Math.ceil(g.nextWaveIn) }) : T('wave.next', { n: g.wave + 1, s: Math.ceil(g.nextWaveIn) });
+  else label = T('wave.last');
   setText(ui.timer, 'timer', label);
   ui.timer.parentElement.classList.toggle('soon', !g.waveActive && g.nextWaveIn != null && g.nextWaveIn < 5);
   const w = g.nextWaveData;
-  const key = w ? `${w.n}:${w.element}:${w.ability}` : 'none';
+  const key = w ? `${w.n}:${w.element}:${w.ability}:${getLang()}` : 'none';
   if (!force && hudCache.waveKey === key) return;
   hudCache.waveKey = key;
   if (!w || (g.wave >= TOTAL_WAVES && !g.endless)) { ui.next.innerHTML = ''; ui.pop.innerHTML = ''; return; }
@@ -258,12 +259,12 @@ function renderWaveChip(force) {
   const a = ABILITIES[w.ability];
   const hp = Math.round(a.hp * w.hpScale);
   const weak = Object.keys(BEATS).filter((k) => BEATS[k] === w.element);
-  ui.next.innerHTML = `${g.wave > 0 ? `<span class="muted">ถัดไป</span>` : ""}${ico(e.icon)}${ico(a.icon)}<span class="txt">${w.ability === 'boss' ? '<span class="boss">บอส!</span>' : a.creature}</span> ×${w.count}`;
+  ui.next.innerHTML = `${g.wave > 0 ? `<span class="muted">${T('wave.upcoming')}</span>` : ""}${ico(e.icon)}${ico(a.icon)}<span class="txt">${w.ability === 'boss' ? `<span class="boss">${T('wave.boss')}</span>` : tr(a, 'creature')}</span> ×${w.count}`;
   ui.pop.innerHTML = `
-    <div class="row">${ico(a.icon)}<div><b>เวฟ ${w.n}: ${a.creature}</b><br><span class="muted">ธาตุ</span><b style="color:${e.color}"> ${e.th}</b> · ${a.th} · ×${w.count}</div></div>
-    <div>${ico('heart')} HP ${hp.toLocaleString()} ต่อตัว</div>
-    <div class="muted">${a.desc}</div>
-    <div>แพ้ทาง: ${weak.map((k) => `${ico(ELEMENTS[k].icon)} ${ELEMENTS[k].th}`).join(' ')}</div>`;
+    <div class="row">${ico(a.icon)}<div><b>${T('wave.popTitle', { n: w.n, creature: tr(a, 'creature') })}</b><br><span class="muted">${T('wave.popEl')}</span><b style="color:${e.color}"> ${elName(e)}</b> · ${tr(a, 'th')} · ×${w.count}</div></div>
+    <div>${ico('heart')} ${T('wave.hp', { hp: hp.toLocaleString() })}</div>
+    <div class="muted">${tr(a, 'desc')}</div>
+    <div>${T('wave.weakTo')} ${weak.map((k) => `${ico(ELEMENTS[k].icon)} ${elName(ELEMENTS[k])}`).join(' ')}</div>`;
 }
 
 /* ---------------- ธาตุ ---------------- */
@@ -283,8 +284,8 @@ function renderElements() {
     const b = document.createElement('button');
     b.className = `elemOrb lv${lv}${can ? ' can' : ''}${pend ? ' pending' : ''}`;
     b.style.setProperty('--c', e.color);
-    b.title = `ธาตุ${e.th} (${e.name}) เลเวล ${lv}/${MAX_ELEMENT_LEVEL}\n${e.desc}\nชนะทาง: ${ELEMENTS[BEATS[el]].th}`
-      + (pend ? `\nภูตธาตุ${e.th} Lv.${pend} อยู่ในสนาม — กำจัดเพื่อปลดล็อก` : can ? `\nคลิกใช้ผลึกธาตุ 1 ชิ้น เพื่อเรียกภูตธาตุ${e.th} Lv.${lv + 1} — กำจัดได้จึงปลดล็อก` : '');
+    b.title = `${T('el.title', { el: elName(e), name: e.name, lv, max: MAX_ELEMENT_LEVEL })}\n${tr(e, 'desc')}\n${T('el.beats', { el: elName(ELEMENTS[BEATS[el]]) })}`
+      + (pend ? `\n${T('el.pending', { el: elName(e), lv: pend })}` : can ? `\n${T('el.can', { el: elName(e), lv: lv + 1 })}` : '');
     b.innerHTML = `${ico(e.icon)}<span class="pips">${[1, 2, 3].map((i) => `<i class="${i <= lv ? 'on' : i === pend ? 'pend' : ''}"></i>`).join('')}</span>`;
     b.disabled = !can;
     b.addEventListener('click', () => { Sound.unlock(); g.buyElement(el); });
@@ -306,7 +307,7 @@ function renderBuild() {
     b.style.borderColor = e.color;
     b.dataset.cost = cost;
     b.dataset.ok = locked ? '0' : '1';
-    b.title = `${basic ? basic.th : TOWERS[type].th} (${i + 1}) — ${basic ? basic.desc : TOWERS[type].attack}${locked ? `\nต้องปลดล็อกธาตุ${e.th}ด้วยผลึกธาตุ` : ''}`;
+    b.title = `${basic ? tr(basic, 'th') : tr(TOWERS[type], 'th')} (${i + 1}) — ${basic ? tr(basic, 'desc') : tr(TOWERS[type], 'attack')}${locked ? `\n${T('build.locked', { el: elName(e) })}` : ''}`;
     b.innerHTML = `<span class="k">${i + 1}</span>${ico(towerIcon(type))}${locked ? ico('lock', 'lockIco') : ''}<span class="c">${ico('gold')}${cost}</span>`;
     b.addEventListener('click', () => selectBuild(type));
     ui.build.appendChild(b);
@@ -318,7 +319,7 @@ function selectBuild(type) {
   const g = view.game;
   if (!g) return;
   if (!BASIC[type] && g.elemLevel[type] < 1) {
-    showToast(`:lock: ปลดล็อกธาตุ${ELEMENTS[type].th}ก่อน (ใช้ผลึกธาตุ)`, 1400);
+    showToast(T('toast.unlockFirst', { el: elName(ELEMENTS[type]) }), 1400);
     Sound.play('error');
     return;
   }
@@ -341,42 +342,42 @@ const fmt = (n) => (n >= 100 ? Math.round(n).toString() : (Math.round(n * 10) / 
 function effectLines(s) {
   const out = [];
   const pct = (x) => Math.round(x * 100);
-  if (s.global) out.push(`${ico('fx_pierce')} ยิงได้ทั่วแผนที่ (ชาร์จ)`);
-  if (s.splash) out.push(`${ico('fx_splash')} ระเบิดรัศมี ${Math.round(s.splash)}`);
-  if (s.burn) out.push(`${ico('fx_burn')} เผาไหม้ ${fmt(s.burn.dps)}/วิ (${s.burn.dur} วิ)`);
-  if (s.wet) out.push(`${ico('fx_slow')} เปียกชุ่ม ช้าลง ${pct(1 - s.wet.factor)}%`);
-  if (s.slow) out.push(`${ico('fx_slow')} สโลว์ ${pct(1 - s.slow.factor)}%`);
-  if (s.stun) out.push(`${ico('fx_stun')} มึนงง ${pct(s.stun.chance)}% (${s.stun.dur} วิ)`);
-  if (s.multi) out.push(`${ico('fx_multi')} ยิง ${s.multi} เป้าพร้อมกัน`);
-  if (s.gust) out.push(`${ico('fx_knock')} ทุก ${s.gust.every} นัด ปล่อยลมผลักถอย`);
-  if (s.corrode) out.push(`${ico('fx_percent')} กัดกร่อน ${fmt(s.corrode.pct * 100)}% ของ HP ปัจจุบัน/วิ`);
-  if (s.marks) out.push(`${ico('fx_curse')} ตราคราส ${s.marks.need} ครั้ง → ระเบิด ${pct(s.marks.pct)}% ของ HP ที่เสียไป`);
-  if (s.chain) out.push(`${ico('fx_multi')} ชิ่ง ${s.chain.bounces} ครั้ง (ลดลง ${pct(1 - s.chain.falloff)}%/ครั้ง)`);
-  if (s.ramp) out.push(`${ico('fx_burn')} ยิ่งยิงนานยิ่งแรง สูงสุด ×${fmt(s.ramp.max)}`);
-  if (s.pierce) out.push(`${ico('fx_pierce')} ทะลุศัตรูเป็นเส้นตรง`);
-  if (s.expose) out.push(`${ico('target')} เปิดจุดอ่อน รับดาเมจโดยตรง ×${fmt(s.expose.amp)}`);
-  if (s.soul) out.push(`${ico('fx_burn')} ไฟคำสาป ${fmt(s.soul.dps)}/วิ · แพร่ ${s.soul.spread} ตัวเมื่อตาย`);
-  if (s.root) out.push(`${ico('lock')} ตรึงอยู่กับที่ ${fmt(s.root.dur)} วิ`);
-  if (s.chill) out.push(`${ico('fx_slow')} สะสมความเย็น → แช่แข็ง ${fmt(s.chill.freeze)} วิ`);
-  if (s.shatter) out.push(`${ico('fx_splash')} น้ำแข็งแตก ×${fmt(s.shatter.mul)} รอบตัว`);
-  if (s.shred) out.push(`${ico('fx_curse')} เกราะแตก รับดาเมจ ×${fmt(s.shred.amp)}`);
-  if (s.cone) out.push(`${ico('fx_splash')} ยิงเป็นกรวย`);
-  if (s.erosion) out.push(`${ico('fx_stun')} กัดเซาะ ${s.erosion.need} ครั้ง → ขัดจังหวะสกิล`);
+  if (s.global) out.push(`${ico('fx_pierce')} ${T('fx.global')}`);
+  if (s.splash) out.push(`${ico('fx_splash')} ${T('fx.splash', { r: Math.round(s.splash) })}`);
+  if (s.burn) out.push(`${ico('fx_burn')} ${T('fx.burn', { dps: fmt(s.burn.dps), dur: s.burn.dur })}`);
+  if (s.wet) out.push(`${ico('fx_slow')} ${T('fx.wet', { p: pct(1 - s.wet.factor) })}`);
+  if (s.slow) out.push(`${ico('fx_slow')} ${T('fx.slow', { p: pct(1 - s.slow.factor) })}`);
+  if (s.stun) out.push(`${ico('fx_stun')} ${T('fx.stun', { p: pct(s.stun.chance), dur: s.stun.dur })}`);
+  if (s.multi) out.push(`${ico('fx_multi')} ${T('fx.multi', { n: s.multi })}`);
+  if (s.gust) out.push(`${ico('fx_knock')} ${T('fx.gust', { n: s.gust.every })}`);
+  if (s.corrode) out.push(`${ico('fx_percent')} ${T('fx.corrode', { p: fmt(s.corrode.pct * 100) })}`);
+  if (s.marks) out.push(`${ico('fx_curse')} ${T('fx.marks', { n: s.marks.need, p: pct(s.marks.pct) })}`);
+  if (s.chain) out.push(`${ico('fx_multi')} ${T('fx.chain', { n: s.chain.bounces, p: pct(1 - s.chain.falloff) })}`);
+  if (s.ramp) out.push(`${ico('fx_burn')} ${T('fx.ramp', { m: fmt(s.ramp.max) })}`);
+  if (s.pierce) out.push(`${ico('fx_pierce')} ${T('fx.pierce')}`);
+  if (s.expose) out.push(`${ico('target')} ${T('fx.expose', { m: fmt(s.expose.amp) })}`);
+  if (s.soul) out.push(`${ico('fx_burn')} ${T('fx.soul', { dps: fmt(s.soul.dps), n: s.soul.spread })}`);
+  if (s.root) out.push(`${ico('lock')} ${T('fx.root', { dur: fmt(s.root.dur) })}`);
+  if (s.chill) out.push(`${ico('fx_slow')} ${T('fx.chill', { dur: fmt(s.chill.freeze) })}`);
+  if (s.shatter) out.push(`${ico('fx_splash')} ${T('fx.shatter', { m: fmt(s.shatter.mul) })}`);
+  if (s.shred) out.push(`${ico('fx_curse')} ${T('fx.shred', { m: fmt(s.shred.amp) })}`);
+  if (s.cone) out.push(`${ico('fx_splash')} ${T('fx.cone')}`);
+  if (s.erosion) out.push(`${ico('fx_stun')} ${T('fx.erosion', { n: s.erosion.need })}`);
   if (s.zone) {
     const z = s.zone;
-    const label = { abyss: 'บ่อคำสาป (ยิ่งอยู่นานยิ่งแรง)', lava: `แอ่งลาวา หนืด ${pct(1 - z.sticky)}%`, mud: 'โคลนดูด ยิ่งอยู่นานยิ่งช้า', void: 'หลุมดำดึงศัตรูรวมฝูง' }[z.kind];
-    out.push(`${ico('fx_splash')} ${label} · ${z.dur} วิ`);
+    const label = T('fx.zone.' + z.kind, { p: z.sticky ? pct(1 - z.sticky) : 0 });
+    out.push(`${ico('fx_splash')} ${label} · ${T('sec', { n: z.dur })}`);
   }
-  if (s.tornado) out.push(`${ico('fx_burn')} พายุเคลื่อนตามทาง ${s.tornado.dur} วิ${s.tornado.trail ? ' ทิ้งแอ่งลาวา' : ''}`);
-  if (s.erupt) out.push(`${ico('fx_splash')} ปะทุหลัง ${s.erupt.delay} วิ · มึนงง + แอ่งลาวา`);
-  if (s.meteor) out.push(`${ico('fx_splash')} อุกกาบาต ${s.meteor.count + 1} ลูก · ลูกหลักขัดจังหวะสกิล`);
+  if (s.tornado) out.push(`${ico('fx_burn')} ${T('fx.tornado', { dur: s.tornado.dur })}${s.tornado.trail ? T('fx.tornadoTrail') : ''}`);
+  if (s.erupt) out.push(`${ico('fx_splash')} ${T('fx.erupt', { d: s.erupt.delay })}`);
+  if (s.meteor) out.push(`${ico('fx_splash')} ${T('fx.meteor', { n: s.meteor.count + 1 })}`);
   return out.join('<br>');
 }
 
-const rangeText = (r) => (r >= 1000 ? 'ทั่วแผนที่' : Math.round(r));
-const descBlock = (def) => (def ? `<div class="effects desc">${def.attack}<br><span class="weak">${ico('warning')} ${def.weak}</span></div>` : '');
+const rangeText = (r) => (r >= 1000 ? T('info.global') : Math.round(r));
+const descBlock = (def) => (def ? `<div class="effects desc">${tr(def, 'attack')}<br><span class="weak">${ico('warning')} ${tr(def, 'weak')}</span></div>` : '');
 
-const strongAgainst = (els) => (els.length ? [...new Set(els.map((e) => BEATS[e]))].map((e) => ico(ELEMENTS[e].icon)).join(' ') : '— (กลาง)');
+const strongAgainst = (els) => (els.length ? [...new Set(els.map((e) => BEATS[e]))].map((e) => ico(ELEMENTS[e].icon)).join(' ') : T('info.neutral'));
 const stars = (n, max) => ico('star').repeat(n) + ico('star_empty').repeat(Math.max(0, max - n));
 
 function renderInfo() {
@@ -391,17 +392,17 @@ function renderInfo() {
     const s = towerStats(basic ? { kind: 'basic', base: type, tier: 1 } : { kind: 'element', elements: [type], tier: 1 });
     const hc = view.hoverCheck;
     ui.info.innerHTML = `
-      <div class="title"><img class="portrait" src="${iconUrl(towerIcon(type))}" alt=""><span>${basic ? basic.th : TOWERS[type].th}</span><span class="lv">${ico('gold')} ${buildCost(type)}</span></div>
-      ${basic ? `<div class="effects">${e.desc}</div>` : descBlock(TOWERS[type])}
+      <div class="title"><img class="portrait" src="${iconUrl(towerIcon(type))}" alt=""><span>${basic ? tr(basic, 'th') : tr(TOWERS[type], 'th')}</span><span class="lv">${ico('gold')} ${buildCost(type)}</span></div>
+      ${basic ? `<div class="effects">${tr(basic, 'desc')}</div>` : descBlock(TOWERS[type])}
       <table>
-        <tr><td>ดาเมจ/นัด</td><td>${fmt(s.dmg)}</td></tr>
-        <tr><td>ความเร็วยิง</td><td>${fmt(s.rate)}/วิ</td></tr>
-        <tr><td>ระยะ</td><td>${rangeText(s.range)}</td></tr>
-        <tr><td>ชนะทาง (×2)</td><td>${strongAgainst(basic ? [] : [type])}</td></tr>
-        <tr><td>เวลาก่อสร้าง</td><td>${basic ? '2.5' : '3.5'} วิ</td></tr>
+        <tr><td>${T('info.dmg')}</td><td>${fmt(s.dmg)}</td></tr>
+        <tr><td>${T('info.rate')}</td><td>${T('info.perSec', { n: fmt(s.rate) })}</td></tr>
+        <tr><td>${T('info.range')}</td><td>${rangeText(s.range)}</td></tr>
+        <tr><td>${T('info.strong')}</td><td>${strongAgainst(basic ? [] : [type])}</td></tr>
+        <tr><td>${T('info.buildTime')}</td><td>${T('sec', { n: basic ? '2.5' : '3.5' })}</td></tr>
       </table>
       <div class="effects">${effectLines(s)}</div>
-      <div class="hint">${hc && !hc.ok && hc.reason ? `${ico('warning')} ${hc.reason}<br>` : ''}คลิกบนพื้นเพื่อวาง · วางในลานหินเพื่อทำเขาวงกต · Esc ยกเลิก</div>`;
+      <div class="hint">${hc && !hc.ok && hc.reason ? `${ico('warning')} ${hc.reason}<br>` : ''}${T('info.placeHint')}</div>`;
     return;
   }
   const s = t.stats;
@@ -411,31 +412,31 @@ function renderInfo() {
   const addOpts = opts.filter((o) => o.type === 'add');
   const preview = tierOpt ? towerStats({ ...t, tier: t.tier + 1 }) : null;
   const up = (b, f = fmt) => (preview ? ` <span class="up">→ ${f(b)}</span>` : '');
-  const kindLabel = t.kind === 'basic' ? 'ป้อมพื้นฐาน' : ['', 'ธาตุเดี่ยว', 'สองธาตุ', 'สามธาตุ'][t.elements.length];
+  const kindLabel = t.kind === 'basic' ? T('info.basic') : T('info.k' + t.elements.length);
   const portrait = towerPortrait(t);
   const elIcons = t.elements.map((e) => ico(ELEMENTS[e].icon)).join('');
   const b = t.build;
-  const building = b ? `<div class="building">${ico('hammer')} ${b.kind === 'build' ? 'กำลังก่อสร้าง' : 'กำลังอัปเกรด'} <span class="bar"><i style="width:${Math.round((1 - b.t / b.total) * 100)}%"></i></span><span class="sec">${b.t.toFixed(1)} วิ</span></div>` : '';
+  const building = b ? `<div class="building">${ico('hammer')} ${b.kind === 'build' ? T('info.building') : T('info.upgrading')} <span class="bar"><i style="width:${Math.round((1 - b.t / b.total) * 100)}%"></i></span><span class="sec">${T('sec', { n: b.t.toFixed(1) })}</span></div>` : '';
   ui.info.innerHTML = `
     <div class="title"><img class="portrait" src="${iconUrl(portrait)}" alt=""><span>${towerName(t)}<br><small style="color:var(--muted);font-weight:400">${kindLabel} ${elIcons}</small></span><span class="lv">${stars(t.tier, maxT)}</span></div>
     ${building}
     ${t.kind === 'basic' ? '' : descBlock(towerDef(t.elements))}
     <table>
-      <tr><td>ดาเมจ/นัด</td><td>${fmt(s.dmg)}${up(preview && preview.dmg)}</td></tr>
-      <tr><td>ความเร็วยิง</td><td>${fmt(s.rate)}/วิ${up(preview && preview.rate)}</td></tr>
-      <tr><td>ระยะ</td><td>${rangeText(s.range)}${s.range < 1000 ? up(preview && preview.range, Math.round) : ''}</td></tr>
-      <tr><td>ชนะทาง (×2)</td><td>${strongAgainst(t.elements)}</td></tr>
-      <tr><td>กำจัด / ดาเมจรวม</td><td>${t.kills} / ${Math.round(t.dmgDealt)}</td></tr>
+      <tr><td>${T('info.dmg')}</td><td>${fmt(s.dmg)}${up(preview && preview.dmg)}</td></tr>
+      <tr><td>${T('info.rate')}</td><td>${T('info.perSec', { n: fmt(s.rate) })}${up(preview && preview.rate)}</td></tr>
+      <tr><td>${T('info.range')}</td><td>${rangeText(s.range)}${s.range < 1000 ? up(preview && preview.range, Math.round) : ''}</td></tr>
+      <tr><td>${T('info.strong')}</td><td>${strongAgainst(t.elements)}</td></tr>
+      <tr><td>${T('info.kills')}</td><td>${t.kills} / ${Math.round(t.dmgDealt)}</td></tr>
     </table>
     <div class="effects">${effectLines(s)}</div>
     <div class="btnRow">
-      ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok && !b ? 1 : 0}" title="${tierOpt.reason || ''}">${ico('upgrade')} อัปเกรดระดับ ${t.tier + 1} (${ico('gold')}${tierOpt.cost})${tierOpt.ok ? '' : ' ' + ico('lock')}</button>` : `<button class="full" disabled>${ico('crown')} ระดับสูงสุดแล้ว</button>`}
+      ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok && !b ? 1 : 0}" title="${tierOpt.reason || ''}">${ico('upgrade')} ${T('info.upgrade', { n: t.tier + 1 })} (${ico('gold')}${tierOpt.cost})${tierOpt.ok ? '' : ' ' + ico('lock')}</button>` : `<button class="full" disabled>${ico('crown')} ${T('info.maxed')}</button>`}
     </div>
     ${tierOpt && !tierOpt.ok ? `<div class="effects" style="margin-top:4px">${ico('lock')} ${tierOpt.reason}</div>` : ''}
-    ${addOpts.length ? `<div class="sect">${ico('sparkle')} เพิ่มธาตุ → ${t.elements.length === 1 ? 'ป้อมสองธาตุ' : 'ป้อมสามธาตุ'}</div><div class="addGrid" id="addGrid"></div>` : ''}
+    ${addOpts.length ? `<div class="sect">${ico('sparkle')} ${T('info.addEl', { kind: T(t.elements.length === 1 ? 'info.toDual' : 'info.toTriple') })}</div><div class="addGrid" id="addGrid"></div>` : ''}
     <div class="btnRow" style="margin-top:8px">
       <button id="bMode">${ico('target')} ${TARGET_LABEL[t.mode]}</button>
-      <button id="bSell" class="danger">${ico('sell')} ขาย ${b && b.kind === 'build' ? t.spent : sellValue(t)}</button>
+      <button id="bSell" class="danger">${ico('sell')} ${T('info.sell', { n: b && b.kind === 'build' ? t.spent : sellValue(t) })}</button>
     </div>`;
   if (tierOpt) $('bUp').addEventListener('click', () => g.applyUpgrade(t, tierOpt));
   const grid = $('addGrid');
@@ -445,8 +446,8 @@ function renderInfo() {
       btn.className = `addBtn${o.ok ? '' : ' need'}`;
       btn.dataset.cost = o.cost;
       btn.dataset.ok = o.ok && !b ? 1 : 0;
-      btn.title = o.ok ? `${o.label} ระดับ ${o.tier}` : o.reason;
-      btn.title = `${o.label}${o.ok ? '' : ' — ' + o.reason}\n${towerDef(o.els).attack}`;
+      btn.title = o.ok ? T('info.tierOf', { name: o.label, n: o.tier }) : o.reason;
+      btn.title = `${o.label}${o.ok ? '' : ' — ' + o.reason}\n${tr(towerDef(o.els), 'attack')}`;
       btn.innerHTML = `${ico(comboIcon(o.els))}<span><span class="nm">${o.label}</span><span class="c">${ico('gold')}${o.cost}</span>${o.ok ? '' : ' ' + ico('lock')}</span>`;
       btn.addEventListener('click', () => g.applyUpgrade(t, o));
       grid.appendChild(btn);
@@ -476,7 +477,7 @@ function updateHoverCheck() {
   if (!g || !h || !view.selectedBuild) { view.hoverCheck = null; return; }
   const type = view.selectedBuild;
   let res = g.canBuildType(type);
-  if (res.ok && g.gold < buildCost(type)) res = { ok: false, reason: 'ทองไม่พอ' };
+  if (res.ok && g.gold < buildCost(type)) res = { ok: false, reason: T('info.noGold') };
   if (res.ok) {
     const chk = g.checkBuild(h.c, h.r);
     res = { ok: chk.ok, reason: chk.reason };
@@ -570,6 +571,7 @@ document.addEventListener('keydown', (ev) => {
     case 'g': toggleSigns(); break;
     case 'c': renderer.resetCamera(); break;
     case 'z': toggleFullscreen(); break;
+    case 'l': toggleLang(); break;
     default: break;
   }
 });
@@ -578,7 +580,7 @@ document.addEventListener('keydown', (ev) => {
 const setIcon = (btn, name) => { btn.querySelector('img').src = iconUrl(name); };
 function updatePauseUI() {
   setIcon(ui.pause, view.paused ? 'play' : 'pause');
-  ui.pause.title = view.paused ? 'เล่นต่อ (Space)' : 'หยุดชั่วคราว (Space)';
+  ui.pause.title = view.paused ? T('btn.play') : T('btn.pause');
   $('pauseOverlay').classList.toggle('show', view.paused && !!view.game && !view.menu);
 }
 function updateSpeedUI() { $('speedLbl').textContent = `${view.speed}×`; }
@@ -593,7 +595,7 @@ function toggleMute() { setIcon(ui.mute, Sound.toggle() ? 'mute' : 'sound'); }
 function updateQualityUI() {
   const high = renderer.quality === 'high';
   setIcon(ui.quality, high ? 'quality' : 'quality_low');
-  ui.quality.title = high ? 'กราฟิก: สูง (เงา + แสงเรือง) — กดเพื่อโหมดประหยัด' : 'กราฟิก: ประหยัด — กดเพื่อคุณภาพสูง';
+  ui.quality.title = high ? T('btn.qHigh') : T('btn.qLow');
 }
 function toggleSigns() {
   view.showSigns = !view.showSigns;
@@ -604,7 +606,7 @@ function toggleFullscreen() {
   const el = document.documentElement;
   if (!document.fullscreenElement) {
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
-    if (req) Promise.resolve(req.call(el)).catch(() => showToast('เบราว์เซอร์นี้ไม่รองรับโหมดเต็มจอ', 1200));
+    if (req) Promise.resolve(req.call(el)).catch(() => showToast(T('toast.noFullscreen'), 1200));
   } else {
     (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   }
@@ -661,10 +663,10 @@ function hideOverlays() {
 function showEnd(won) {
   const g = view.game;
   if (!g) return;
-  $('endTitle').innerHTML = won ? `${ico('trophy')} ชัยชนะ!` : `${ico('skull')} แกนกลางถูกทำลาย`;
+  $('endTitle').innerHTML = won ? `${ico('trophy')} ${T('end.win')}` : `${ico('skull')} ${T('end.lose')}`;
   $('endText').innerHTML = won
-    ? `คุณปกป้องแกนกลางได้ครบ ${TOTAL_WAVES} เวฟ!<br>กำจัดมอนสเตอร์ ${g.kills} ตัว · ชีวิตเหลือ ${g.lives}`
-    : `คุณผ่านไปได้ ${Math.max(0, g.wave - 1)} เวฟ · กำจัดมอนสเตอร์ ${g.kills} ตัว`;
+    ? T('end.winText', { n: TOTAL_WAVES, kills: g.kills, lives: g.lives })
+    : T('end.loseText', { n: Math.max(0, g.wave - 1), kills: g.kills });
   $('btnContinue').style.display = won ? '' : 'none';
   $('endScreen').classList.add('show');
 }
@@ -681,7 +683,7 @@ $('btnMenu').addEventListener('click', openMenu);
 $('btnStart').addEventListener('click', () => { Sound.unlock(); newGame(); });
 $('btnResume').addEventListener('click', () => { Sound.unlock(); resumeGame(); });
 $('btnDiscard').addEventListener('click', () => {
-  if (!confirm('ลบเกมที่บันทึกไว้?')) return;
+  if (!confirm(T('confirm.discard'))) return;
   clearSave();
   renderMenu();
 });
@@ -707,17 +709,12 @@ function drawThumb(def) {
 }
 
 function renderMenu() {
-  $('menuElems').innerHTML = ELEMENT_ORDER.map((el) => {
-    const e = ELEMENTS[el];
-    return `<span class="chip" style="--c:${e.color}">${ico(e.icon)} ${e.th}</span>`;
-  }).join('');
   const mapList = $('mapList');
   mapList.innerHTML = '';
   MAPS.forEach((m, i) => {
     const b = document.createElement('button');
     b.className = 'choice' + (i === view.mapIndex ? ' selected' : '');
-    const maze = m.layout.some((row) => row.includes('.'));
-    b.innerHTML = `<b>${m.name}</b><span>${m.desc}</span><span class="tag${maze ? '' : ' lane'}">${ico(maze ? 'map_maze' : 'map_lane')} ${maze ? 'สร้างเขาวงกต' : 'ทางตายตัว'}</span>`;
+    b.innerHTML = `<b>${tr(m, 'name')}</b>`;
     b.appendChild(drawThumb(m));
     b.addEventListener('click', () => { view.mapIndex = i; renderer.loadMap(i); renderMenu(); });
     mapList.appendChild(b);
@@ -727,7 +724,7 @@ function renderMenu() {
   Object.entries(DIFFICULTIES).forEach(([key, d]) => {
     const b = document.createElement('button');
     b.className = 'choice' + (key === view.diffKey ? ' selected' : '');
-    b.innerHTML = `<b>${d.th}</b><span>ทอง ${d.gold} · ชีวิต ${d.lives} · HP ×${d.hp}</span>`;
+    b.innerHTML = `<b>${tr(d, 'th')}</b>`;
     b.addEventListener('click', () => { view.diffKey = key; renderMenu(); });
     diffList.appendChild(b);
   });
@@ -735,41 +732,29 @@ function renderMenu() {
   const box = $('resumeBox');
   if (save && MAPS[save.mapIndex] && DIFFICULTIES[save.diffKey]) {
     box.hidden = false;
-    const when = save.savedAt ? new Date(save.savedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    $('resumeText').innerHTML = `${MAPS[save.mapIndex].name} · ${DIFFICULTIES[save.diffKey].th} · ผ่านแล้ว ${save.wave} เวฟ · ${ico('heart')} ${save.lives} · ${ico('gold')} ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
+    const when = save.savedAt ? new Date(save.savedAt).toLocaleString(getLang() === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '';
+    $('resumeText').innerHTML = `${T('menu.resumeText', { map: tr(MAPS[save.mapIndex], 'name'), diff: tr(DIFFICULTIES[save.diffKey], 'th'), wave: save.wave })} · ${ico('heart')} ${save.lives} · ${ico('gold')} ${Math.floor(save.gold)}${when ? ` · ${when}` : ''}`;
   } else {
     box.hidden = true;
   }
-  const best = loadBest()[MAPS[view.mapIndex].id + ':' + view.diffKey];
-  $('bestScore').innerHTML = best ? `${ico('trophy')} สถิติสูงสุด: เวฟ ${best}` : '';
 }
 
 function renderHelp() {
-  const items = [
-    ['play', 'กดเริ่มเกมแล้วเวฟแรกมาใน 30 วิ — <b>เวฟถัดไปจะมาหลังเคลียร์สนามหมดแล้ว 10 วิ</b> เท่านั้น ใช้ปุ่มหยุดชั่วคราวได้ทุกเมื่อ'],
-    ['heart', 'มอนสเตอร์ที่หลุดถึงประตูแกนกลางจะทำให้เสียชีวิต แล้ว <b>วนกลับไปเริ่มที่ประตูทางเข้าใหม่</b> จนกว่าจะถูกกำจัด'],
-    ['hammer', '<b>การสร้างและอัปเกรดป้อมใช้เวลา</b> ระหว่างก่อสร้างป้อมจะ <b>ยิงไม่ได้</b> — วางแผนล่วงหน้าก่อนมอนสเตอร์มาถึง'],
-    ['essence', '<b>ผลึกธาตุ</b> — เริ่มเกมได้ 1 ชิ้น และได้เพิ่มทุก 5 เวฟ กดที่ธาตุเพื่อ <b>เรียกภูตพิทักษ์ธาตุ</b> ออกมา เมื่อกำจัดได้จึง <b>ปลดล็อก/เพิ่มเลเวลธาตุ</b> นั้น (สูงสุด 3) — ภูตยิ่งเลเวลสูงยิ่งอึด'],
-    ['t_arrow', '<b>ป้อมพื้นฐาน</b> ธนู/ปืนใหญ่ สร้างได้ทันที · <b>ป้อมธาตุ</b> สร้างได้เมื่อปลดล็อกธาตุนั้น · ระดับป้อมต้องไม่เกินเลเวลธาตุ'],
-    ['sparkle', '<b>เพิ่มธาตุ</b> ให้ป้อมเพื่อกลายเป็น <b>ป้อมสองธาตุ (15 แบบ)</b> และ <b>ป้อมสามธาตุ (4 แบบ)</b> — รวมทั้งหมด 25 ป้อม แต่ละแบบมีวิธีโจมตีและจุดอ่อนต่างกัน'],
-    ['map_maze', '<b>สร้างเขาวงกต</b> — ในลานหิน มอนสเตอร์จะเดินอ้อมป้อม (ห้ามปิดทางทั้งหมด) และต้องผ่านจุดตรวจตามลำดับ'],
-    ['gold', 'จบแต่ละเวฟได้โบนัส + <b>ดอกเบี้ย 3%</b> ของทองที่เก็บไว้ · เกมบันทึกอัตโนมัติระหว่างเวฟ'],
-    ['sign', 'ป้ายผู้สร้างเกมที่มุมแผนที่ คลิกเพื่อไปหน้าเว็บผู้พัฒนา — ซ่อน/แสดงได้ด้วยปุ่มป้ายด้านบน (G)'],
-  ];
+  const items = [['play', 'help.i1'], ['heart', 'help.i2'], ['hammer', 'help.i3'], ['essence', 'help.i4'], ['t_arrow', 'help.i5'], ['sparkle', 'help.i6'], ['map_maze', 'help.i7'], ['gold', 'help.i8'], ['sign', 'help.i9']].map(([i, k]) => [i, T(k)]);
   $('helpList').innerHTML = items.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('');
   $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss', 'elemental'].map((k) => {
     const a = ABILITIES[k];
-    return `<div>${ico(a.icon)}<span><b>${a.creature}</b><br>${a.th} — ${a.desc}</span></div>`;
+    return `<div>${ico(a.icon)}<span><b>${tr(a, 'creature')}</b><br>${tr(a, 'th')} — ${tr(a, 'desc')}</span></div>`;
   }).join('');
   $('elemTable').innerHTML = ELEMENT_ORDER.map((el) => {
     const e = ELEMENTS[el];
     const b = ELEMENTS[BEATS[el]];
     const d = TOWERS[el];
-    return `<div style="border-color:${e.color}"><b>${ico(e.icon)} ${e.th} — ${d.th}</b><br>${d.attack}<br><small>${ico('warning')} ${d.weak} · ชนะทาง: ${ico(b.icon)} ${b.th}</small></div>`;
+    return `<div style="border-color:${e.color}"><b>${ico(e.icon)} ${T('help.elemCard', { el: elName(e), tower: tr(d, 'th') })}</b><br>${tr(d, 'attack')}<br><small>${ico('warning')} ${tr(d, 'weak')} · ${T('help.beats')}: ${ico(b.icon)} ${elName(b)}</small></div>`;
   }).join('');
   const icons = (k) => k.split('+').map((e) => ico(ELEMENTS[e].icon)).join('');
   const combos = Object.entries(TOWERS).filter(([k]) => k.includes('+'));
-  $('compendium').innerHTML = combos.map(([k, d]) => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${d.th}</b> <span class="els">${icons(k)}</span><br><small class="look">${d.look}</small><br>${d.attack}<br><small class="weak">${ico('warning')} ${d.weak}</small></div></div>`).join('');
+  $('compendium').innerHTML = combos.map(([k, d]) => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${tr(d, 'th')}</b> <span class="els">${icons(k)}</span><br><small class="look">${tr(d, 'look')}</small><br>${tr(d, 'attack')}<br><small class="weak">${ico('warning')} ${tr(d, 'weak')}</small></div></div>`).join('');
 }
 
 function drawCycle() {
@@ -805,7 +790,31 @@ function drawCycle() {
   g.fillText('×2', cx, cy);
 }
 
+/* ---------------- ภาษา ---------------- */
+function applyLang() {
+  const L = getLang();
+  document.documentElement.lang = L;
+  document.title = T('doc.title');
+  for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = T(el.dataset.i18n);
+  for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = T(el.dataset.i18nTitle);
+  for (const el of document.querySelectorAll('#langLbl, .langLbl')) el.textContent = L === 'th' ? 'EN' : 'TH';
+  updatePauseUI();
+  updateQualityUI();
+  renderHelp();
+  renderMenu();
+  if (view.game) { refreshAll(); renderWaveChip(true); }
+  if (renderer.world && renderer.world.creatorSign && renderer.world.creatorSign.userData.redraw) renderer.world.creatorSign.userData.redraw();
+}
+function toggleLang() {
+  setLang(getLang() === 'th' ? 'en' : 'th');
+  applyLang();
+  showToast(T('toast.lang'), 1000);
+}
+$('btnLang').addEventListener('click', toggleLang);
+$('btnLangMenu').addEventListener('click', toggleLang);
+
 /* ---------------- เริ่มต้น ---------------- */
+applyLang();
 renderHelp();
 drawCycle();
 renderBuild();

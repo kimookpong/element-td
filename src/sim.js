@@ -11,10 +11,13 @@ import {
   FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
 } from './data.js';
 import { towerDef } from './towers.js';
+import { t as tt, tr, elName } from './i18n.js';
+
+const EN_ = (el) => elName(ELEMENTS[el]);
 
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const SAVE_VERSION = 1;
-export const TARGET_LABEL = { first: 'หัวแถว', last: 'ท้ายแถว', strong: 'HP มากสุด', close: 'ใกล้สุด' };
+export const TARGET_LABEL = { get first() { return tt('target.first'); }, get last() { return tt('target.last'); }, get strong() { return tt('target.strong'); }, get close() { return tt('target.close'); } };
 
 const N = COLS * ROWS;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -117,14 +120,14 @@ export function towerStats(t) {
 }
 
 export function towerName(t) {
-  if (t.kind === 'basic') return BASIC[t.base].th;
+  if (t.kind === 'basic') return tr(BASIC[t.base], 'th');
   const d = towerDef(t.elements);
-  return d ? d.th : '?';
+  return d ? tr(d, 'th') : '?';
 }
 
 export function comboName(els) {
   const d = towerDef(els);
-  return d ? d.th : '?';
+  return d ? tr(d, 'th') : '?';
 }
 
 export const buildCost = (type) => (BASIC[type] ? BASIC[type].cost[0] : ELEMENT_TOWER[1].cum[0]);
@@ -287,16 +290,16 @@ export class Game {
 
   /* ตรวจว่าวางป้อมที่ช่องนี้ได้หรือไม่ (รวมถึงห้ามปิดทาง) */
   checkBuild(c, r) {
-    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return { ok: false, reason: 'นอกพื้นที่' };
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return { ok: false, reason: tt('sim.outside') };
     const i = idx(c, r);
     const m = this.map;
-    if (!m.build[i]) return { ok: false, reason: 'สร้างตรงนี้ไม่ได้' };
-    if (this.towerGrid[i]) return { ok: false, reason: 'มีป้อมอยู่แล้ว' };
+    if (!m.build[i]) return { ok: false, reason: tt('sim.cantBuild') };
+    if (this.towerGrid[i]) return { ok: false, reason: tt('sim.occupied') };
     if (!m.walk[i]) return { ok: true };
     const { x, y } = tileCenter(i);
     for (const e of this.creeps) {
       if (e.alive && !e.flying && Math.abs(e.x - x) < TILE * 0.85 && Math.abs(e.y - y) < TILE * 0.85) {
-        return { ok: false, reason: 'มีมอนสเตอร์ขวางอยู่' };
+        return { ok: false, reason: tt('sim.creepHere') };
       }
     }
     this.blocked[i] = 1;
@@ -304,28 +307,28 @@ export class Game {
     this.blocked[i] = 0;
     for (let s = 0; s < fields.length; s++) {
       const start = s === 0 ? m.spawn : m.goals[s - 1];
-      if (!Number.isFinite(fields[s].dist[start])) return { ok: false, reason: 'ห้ามปิดทางเดินทั้งหมด!' };
+      if (!Number.isFinite(fields[s].dist[start])) return { ok: false, reason: tt('sim.blockPath') };
     }
     for (const e of this.creeps) {
       if (!e.alive || e.flying) continue;
       const ti = this.tileAt(e.x, e.y);
-      if (ti >= 0 && !Number.isFinite(fields[e.stage].dist[ti])) return { ok: false, reason: 'ห้ามขังมอนสเตอร์!' };
+      if (ti >= 0 && !Number.isFinite(fields[e.stage].dist[ti])) return { ok: false, reason: tt('sim.trap') };
     }
     return { ok: true, fields };
   }
 
   /* ---------- ธาตุ ---------- */
   buyElement(el) {
-    if (this.elemPoints <= 0) { this.sound('error'); this.toast('ไม่มีผลึกธาตุเหลือ', 900); return false; }
+    if (this.elemPoints <= 0) { this.sound('error'); this.toast(tt('sim.noEssence'), 900); return false; }
     if (this.elemLevel[el] >= MAX_ELEMENT_LEVEL) { this.sound('error'); return false; }
-    if (this.pendingElem[el]) { this.sound('error'); this.toast(`ภูตธาตุ${ELEMENTS[el].th}ยังอยู่ในสนาม`, 1100); return false; }
+    if (this.pendingElem[el]) { this.sound('error'); this.toast(tt('sim.guardianAlive', { el: EN_(el) }), 1100); return false; }
     // ใช้ผลึก = เรียกภูตพิทักษ์ธาตุ ต้องกำจัดให้ได้ก่อนจึงปลดล็อก/อัปเลเวล
     this.elemPoints -= 1;
     const lv = this.elemLevel[el] + 1;
     this.pendingElem[el] = lv;
     const hp = this.waveHp(this.wave + 1) * ELEMENTAL_HP[lv - 1];
     this.spawnCreep({ ability: 'elemental', element: el, wave: -1, unlock: lv }, hp);
-    this.toast(`:${ELEMENTS[el].icon}: ภูตธาตุ${ELEMENTS[el].th} Lv.${lv} ปรากฏ! กำจัดเพื่อปลดล็อก`, 2000);
+    this.toast(tt('sim.guardianSpawn', { icon: ELEMENTS[el].icon, el: EN_(el), lv }), 2000);
     this.sound('boss');
     this.emit('changed');
     return true;
@@ -336,7 +339,7 @@ export class Game {
     const el = e.element, lv = e.unlock;
     delete this.pendingElem[el];
     this.elemLevel[el] = Math.max(this.elemLevel[el], lv);
-    this.toast(`:${ELEMENTS[el].icon}: ปราบภูตธาตุ${ELEMENTS[el].th}! ธาตุ${ELEMENTS[el].th} เลเวล ${lv}`, 1800);
+    this.toast(tt('sim.guardianDown', { icon: ELEMENTS[el].icon, el: EN_(el), lv }), 1800);
     this.emit('elementUp', { el, lv });
     this.sound('fuse');
     this.emit('changed');
@@ -345,7 +348,7 @@ export class Game {
   /* ---------- ป้อม ---------- */
   canBuildType(type) {
     if (BASIC[type]) return { ok: true };
-    if (this.elemLevel[type] < 1) return { ok: false, reason: this.pendingElem[type] ? `ต้องกำจัดภูตธาตุ${ELEMENTS[type].th}ก่อน` : `ใช้ผลึกธาตุเรียกภูตธาตุ${ELEMENTS[type].th}แล้วกำจัดเพื่อปลดล็อก` };
+    if (this.elemLevel[type] < 1) return { ok: false, reason: tt(this.pendingElem[type] ? 'sim.killGuardian' : 'sim.summonGuardian', { el: EN_(type) }) };
     return { ok: true };
   }
 
@@ -353,7 +356,7 @@ export class Game {
     const req = this.canBuildType(type);
     if (!req.ok) { this.sound('error'); this.toast(req.reason, 1100); return false; }
     const cost = buildCost(type);
-    if (this.gold < cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
+    if (this.gold < cost) { this.sound('error'); this.toast(tt('sim.noGold'), 900); return false; }
     const chk = this.checkBuild(c, r);
     if (!chk.ok) { this.sound('error'); this.toast(chk.reason, 1100); return false; }
     this.gold -= cost;
@@ -392,9 +395,9 @@ export class Game {
       else {
         const T = ELEMENT_TOWER[t.elements.length];
         cost = T.cum[t.tier] - T.cum[t.tier - 1];
-        if (!lvOk(t.elements, t.tier + 1)) need = `ต้องมีธาตุ ${t.elements.map((e) => ELEMENTS[e].th).join('+')} เลเวล ${t.tier + 1}`;
+        if (!lvOk(t.elements, t.tier + 1)) need = tt('sim.needLv', { els: t.elements.map(EN_).join('+'), lv: t.tier + 1 });
       }
-      opts.push({ type: 'tier', cost, ok: !need, reason: need, label: `อัปเกรดเป็นระดับ ${t.tier + 1}` });
+      opts.push({ type: 'tier', cost, ok: !need, reason: need, label: tt('sim.upTo', { n: t.tier + 1 }) });
     }
     if (t.kind === 'element' && t.elements.length < 3) {
       const n = t.elements.length;
@@ -407,7 +410,7 @@ export class Game {
         const ok = lvOk(els, newTier);
         opts.push({
           type: 'add', el: e, els, tier: newTier, cost, ok,
-          reason: ok ? null : `ต้องมีธาตุ${ELEMENTS[e].th} เลเวล ${newTier}${newTier > 1 ? ' (และธาตุเดิมเลเวลเท่ากัน)' : ''}`,
+          reason: ok ? null : tt('sim.needElLv', { el: EN_(e), lv: newTier }) + (newTier > 1 ? tt('sim.needSame') : ''),
           label: comboName(els),
         });
       }
@@ -416,9 +419,9 @@ export class Game {
   }
 
   applyUpgrade(t, opt) {
-    if (t.build) { this.sound('error'); this.toast('ป้อมกำลังก่อสร้างอยู่', 1000); return false; }
+    if (t.build) { this.sound('error'); this.toast(tt('sim.building'), 1000); return false; }
     if (!opt.ok) { this.sound('error'); this.toast(opt.reason, 1400); return false; }
-    if (this.gold < opt.cost) { this.sound('error'); this.toast('ทองไม่พอ!', 900); return false; }
+    if (this.gold < opt.cost) { this.sound('error'); this.toast(tt('sim.noGold'), 900); return false; }
     this.gold -= opt.cost;
     t.spent += opt.cost;
     const bt = upgradeTime(opt.type, t.tier, t.elements.length);
@@ -429,7 +432,7 @@ export class Game {
     t.build = { t: bt, total: bt, kind: 'upgrade' };
     if (opt.type === 'add') {
       this.emit('fuse', { tower: t, els: t.elements });
-      this.toast(`กำลังหลอมรวม: ${towerName(t)}`, 1600);
+      this.toast(tt('sim.fusing', { name: towerName(t) }), 1600);
       this.sound('fuse');
     } else {
       this.emit('upgrade', { tower: t });
@@ -506,10 +509,10 @@ export class Game {
     const A = ABILITIES[w.ability];
     if (w.ability === 'boss') {
       this.sound('boss');
-      this.toast(`:warning: มังกรโบราณธาตุ${ELEMENTS[w.element].th}กำลังมา!`, 2200);
+      this.toast(tt('sim.bossWave', { el: EN_(w.element) }), 2200);
     } else {
       this.sound('wave');
-      this.toast(`เวฟ ${n}: :${A.icon}: ${A.creature}ธาตุ${ELEMENTS[w.element].th}`, 1500);
+      this.toast(tt('sim.wave', { n, icon: A.icon, creature: tr(A, 'creature'), el: EN_(w.element) }), 1500);
     }
     this.emit('waveStart', { n });
     this.emit('changed');
@@ -671,7 +674,7 @@ export class Game {
         e.erosion = 0;
         e.silenceT = Math.max(e.silenceT, s.erosion.silence);
         this.setStun(e, s.erosion.stun);
-        this.floater(e.x, e.y - 6, 'ขัดจังหวะ!', '#ffd27a', 12, e.flying ? 1 : 0);
+        this.floater(e.x, e.y - 6, tt('fx.interrupt'), '#ffd27a', 12, e.flying ? 1 : 0);
       }
     }
   }
@@ -735,7 +738,7 @@ export class Game {
         ch.hp = ch.maxHp = e.maxHp * 0.45;
       }
     }
-    if (e.ability === 'boss') this.toast('บอสถูกกำจัด!', 1400);
+    if (e.ability === 'boss') this.toast(tt('sim.bossDown'), 1400);
     if (e.ability === 'elemental') this.elementalDefeated(e);
     this.creepRemoved(e);
   }
