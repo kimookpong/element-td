@@ -48,6 +48,7 @@ export function grassTexture(tint = 'meadow') {
     const P = {
       meadow: { base: '#5d9b35', pal: ['#4a8a26', '#6db23c', '#7fc548', '#3f7a22', '#8fd352', '#5a9a30'], blot: ['#7bbf45', '#3f7424'] },
       ruins: { base: '#5a9433', pal: ['#478524', '#69ab3a', '#7bbf44', '#3d7521', '#8bcb4d', '#6a9d2e'], blot: ['#86c24c', '#3a6e22'] },
+      desert: { base: '#e0bf78', pal: ['#d4b06a', '#e8c987', '#f0d494', '#c9a45e', '#dcb874', '#ecd09a'], blot: ['#f2d79e', '#c49c58'] },
       canyon: { base: '#a58a45', pal: ['#8f7a3a', '#b89a50', '#c7a85c', '#7d6a33', '#9aa048', '#b08f45'], blot: ['#c9ac62', '#7a6430'] },
       night: { base: '#2d4a52', pal: ['#26424a', '#35585f', '#3e6670', '#1f3a40', '#46707a', '#2f4f58'], blot: ['#43707a', '#1c343a'] },
     }[tint];
@@ -69,6 +70,26 @@ export function grassTexture(tint = 'meadow') {
       });
     }
     g.lineCap = 'round';
+    if (tint === 'desert') {
+      // ระลอกทรายจากลม + เม็ดทราย
+      for (let i = 0; i < 260; i++) {
+        const x = rnd() * size, y = rnd() * size, len = 30 + rnd() * 70;
+        g.strokeStyle = rnd() < 0.5 ? 'rgba(170,125,60,0.28)' : 'rgba(255,240,200,0.35)';
+        g.lineWidth = 1.5 + rnd() * 1.5;
+        wrapped(size, x, y, len, (px, py) => {
+          g.beginPath(); g.moveTo(px, py);
+          g.bezierCurveTo(px + len * 0.3, py - 6, px + len * 0.6, py + 6, px + len, py);
+          g.stroke();
+        });
+      }
+      for (let i = 0; i < 6000; i++) {
+        g.fillStyle = P.pal[Math.floor(rnd() * P.pal.length)];
+        g.globalAlpha = 0.5 + rnd() * 0.5;
+        g.fillRect(rnd() * size, rnd() * size, 1.5, 1.5);
+      }
+      g.globalAlpha = 1;
+      return toTexture(c);
+    }
     for (let i = 0; i < 9000; i++) {
       const x = rnd() * size, y = rnd() * size;
       const len = 3 + rnd() * 8;
@@ -102,6 +123,7 @@ export function cobbleTexture(tint = 'stone') {
     const P = {
       stone: { mortar: '#5a534b', hue: 30, sat: 7, lmin: 36, lmax: 56 },
       sand: { mortar: '#7a6646', hue: 35, sat: 22, lmin: 48, lmax: 66 },
+      sandstone: { mortar: '#9a7a4a', hue: 40, sat: 42, lmin: 60, lmax: 76 },
       night: { mortar: '#26283c', hue: 235, sat: 12, lmin: 32, lmax: 48 },
     }[tint];
     const size = 512;
@@ -167,6 +189,7 @@ export function brickTexture(tint = 'stone') {
     const P = {
       stone: { mortar: '#3c3632', hue: 28, sat: 8, lmin: 34, lmax: 50 },
       sand: { mortar: '#5c4a34', hue: 30, sat: 25, lmin: 45, lmax: 62 },
+      sandstone: { mortar: '#8a6a3e', hue: 38, sat: 45, lmin: 56, lmax: 72 },
       night: { mortar: '#1d1e2e', hue: 235, sat: 12, lmin: 26, lmax: 40 },
     }[tint];
     const size = 512;

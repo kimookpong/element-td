@@ -19,6 +19,10 @@ export const THEMES = {
     sky: [0x4f9ef5, 0xe2f2ff], fog: 0xd2e8ff, grass: 'ruins', stone: 'stone', deco: 'ruins', water: true,
     sun: 0xfff2d8, sunI: 2.15, hemiSky: 0xd4ecff, hemiGround: 0x4a5a28, hemiI: 0.85, lantern: 0.6,
   },
+  desert: {
+    sky: [0x5aa6f0, 0xfff1d2], fog: 0xf5e2b6, grass: 'desert', stone: 'sandstone', deco: 'desert', water: true,
+    sun: 0xfff0c8, sunI: 2.35, hemiSky: 0xfff2d8, hemiGround: 0x8a6a3a, hemiI: 0.9, lantern: 0.5,
+  },
   canyon: {
     sky: [0xe9874a, 0xffe3b8], fog: 0xf2c79a, grass: 'canyon', stone: 'sand', deco: 'canyon', water: false,
     sun: 0xffd6a0, sunI: 2.2, hemiSky: 0xffe0c0, hemiGround: 0x6a4a2a, hemiI: 0.8, lantern: 0.5,
@@ -190,7 +194,7 @@ export function buildWorld(map, themeKey) {
   const cobbleMat = std(0xffffff, { map: cobbleTex, bumpMap: cobbleTex, bumpScale: 2.5, roughness: 0.9 });
   const brickTex = brickTexture(theme.stone);
   const brickMat = std(0xffffff, { map: brickTex, bumpMap: brickTex, bumpScale: 2, roughness: 0.92 });
-  const capMat = std(theme.stone === 'sand' ? 0xcbb388 : theme.stone === 'night' ? 0x5c5f80 : 0x9a948a, { roughness: 0.85, flatShading: true });
+  const capMat = std(theme.stone === 'sand' ? 0xcbb388 : theme.stone === 'sandstone' ? 0xe6cc92 : theme.stone === 'night' ? 0x5c5f80 : 0x9a948a, { roughness: 0.85, flatShading: true });
 
   // ---- พื้นหญ้า (บนกระดาน + รอบนอก) ----
   const grass = new QuadBuilder();
@@ -271,7 +275,7 @@ export function buildWorld(map, themeKey) {
       }
     }
   }
-  const rockMat = std(theme.stone === 'sand' ? 0xb08a5c : theme.stone === 'night' ? 0x4b4e70 : 0x8f8b84, { flatShading: true, roughness: 0.95 });
+  const rockMat = std(theme.stone === 'sand' ? 0xb08a5c : theme.stone === 'sandstone' ? 0xd2aa6a : theme.stone === 'night' ? 0x4b4e70 : 0x8f8b84, { flatShading: true, roughness: 0.95 });
   if (rocks.length) {
     group.add(instanced(G.dode(), rockMat, rocks, (d, it) => {
       d.position.set(it.x, it.s * 0.55, it.z);
@@ -400,18 +404,19 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   };
 
   const night = theme.deco === 'night';
-  const canyon = theme.deco === 'canyon';
+  const desert = theme.deco === 'desert';
+  const canyon = theme.deco === 'canyon' || desert; // ฉากแห้งแล้ง: ไม่มีดอกไม้/ต้นไม้ใบเขียว
 
   // หญ้าเป็นกอ (ทั้งบนเนินในกระดานและรอบนอก)
-  const tufts = scatter(2600, 0, 16, 0.2);
+  const tufts = scatter(desert ? 500 : 2600, 0, 16, 0.2);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (walk(c, r) || map.tiles[r][c] === 'W') continue;
-      for (let k = 0; k < 4; k++) tufts.push({ x: tileX(c) + rand(-0.45, 0.45), z: tileZ(r) + rand(-0.45, 0.45) });
+      for (let k = 0; k < (desert ? 1 : 4); k++) tufts.push({ x: tileX(c) + rand(-0.45, 0.45), z: tileZ(r) + rand(-0.45, 0.45) });
     }
   }
   const tuftMat = std(0xffffff, { vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
-  const tuftBase = canyon ? 0xc9b067 : night ? 0x4d8a8f : 0x7fbf45;
+  const tuftBase = desert ? 0xb8a560 : canyon ? 0xc9b067 : night ? 0x4d8a8f : 0x7fbf45;
   group.add(instanced(tuftGeometry(), tuftMat, tufts, (d, it) => {
     d.position.set(it.x, 0, it.z);
     d.rotation.y = rand(0, 6);
@@ -429,9 +434,10 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   }
 
   // ต้นไม้
-  const treeSpots = scatter(canyon ? 30 : 150, 1.2, 15);
+  const treeSpots = scatter(desert ? 0 : canyon ? 30 : 150, 1.2, 15);
   const trunkMat = std(night ? 0x3a2a30 : 0x6b4a2b, { roughness: 0.9 });
-  if (canyon) {
+  if (desert) buildDesert(group, scatter, nearPortal, B);
+  if (canyon && !desert) {
     const mesas = scatter(40, 2, 18);
     group.add(instanced(geo('mesa', () => new THREE.CylinderGeometry(0.5, 0.65, 1, 7)), std(0xffffff, { flatShading: true, roughness: 0.95, map: brickTexture('sand') }), mesas, (d, it) => {
       const h = rand(0.6, 2.8) * (0.5 + it.d * 0.1), s = rand(0.6, 1.6);
@@ -489,7 +495,7 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
     }, { colors: () => new THREE.Color(night ? 0x24585c : 0x3e8a30).offsetHSL(0, 0, rand(-0.06, 0.08)).getHex() }));
   }
   const rocks = scatter(110, 0.6, 15);
-  group.add(instanced(G.dode(), std(canyon ? 0xb88a5a : night ? 0x45486a : 0x8d8a84, { flatShading: true, roughness: 0.95 }), rocks, (d, it) => {
+  group.add(instanced(G.dode(), std(desert ? 0xd2aa6a : canyon ? 0xb88a5a : night ? 0x45486a : 0x8d8a84, { flatShading: true, roughness: 0.95 }), rocks, (d, it) => {
     const s = rand(0.15, 0.6);
     d.position.set(it.x, s * 0.45, it.z);
     d.rotation.set(rand(0, 3), rand(0, 3), 0);
@@ -523,14 +529,15 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
         const a = (k / 22) * Math.PI * 2;
         rim.push({ x: p.x + Math.cos(a) * 2.25, z: p.z + Math.sin(a) * 1.55 });
       }
-      group.add(instanced(G.dode(), std(0x8a8680, { flatShading: true }), rim, (d, it) => {
+      group.add(instanced(G.dode(), std(desert ? 0xcfae78 : 0x8a8680, { flatShading: true }), rim, (d, it) => {
         const s = rand(0.12, 0.25);
         d.position.set(it.x, s * 0.4, it.z);
         d.rotation.set(rand(0, 3), rand(0, 3), 0);
         d.scale.setScalar(s);
       }));
+      if (desert) buildPalms(group, p);
       const pads = [];
-      for (let k = 0; k < 6; k++) pads.push({ x: p.x + rand(-1.4, 1.4), z: p.z + rand(-0.9, 0.9) });
+      for (let k = 0; k < (desert ? 0 : 6); k++) pads.push({ x: p.x + rand(-1.4, 1.4), z: p.z + rand(-0.9, 0.9) });
       group.add(instanced(geo('lily', () => new THREE.CircleGeometry(0.15, 10, 0.4, Math.PI * 1.8)), std(0x4a9a3a, { side: THREE.DoubleSide }), pads, (d, it) => {
         d.position.set(it.x, 0.035, it.z);
         d.rotation.set(-Math.PI / 2, 0, rand(0, 6));
@@ -539,9 +546,9 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   }
 
   // ซากปรักหักพังรอบนอก (โค้งหิน เสาหัก)
-  if (theme.deco === 'ruins' || theme.deco === 'forest') {
-    const pillars = scatter(theme.deco === 'ruins' ? 22 : 8, 0.8, 7);
-    const stoneMat = std(0xd2ccc0, { map: brickTexture('stone'), roughness: 0.9 });
+  if (theme.deco === 'ruins' || theme.deco === 'forest' || desert) {
+    const pillars = scatter(theme.deco === 'ruins' ? 22 : desert ? 12 : 8, 0.8, 7);
+    const stoneMat = std(desert ? 0xf0dcae : 0xd2ccc0, { map: brickTexture(desert ? 'sandstone' : 'stone'), roughness: 0.9 });
     group.add(instanced(G.box(), stoneMat, pillars, (d, it) => {
       const h = rand(0.5, 1.6);
       d.position.set(it.x, h / 2, it.z);
@@ -589,6 +596,148 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
 }
 
 /* ---------- ป้ายไม้แนะนำ (หันหากล้องเสมอ) ---------- */
+/* ---------- ฉากทะเลทราย: พีระมิด สฟิงซ์ เสาโอเบลิสก์ ต้นปาล์ม เนินทราย ---------- */
+function sandstoneMat(tint = 0xf0d8a4) { return std(tint, { map: brickTexture('sandstone'), roughness: 0.9, flatShading: true }); }
+
+function makePyramid(size, h) {
+  const g = new THREE.Group();
+  // ขั้นบันไดบาง ๆ ให้ดูเป็นก้อนหินเรียง + ยอดทอง
+  const body = new THREE.Mesh(new THREE.ConeGeometry(size * Math.SQRT1_2, h, 4, 1).rotateY(Math.PI / 4).translate(0, h / 2, 0), sandstoneMat());
+  body.castShadow = true; body.receiveShadow = true;
+  g.add(body);
+  const steps = 7;
+  for (let k = 1; k < steps; k++) {
+    const y = (k / steps) * h, w = size * (1 - k / steps);
+    const ring = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, 0.05, w + 0.08), std(0xc9a464, { roughness: 0.95 }));
+    ring.position.y = y;
+    g.add(ring);
+  }
+  const capH = h * 0.12;
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(size * Math.SQRT1_2 * 0.12, capH, 4).rotateY(Math.PI / 4), std(0xffcf40, { metalness: 0.9, roughness: 0.2, emissive: 0x6a4a00, emissiveIntensity: 0.4 }));
+  cap.position.y = h - capH / 2 + 0.01;
+  g.add(cap);
+  return g;
+}
+
+function makeSphinx() {
+  const S = (w, h, d, x, y, z, o = {}) => {
+    const geom = new THREE.BoxGeometry(w, h, d);
+    if (o.rx) geom.rotateX(o.rx);
+    if (o.ry) geom.rotateY(o.ry);
+    return geom.translate(x, y, z);
+  };
+  // ลำตัวหันไปทาง +z
+  const body = mergeGeometries([
+    S(2.0, 0.22, 4.0, 0, 0.11, -0.2),            // ฐาน
+    S(1.05, 0.75, 2.4, 0, 0.6, -0.55),           // ลำตัว
+    S(1.15, 0.95, 0.9, 0, 0.62, -1.55),          // สะโพก
+    S(0.95, 1.0, 0.65, 0, 0.9, 0.55),            // อก
+    S(0.3, 0.26, 1.25, -0.34, 0.35, 1.05),       // ขาหน้าซ้าย
+    S(0.3, 0.26, 1.25, 0.34, 0.35, 1.05),        // ขาหน้าขวา
+    S(0.62, 0.68, 0.6, 0, 1.68, 0.72),           // หัว
+    S(0.12, 0.18, 0.1, 0, 1.6, 1.06),            // จมูก
+    S(0.2, 0.2, 0.12, 0, 1.24, 1.0),             // เครา
+    S(0.12, 0.12, 0.9, 0, 0.42, -2.1, { rx: 0.3 }), // หาง
+  ]);
+  const nemes = mergeGeometries([
+    new THREE.CylinderGeometry(0.38, 0.62, 0.85, 4, 1).rotateY(Math.PI / 4).translate(0, 1.72, 0.58),
+    S(0.2, 0.7, 0.18, -0.4, 1.2, 0.78),
+    S(0.2, 0.7, 0.18, 0.4, 1.2, 0.78),
+  ]);
+  const stripes = mergeGeometries([0, 1, 2, 3].map((k) => S(0.005 + 0.66 + k * 0.06, 0.05, 0.62 + k * 0.05, 0, 1.98 - k * 0.17, 0.6)));
+  const g = new THREE.Group();
+  const add = (geom, mat) => { const m = new THREE.Mesh(geom, mat); m.castShadow = true; m.receiveShadow = true; g.add(m); };
+  // หินทรายเนื้อเรียบ (ไม่ใช้ลายอิฐ) ให้ดูเป็นรูปสลัก
+  add(body, std(0xe2c286, { roughness: 0.85, flatShading: true }));
+  add(nemes, std(0xecd29a, { roughness: 0.8, flatShading: true }));
+  add(stripes, std(0x2c4f9a, { roughness: 0.6 }));
+  // ตา
+  for (const x of [-0.14, 0.14]) {
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.02), std(0x1a1a2a));
+    eye.position.set(x, 1.78, 1.03);
+    g.add(eye);
+  }
+  return g;
+}
+
+function buildDesert(group, scatter, nearPortal, B) {
+  // พีระมิด 3 หลังด้านหลังกระดาน
+  for (const [x, dz, size, h] of [[-3.5, 10.5, 7, 5.6], [5.5, 13.5, 9.5, 7.4], [13.5, 9.5, 5, 4]]) {
+    const p = makePyramid(size, h);
+    p.position.set(x, 0, B.z0 - dz);
+    group.add(p);
+  }
+  // สฟิงซ์หน้าพีระมิด หันเข้าหากระดาน
+  const sphinx = makeSphinx();
+  sphinx.position.set(1.2, 0, B.z0 - 3.9);
+  sphinx.scale.setScalar(1.15);
+  group.add(sphinx);
+  // เสาโอเบลิสก์
+  const obMat = sandstoneMat(0xf2dcae);
+  const gold = std(0xffcf40, { metalness: 0.9, roughness: 0.2 });
+  for (const [x, z] of [[-1.6, B.z0 - 3.2], [4.0, B.z0 - 3.2], [B.x0 - 2.6, 4.2], [B.x1 + 2.6, -3.5]]) {
+    if (nearPortal(x, z, 1.5)) continue;
+    const ob = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 2.4, 4).rotateY(Math.PI / 4).translate(0, 1.2, 0), obMat);
+    ob.position.set(x, 0, z); ob.castShadow = true;
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.32, 4).rotateY(Math.PI / 4), gold);
+    tip.position.set(x, 2.56, z);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), obMat);
+    base.position.set(x, 0.09, z);
+    group.add(ob, tip, base);
+  }
+  // เนินทรายไกล ๆ
+  // เนินทรายไกล ๆ (เว้นพื้นที่พีระมิด/สฟิงซ์)
+  const dunes = scatter(40, 6, 22).filter((p) => !(p.z < B.z0 + 1 && p.x > -10 && p.x < 19)).slice(0, 24);
+  group.add(instanced(G.sph(), std(0xe0bf78, { roughness: 1 }), dunes, (d, it) => {
+    d.position.set(it.x, -0.45, it.z);
+    d.scale.set(rand(2.5, 6), rand(0.6, 1.4), rand(1.5, 3.5));
+    d.rotation.y = rand(0, 3);
+  }, { shadow: false, colors: () => new THREE.Color(0xe0bf78).offsetHSL(0, 0, rand(-0.04, 0.03)).getHex() }));
+  // ต้นปาล์มกระจาย
+  const palms = scatter(14, 1.2, 9);
+  palms.forEach((p) => buildPalms(group, p, 1, 0));
+}
+
+// ต้นปาล์มรอบโอเอซิส (หรือ 1 ต้นเมื่อ n=1)
+function buildPalms(group, center, n = 6, ring = 2.6) {
+  const trunkMat = std(0x8a6a42, { roughness: 0.9, flatShading: true });
+  const leafMat = std(0x4f9a3a, { roughness: 0.8, side: THREE.DoubleSide, flatShading: true });
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + rand(-0.3, 0.3);
+    const x = center.x + Math.cos(a) * ring * rand(0.9, 1.15), z = center.z + Math.sin(a) * ring * 0.75 * rand(0.9, 1.15);
+    const h = rand(1.4, 2.2), lean = rand(-0.25, 0.25), dir = rand(0, Math.PI * 2);
+    const palm = new THREE.Group();
+    palm.position.set(x, 0, z);
+    palm.rotation.y = dir;
+    const segs = 6;
+    for (let i = 0; i < segs; i++) {
+      const t = i / segs;
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.06 - t * 0.015, 0.075 - t * 0.015, h / segs * 1.05, 6), trunkMat);
+      seg.position.set(lean * t * t * h, (t + 0.5 / segs) * h, 0);
+      seg.rotation.z = -lean * t * 1.2;
+      seg.castShadow = true;
+      palm.add(seg);
+    }
+    const top = new THREE.Group();
+    top.position.set(lean * h, h, 0);
+    for (let f = 0; f < 7; f++) {
+      const fa = (f / 7) * Math.PI * 2;
+      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.13, 1.0, 3).rotateX(Math.PI / 2).translate(0, 0, 0.5).scale(1, 0.25, 1), leafMat);
+      leaf.rotation.set(0.45 + rand(-0.1, 0.15), fa, 0, 'YXZ');
+      leaf.castShadow = true;
+      top.add(leaf);
+    }
+    for (let c = 0; c < 3; c++) {
+      const nut = new THREE.Mesh(G.sphLo(), std(0x5a3a1e));
+      nut.position.set(Math.cos(c * 2.1) * 0.07, -0.06, Math.sin(c * 2.1) * 0.07);
+      nut.scale.setScalar(0.045);
+      top.add(nut);
+    }
+    palm.add(top);
+    group.add(palm);
+  }
+}
+
 function drawBoard(g, W, H) {
   g.clearRect(0, 0, W, H);
   const r = 26;

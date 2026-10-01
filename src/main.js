@@ -731,7 +731,8 @@ function drawThumb(def) {
   const g = c.getContext('2d');
   const m = parseMap(def);
   const s = 10;
-  const colors = { '.': '#8a8378', '#': '#4f8f35', '=': '#a89a80', R: '#5a5a5a', W: '#6a5f50', S: '#3a9bff', C: '#ff3048' };
+  const desert = def.theme === 'desert';
+  const colors = { '.': desert ? '#c9a466' : '#8a8378', '#': desert ? '#e6c882' : '#4f8f35', '=': '#a89a80', R: '#5a5a5a', W: desert ? '#a8844e' : '#6a5f50', S: '#3a9bff', C: '#ff3048' };
   for (let r = 0; r < ROWS; r++) {
     for (let col = 0; col < COLS; col++) {
       g.fillStyle = colors[m.tiles[r][col]] || '#ffd65a';

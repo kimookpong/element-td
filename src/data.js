@@ -167,9 +167,9 @@ export const MAPS = [
   },
   {
     id: 'ruins',
-    name: 'ซากปราการโบราณ', en: { name: 'Ancient Ruins', desc: 'A maze among ruined walls with 2 checkpoints' },
-    desc: 'เขาวงกตกลางซากกำแพง มีจุดตรวจ 2 จุด',
-    theme: 'ruins',
+    name: 'ซากปราการโบราณ', en: { name: 'Ancient Ruins', desc: 'A desert maze among ruined walls, pyramids and a sphinx — 2 checkpoints' },
+    desc: 'เขาวงกตกลางซากกำแพงในทะเลทราย มีพีระมิดและสฟิงซ์ — จุดตรวจ 2 จุด',
+    theme: 'desert',
     layout: [
       '########W###########',
       '#.......W.....W....#',
