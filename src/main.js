@@ -121,14 +121,43 @@ function openMenu() {
   view.menu = true;
   renderer.clearDynamic();
   renderer.loadMap(view.mapIndex);
+  bgMapIndex = view.mapIndex;
   hideOverlays();
   $('menu').classList.add('show');
   $('infoCard').hidden = true;
   showMenuPage('main');
 }
 
+/* ---------------- แผนที่พื้นหลังเมนู (สลับอัตโนมัติ) ---------------- */
+let menuPage = 'main';
+let bgMapIndex = view.mapIndex;
+let bgNext = 0; // เวลาจริง (ms) ที่จะสลับแผนที่ถัดไป
+let bgFading = false;
+const BG_INTERVAL = 8;
+function swapBgMap(i) {
+  if (bgFading) return;
+  bgFading = true;
+  const stage = $('stage');
+  stage.classList.add('fadeOut');
+  setTimeout(() => {
+    bgMapIndex = i;
+    if (view.menu) renderer.loadMap(i);
+    stage.classList.remove('fadeOut');
+    bgFading = false;
+  }, 450);
+}
+function tickMenuBg(now) {
+  if (!view.menu || menuPage !== 'main' || $('help').classList.contains('show')) { bgNext = now + BG_INTERVAL * 1000; return; }
+  if (!bgNext) bgNext = now + BG_INTERVAL * 1000;
+  if (now >= bgNext) { bgNext = now + BG_INTERVAL * 1000; swapBgMap((bgMapIndex + 1) % MAPS.length); }
+}
+
 // หน้าแรกของเมนู (3 ปุ่ม) ↔ หน้าเลือกแผนที่/ความยาก
 function showMenuPage(page) {
+  menuPage = page;
+  // หน้าเลือกแผนที่: พื้นหลังเป็นแผนที่ที่เลือก · หน้าแรก: สลับแผนที่วนไปเรื่อย ๆ
+  if (page === 'new' && bgMapIndex !== view.mapIndex) swapBgMap(view.mapIndex);
+  bgNext = 0;
   $('menuMain').hidden = page !== 'main';
   $('menuNew').hidden = page !== 'new';
   $('menu').querySelector('.menuCard').classList.toggle('wide', page === 'new');
@@ -140,6 +169,7 @@ let last = performance.now();
 function frame(now) {
   const realDt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  tickMenuBg(now);
   const g = view.game;
   if (g && !view.paused && !view.menu) {
     let remaining = realDt * view.speed;
@@ -721,7 +751,7 @@ function renderMenu() {
     b.className = 'choice' + (i === view.mapIndex ? ' selected' : '');
     b.innerHTML = `<b>${tr(m, 'name')}</b>`;
     b.appendChild(drawThumb(m));
-    b.addEventListener('click', () => { view.mapIndex = i; renderer.loadMap(i); renderMenu(); });
+    b.addEventListener('click', () => { view.mapIndex = i; bgMapIndex = i; renderer.loadMap(i); renderMenu(); });
     mapList.appendChild(b);
   });
   const diffList = $('diffList');

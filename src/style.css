@@ -72,6 +72,8 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 /* ---------- พื้นที่เกม ---------- */
 #app { position: fixed; inset: 0; }
 #stage { position: absolute; inset: 0; background: #0b0c18; }
+#stage canvas { transition: opacity .45s ease; }
+#stage.fadeOut canvas { opacity: 0; }
 #stage canvas { display: block; width: 100% !important; height: 100% !important; touch-action: none; cursor: pointer; }
 #stage .nogl { padding: 40px 20px; text-align: center; color: var(--muted); }
 #floaters { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
