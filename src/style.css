@@ -324,3 +324,39 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .logoImg { display: block; width: min(330px, 72vw); height: auto; margin: -18px auto -10px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .55)); user-select: none; }
 .menuCard.wide .logoImg { width: min(210px, 50vw); margin: -14px auto -8px; }
 @media (max-height: 700px) { .logoImg { width: min(240px, 60vw); } .menuCard.wide .logoImg { width: 150px; } }
+
+/* ---------- เมนู: ซ่อน HUD ระหว่างอยู่ในเมนู + หน้าเลือกแผนที่บนจอเล็ก ---------- */
+body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard { visibility: hidden; }
+.menuNew .choice b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mapList { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+#mapList .choice { max-width: none; min-width: 0; }
+#mapList .choice canvas { aspect-ratio: 5 / 3; object-fit: cover; }
+.diffRow { flex-wrap: nowrap; }
+@media (max-width: 600px) {
+  .menuCard { padding: 18px 12px 14px; gap: 12px; }
+  .menuCard.wide .logoImg { width: 120px; margin: -10px auto -6px; }
+  #mapList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #mapList .choice { padding: 6px; }
+  #mapList .choice b { font-size: .82rem; }
+  #mapList .choice canvas { margin-top: 4px; }
+  .diffRow { gap: 6px; }
+  .diffRow .choice { flex: 1; max-width: none; padding: 8px 4px; }
+  .diffRow .choice b { font-size: .9rem; }
+  .menuNew .menuActions { position: sticky; bottom: -14px; margin: 0 -12px -14px; padding: 10px 12px 14px; background: linear-gradient(180deg, rgba(28, 26, 22, 0), rgba(28, 26, 22, .96) 30%); display: flex; gap: 8px; }
+  .menuNew .menuActions button { flex: 1; justify-content: center; padding: 12px 8px; font-size: 1rem; }
+}
+@media (max-height: 520px) {
+  .menuCard { padding: 12px 14px; gap: 8px; max-height: calc(100dvh - 16px); }
+  .menuCard.wide .logoImg { display: none; }
+  .menuCard.wide { padding-top: 42px; }
+  .menuLang { top: 8px; right: 10px; padding: 4px 8px; }
+  .menuCard:not(.wide) .logoImg { width: 150px; margin: -8px auto -6px; }
+  .menuMain { gap: 6px; }
+  .menuMain button.big { padding: 8px 12px; }
+  #mapList { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #mapList .choice { padding: 5px; }
+  #mapList .choice b { font-size: .78rem; }
+  .menuNew { gap: 8px; }
+  .menuNew .menuActions { position: static; margin: 0; padding: 0; background: none; }
+  .menuNew .menuActions button { padding: 8px 14px; }
+}

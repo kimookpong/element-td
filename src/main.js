@@ -104,6 +104,7 @@ function startWithGame(game) {
   view.selectedTower = null;
   view.paused = false;
   view.menu = false;
+  document.body.classList.remove('menuOpen');
   view.speed = 1;
   view.hoverCheck = null;
   renderer.loadMap(view.mapIndex);
@@ -119,6 +120,7 @@ function startWithGame(game) {
 function openMenu() {
   view.game = null;
   view.menu = true;
+  document.body.classList.add('menuOpen');
   renderer.clearDynamic();
   renderer.loadMap(view.mapIndex);
   bgMapIndex = view.mapIndex;
