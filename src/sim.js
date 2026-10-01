@@ -4,12 +4,13 @@
  *  ฝั่งเรนเดอร์อ่าน state และ events เพื่อแสดงผล
  * ============================================================ */
 import {
-  TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier, elementEffects,
-  BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL, DUALS, TRIPLES, comboKey,
+  TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier,
+  BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES,
   ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
   FIRST_WAVE_DELAY, WAVE_GAP, CLEAR_GAP, BUILD_TIME, upgradeTime,
 } from './data.js';
+import { towerDef } from './towers.js';
 
 export const TARGET_MODES = ['first', 'last', 'strong', 'close'];
 export const SAVE_VERSION = 1;
@@ -106,31 +107,24 @@ export function towerStats(t) {
     return s;
   }
   const n = t.elements.length;
-  const els = t.elements.map((e) => ELEMENTS[e]);
-  const avg = (k) => els.reduce((a, e) => a + e[k], 0) / n;
-  const dps = ELEMENT_TOWER[n].dps[t.tier - 1] * avg('dpsF');
-  const rate = avg('rate');
-  const s = {
-    dps, rate, dmg: dps / rate,
-    range: Math.max(...els.map((e) => e.range)) * (1 + 0.08 * (t.tier - 1)) + (n - 1) * 8,
-  };
+  const def = towerDef(t.elements);
+  const dps = ELEMENT_TOWER[n].dps[t.tier - 1] * def.dpsF;
+  const rate = def.rate;
+  const dmg = dps / rate;
   const lv = Math.min(MAX_ELEMENT_LEVEL, t.tier + n - 1);
-  for (const e of t.elements) Object.assign(s, elementEffects(e, lv, dps));
-  return s;
+  const range = def.range >= 1000 ? def.range : def.range * (1 + 0.08 * (t.tier - 1));
+  return { dps, rate, dmg, range, atk: def.atk, ...def.fx(lv, dps, dmg) };
 }
 
 export function towerName(t) {
   if (t.kind === 'basic') return BASIC[t.base].th;
-  if (t.elements.length === 1) return `ป้อม${ELEMENTS[t.elements[0]].th}`;
-  const k = comboKey(t.elements);
-  const d = t.elements.length === 2 ? DUALS[k] : TRIPLES[k];
-  return `${d.th} (${d.name})`;
+  const d = towerDef(t.elements);
+  return d ? d.th : '?';
 }
 
 export function comboName(els) {
-  if (els.length === 1) return `ป้อม${ELEMENTS[els[0]].th}`;
-  const d = (els.length === 2 ? DUALS : TRIPLES)[comboKey(els)];
-  return d.th;
+  const d = towerDef(els);
+  return d ? d.th : '?';
 }
 
 export const buildCost = (type) => (BASIC[type] ? BASIC[type].cost[0] : ELEMENT_TOWER[1].cum[0]);
@@ -154,6 +148,9 @@ export class Game {
     this.towers = [];
     this.creeps = [];
     this.projectiles = [];
+    this.zones = [];
+    this.movers = [];
+    this.delayed = [];
     this.over = false;
     this.won = false;
     this.endless = false;
@@ -226,6 +223,8 @@ export class Game {
       };
       if (t.kind === 'basic' && !BASIC[t.base]) continue;
       if (t.kind === 'element' && !t.elements.length) continue;
+      while (t.kind === 'element' && t.elements.length > 1 && !towerDef(t.elements)) t.elements.pop();
+      if (t.kind === 'element') t.tier = Math.min(t.tier, MAX_TIER[t.elements.length]);
       t.stats = towerStats(t);
       g.towers.push(t);
       g.towerGrid[i] = t;
@@ -388,6 +387,7 @@ export class Game {
       for (const e of ELEMENT_ORDER) {
         if (t.elements.includes(e)) continue;
         const els = [...t.elements, e];
+        if (!towerDef(els)) continue;
         const cost = ELEMENT_TOWER[n + 1].cum[newTier - 1] - ELEMENT_TOWER[n].cum[t.tier - 1];
         const ok = lvOk(els, newTier);
         opts.push({
@@ -550,7 +550,10 @@ export class Game {
       angle: Math.atan2(-m.spawnOut.y, -m.spawnOut.x),
       stage: 0, wp: 0, flying: entry.ability === 'flying', progress: 0,
       slowT: 0, slowF: 1, stunT: 0, burnT: 0, burnDps: 0, burnSrc: null,
-      curseT: 0, curseAmp: 1, alive: true, flash: 0, revived: false, moving: 1,
+      rootT: 0, freezeT: 0, freezeImm: 0, silenceT: 0, chill: 0, chillT: 0, wetT: 0,
+      corrodeT: 0, corrodePct: 0, corrodeCap: 0, corrodeSrc: null, soulT: 0, soulDps: 0, soulSrc: null,
+      exposeT: 0, exposeAmp: 1, shredT: 0, shredAmp: 1, marks: 0, markT: 0, erosion: 0, poolT: 0, mudT: 0, zoneF: 1,
+      alive: true, flash: 0, revived: false, moving: 1,
       wave: entry.wave || (from && from.wave) || this.wave,
     };
     if (from) {
@@ -563,57 +566,117 @@ export class Game {
     return e;
   }
 
-  isImmune(e) { return e.ability === 'armored'; }
+  /* ---------- สถานะ ----------
+   * มึนงง/แช่แข็ง = หยุดเดิน + ใช้สกิลไม่ได้ · ตรึง = หยุดเดินอย่างเดียว · เงียบ = ใช้สกิลไม่ได้
+   * สกิลของมอนสเตอร์: ฟื้นฟู (ไฮดรา) และฟื้นคืนชีพ (ฟีนิกซ์)
+   */
+  isImmune(e) { return e.ability === 'armored' && !(e.shredT > 0); }
+  silenced(e) { return e.silenceT > 0 || e.stunT > 0 || e.freezeT > 0; }
+  ccMul(e) { return e.ability === 'boss' ? 0.3 : 1; }
 
-  applyHit(e, t, mul) {
+  setSlow(e, factor, dur) {
+    if (this.isImmune(e)) return;
+    const f = e.ability === 'boss' ? Math.sqrt(factor) : factor;
+    e.slowF = e.slowT > 0 ? Math.min(e.slowF, f) : f;
+    e.slowT = Math.max(e.slowT, dur);
+  }
+  setStun(e, dur) {
+    if (this.isImmune(e)) return;
+    e.stunT = Math.max(e.stunT, dur * this.ccMul(e));
+  }
+  setBurn(e, burn, src) {
+    e.burnDps = Math.max(e.burnT > 0 ? e.burnDps : 0, burn.dps);
+    e.burnT = Math.max(e.burnT, burn.dur);
+    e.burnSrc = src;
+  }
+
+  applyHit(e, t, mul = 1) {
     if (!e.alive) return;
     const s = t.stats;
-    let base = s.dmg * mul;
-    // ดาเมจตาม % HP จำกัดไม่เกิน 3 เท่าของดาเมจพื้นฐาน
-    if (s.percent) base += Math.min(e.maxHp * s.percent * (e.ability === 'boss' ? 0.25 : 1), s.dmg * 3) * mul;
-    const m = this.dealDamage(e, base, t.elements, t);
+    // แช่แข็งอยู่แล้วโดนซ้ำ → น้ำแข็งแตก
+    if (s.shatter && e.freezeT > 0) {
+      e.freezeT = 0;
+      e.freezeImm = Math.max(e.freezeImm, s.chill ? s.chill.imm : 2);
+      const r = s.shatter.r;
+      for (const o of this.creeps) {
+        if (o.alive && dist2(o.x, o.y, e.x, e.y) <= (r + o.size * 0.5) ** 2) this.dealDamage(o, s.dmg * s.shatter.mul, t, { direct: true });
+      }
+      this.emit('shatter', { x: e.x, y: e.y, r, fly: e.flying });
+      this.sound('water', 60);
+      if (!e.alive) return;
+    }
+    this.dealDamage(e, s.dmg * mul, t, { direct: true });
     if (!e.alive) return;
-    const boss = e.ability === 'boss';
     const immune = this.isImmune(e);
-    if (s.slow && !immune) {
-      const f = boss ? Math.sqrt(s.slow.factor) : s.slow.factor;
-      e.slowF = e.slowT > 0 ? Math.min(e.slowF, f) : f;
-      e.slowT = Math.max(e.slowT, s.slow.dur);
+    if (s.wet) { this.setSlow(e, s.wet.factor, s.wet.dur); e.wetT = s.wet.dur; }
+    if (s.slow) this.setSlow(e, s.slow.factor, s.slow.dur);
+    if (s.burn) this.setBurn(e, s.burn, t);
+    if (s.stun && Math.random() < s.stun.chance * mul) this.setStun(e, s.stun.dur);
+    if (s.corrode) {
+      e.corrodePct = Math.max(e.corrodeT > 0 ? e.corrodePct : 0, s.corrode.pct);
+      e.corrodeCap = Math.max(e.corrodeT > 0 ? e.corrodeCap : 0, s.corrode.cap);
+      e.corrodeT = s.corrode.dur;
+      e.corrodeSrc = t;
     }
-    if (s.burn) {
-      e.burnDps = Math.max(e.burnT > 0 ? e.burnDps : 0, s.burn.dps * m);
-      e.burnT = s.burn.dur;
-      e.burnSrc = t;
+    if (s.soul) {
+      e.soulDps = Math.max(e.soulT > 0 ? e.soulDps : 0, s.soul.dps);
+      e.soulT = s.soul.dur;
+      e.soulSrc = t;
     }
-    if (s.stun && !immune && Math.random() < s.stun.chance * mul) {
-      e.stunT = Math.max(e.stunT, s.stun.dur * (boss ? 0.3 : 1));
+    if (s.root && !immune) e.rootT = Math.max(e.rootT, s.root.dur * this.ccMul(e));
+    if (s.expose) { e.exposeAmp = Math.max(e.exposeT > 0 ? e.exposeAmp : 1, s.expose.amp); e.exposeT = s.expose.dur; }
+    if (s.shred) { e.shredAmp = Math.max(e.shredT > 0 ? e.shredAmp : 1, s.shred.amp); e.shredT = s.shred.dur; }
+    if (s.chill && e.freezeT <= 0 && e.freezeImm <= 0 && !immune) {
+      e.chill += s.chill.add * mul * (e.ability === 'boss' ? 0.5 : 1);
+      e.chillT = 1.5;
+      if (e.chill >= 100) {
+        e.chill = 0;
+        e.freezeT = s.chill.freeze * (e.ability === 'boss' ? 0.35 : 1);
+        e.freezeImm = e.freezeT + s.chill.imm;
+        this.emit('freeze', { creep: e });
+      }
     }
-    if (s.knock && !boss && !immune && !e.flying && Math.random() < s.knock.chance * mul) {
-      const bx = e.x - Math.cos(e.angle) * s.knock.dist, by = e.y - Math.sin(e.angle) * s.knock.dist;
-      const ti = this.tileAt(bx, by);
-      if (ti >= 0 && this.map.walk[ti] && !this.blocked[ti]) { e.x = bx; e.y = by; }
+    if (s.marks) {
+      e.marks = (e.markT > 0 ? e.marks : 0) + 1;
+      e.markT = s.marks.dur;
+      if (e.marks >= s.marks.need) {
+        e.marks = 0;
+        const dmg = Math.min((e.maxHp - e.hp) * s.marks.pct * (e.ability === 'boss' ? 0.5 : 1), s.marks.cap);
+        this.emit('eclipse', { x: e.x, y: e.y, fly: e.flying });
+        if (dmg > 0) this.dealDamage(e, dmg, t, { direct: true, big: true });
+        if (!e.alive) return;
+      }
     }
-    if (s.curse) {
-      e.curseAmp = Math.max(e.curseT > 0 ? e.curseAmp : 1, s.curse.amp);
-      e.curseT = s.curse.dur;
+    if (s.erosion) {
+      e.erosion += 1;
+      if (e.erosion >= s.erosion.need) {
+        e.erosion = 0;
+        e.silenceT = Math.max(e.silenceT, s.erosion.silence);
+        this.setStun(e, s.erosion.stun);
+        this.floater(e.x, e.y - 6, 'ขัดจังหวะ!', '#ffd27a', 12, e.flying ? 1 : 0);
+      }
     }
   }
 
-  // คืนค่าตัวคูณธาตุที่ใช้
-  dealDamage(e, amount, atkElements, tower) {
+  // คืนค่าตัวคูณธาตุที่ใช้ · direct = การโจมตีโดยตรง (ได้ผลจากเปิดเผยจุดอ่อน) · quiet = ไม่แสดงตัวเลข
+  dealDamage(e, amount, tower, opts = {}) {
+    if (!e.alive) return 1;
+    const atkElements = tower ? tower.elements : null;
     let mult = 1;
     if (atkElements && atkElements.length) {
       mult = 0;
       for (const a of atkElements) mult = Math.max(mult, elementMultiplier(a, e.element));
     }
-    let dmg = amount * mult * (e.curseT > 0 ? e.curseAmp : 1);
+    let dmg = amount * mult;
+    if (opts.direct && e.exposeT > 0) dmg *= e.exposeAmp;
+    if (e.shredT > 0) dmg *= e.shredAmp;
     if (this.isImmune(e)) dmg *= 0.8;
     e.hp -= dmg;
-    e.flash = 0.08;
+    if (!opts.quiet) e.flash = 0.08;
     if (tower) tower.dmgDealt += dmg;
-    if (atkElements && dmg >= 1) {
+    if (!opts.quiet && atkElements && dmg >= 1) {
       const col = mult > 1 ? '#ffe45a' : mult < 1 ? '#9aa0b8' : '#ffffff';
-      this.floater(e.x + rand(-6, 6), e.y, Math.round(dmg).toString(), col, mult > 1 ? 14 : 11, e.flying ? 1 : 0);
+      this.floater(e.x + rand(-6, 6), e.y, Math.round(dmg).toString(), opts.big ? '#ff9af0' : col, opts.big ? 17 : mult > 1 ? 14 : 11, e.flying ? 1 : 0);
     }
     if (e.hp <= 0) this.killCreep(e, tower);
     return mult;
@@ -621,10 +684,10 @@ export class Game {
 
   killCreep(e, tower) {
     if (!e.alive) return;
-    if (e.ability === 'undead' && !e.revived) {
+    if (e.ability === 'undead' && !e.revived && !this.silenced(e)) {
       e.revived = true;
       e.hp = e.maxHp * 0.5;
-      e.burnT = 0;
+      e.burnT = 0; e.soulT = 0; e.corrodeT = 0;
       this.emit('revive', { creep: e });
       return;
     }
@@ -634,6 +697,20 @@ export class Game {
     if (tower) tower.kills += 1;
     this.emit('death', { creep: e });
     this.floater(e.x, e.y, `+${e.reward}`, '#ffcf4a', 13, e.flying ? 1 : 0);
+    // ไฟวิญญาณแพร่ต่อไปยังตัวใกล้เคียง
+    if (e.soulT > 0 && e.soulSrc && e.soulSrc.stats.soul) {
+      const sp = e.soulSrc.stats.soul;
+      const near = this.creeps
+        .filter((o) => o.alive && o !== e && dist2(o.x, o.y, e.x, e.y) <= sp.jump * sp.jump)
+        .sort((a, b) => dist2(a.x, a.y, e.x, e.y) - dist2(b.x, b.y, e.x, e.y))
+        .slice(0, sp.spread);
+      for (const o of near) {
+        o.soulDps = Math.max(o.soulT > 0 ? o.soulDps : 0, e.soulDps);
+        o.soulT = Math.max(o.soulT, e.soulT, sp.dur * 0.6);
+        o.soulSrc = e.soulSrc;
+      }
+      if (near.length) this.emit('soulSpread', { x: e.x, y: e.y, fly: e.flying, to: near.map((o) => ({ x: o.x, y: o.y, fly: o.flying })) });
+    }
     if (e.ability === 'split') {
       for (let k = 0; k < 2; k++) {
         const ch = this.spawnCreep({ ability: 'child', element: e.element }, 1, e);
@@ -644,20 +721,53 @@ export class Game {
     this.creepRemoved(e);
   }
 
+  // เดินไปยังตำแหน่งใหม่ได้หรือไม่ (ตัวบินไปได้ทุกที่)
+  canStand(e, x, y) {
+    if (e.flying) return x >= 0 && y >= 0 && x <= COLS * TILE && y <= ROWS * TILE;
+    const ti = this.tileAt(x, y);
+    return ti >= 0 && this.map.walk[ti] && !this.blocked[ti];
+  }
+
+  // ผลักถอยหลังตามทางที่เดินมา
+  pushBack(e, dist) {
+    const steps = Math.ceil(dist / 4);
+    const bx = -Math.cos(e.angle), by = -Math.sin(e.angle);
+    for (let i = 0; i < steps; i++) {
+      const nx = e.x + bx * 4, ny = e.y + by * 4;
+      if (!this.canStand(e, nx, ny)) break;
+      e.x = nx; e.y = ny;
+    }
+  }
+
   updateCreep(e, dt) {
     e.flash = Math.max(0, e.flash - dt);
-    if (e.slowT > 0) e.slowT -= dt;
-    if (e.stunT > 0) e.stunT -= dt;
-    if (e.curseT > 0) e.curseT -= dt;
-    if (e.ability === 'regen') e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.025 * dt);
+    for (const k of ['slowT', 'stunT', 'rootT', 'freezeT', 'freezeImm', 'silenceT', 'exposeT', 'shredT', 'markT', 'wetT', 'chillT']) {
+      if (e[k] > 0) e[k] -= dt;
+    }
+    if (e.chillT <= 0 && e.chill > 0) e.chill = Math.max(0, e.chill - 25 * dt);
+    if (e.poolT > 0) e.poolT = Math.max(0, e.poolT - dt);
+    if (e.mudT > 0) e.mudT = Math.max(0, e.mudT - dt);
+    if (e.ability === 'regen' && !this.silenced(e)) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.025 * dt);
     if (e.burnT > 0) {
       e.burnT -= dt;
-      this.dealDamage(e, e.burnDps * dt, null, e.burnSrc);
+      this.dealDamage(e, e.burnDps * dt, e.burnSrc, { quiet: true });
+      if (!e.alive) return;
+    }
+    if (e.soulT > 0) {
+      e.soulT -= dt;
+      this.dealDamage(e, e.soulDps * dt, e.soulSrc, { quiet: true });
+      if (!e.alive) return;
+    }
+    if (e.corrodeT > 0) {
+      e.corrodeT -= dt;
+      const d = Math.min(e.hp * e.corrodePct * (e.ability === 'boss' ? 0.3 : 1), e.corrodeCap);
+      this.dealDamage(e, d * dt, e.corrodeSrc, { quiet: true });
       if (!e.alive) return;
     }
     let v = e.speed;
     if (e.slowT > 0) v *= e.slowF;
-    if (e.stunT > 0) v = 0;
+    v *= e.zoneF;
+    if (e.stunT > 0 || e.rootT > 0 || e.freezeT > 0) v = 0;
     e.moving = v / e.speed;
     const m = this.map;
     const goals = m.goals;
@@ -771,53 +881,274 @@ export class Game {
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
       t.angle += diff * Math.min(1, dt * 14);
+    } else if (s.ramp) {
+      t.rampTarget = null;
+      t.rampT = 0;
     }
     if (t.cd > 0 || !targets.length) return;
     t.cd = 1 / s.rate;
-    for (const target of targets) {
-      if (s.pierce) this.fireBeam(t, target);
-      else this.fireProjectile(t, target);
+    const target = targets[0];
+    switch (s.atk) {
+      case 'beam': this.hitBeam(t, target); break;
+      case 'pierce': this.fireLine(t, target); break;
+      case 'chain': this.fireChain(t, target); break;
+      case 'ramp': this.fireRamp(t, target); break;
+      case 'pulse': this.firePulse(t); break;
+      case 'cone': this.fireCone(t, target); break;
+      case 'tornado': this.spawnTornado(t, target); break;
+      case 'erupt': this.addDelayed({ kind: 'erupt', x: target.x, y: target.y, t: s.erupt.delay, tower: t, fly: target.flying }); break;
+      case 'meteor': this.fireMeteors(t, target); break;
+      default: for (const tg of targets) this.fireProjectile(t, tg);
     }
-    this.emit('shot', { tower: t });
-    this.sound(t.kind === 'basic' ? (t.base === 'arrow' ? 'wind' : 'earth') : t.elements[t.elements.length - 1], 70);
+    if (s.gust) {
+      t.gustN = (t.gustN || 0) + 1;
+      if (t.gustN >= s.gust.every) {
+        t.gustN = 0;
+        for (const e of this.creeps) {
+          if (!e.alive || e.ability === 'boss' || this.isImmune(e)) continue;
+          if (dist2(t.x, t.y, e.x, e.y) <= (s.range + e.size * 0.5) ** 2) this.pushBack(e, s.gust.dist);
+        }
+        this.emit('gust', { x: t.x, y: t.y, r: s.range });
+        this.sound('wind', 80);
+      }
+    }
+    if (s.atk !== 'ramp' || Math.random() < 0.25) this.emit('shot', { tower: t });
+    const snd = t.kind === 'basic' ? (t.base === 'arrow' ? 'wind' : 'earth') : t.elements[t.elements.length - 1];
+    if (s.atk === 'ramp') { if (Math.random() < 0.2) this.sound(snd, 120); } else this.sound(snd, 70);
   }
 
+  towerColor(t) { return t.kind === 'basic' ? BASIC[t.base].color : ELEMENTS[t.elements[t.elements.length - 1]].color; }
+  towerColors(t) { return t.kind === 'basic' ? [BASIC[t.base].color] : t.elements.map((e) => ELEMENTS[e].color); }
+
   fireProjectile(t, target) {
-    const style = t.kind === 'basic' ? t.base : t.elements[0];
-    const speeds = { arrow: 520, cannon: 280, fire: 330, water: 380, earth: 260, wind: 560, dark: 340 };
+    const def = t.kind === 'basic' ? null : towerDef(t.elements);
+    const style = t.kind === 'basic' ? t.base : (def.proj || (t.stats.zone ? 'lob' : t.elements[0]));
+    const speeds = { arrow: 520, cannon: 280, fire: 210, water: 380, earth: 260, wind: 560, dark: 340, lob: 300 };
     this.projectiles.push({
       id: this.nextId++,
       x: t.x, y: t.y, sx: t.x, sy: t.y,
       tx: target.x, ty: target.y, target, tower: t,
-      speed: speeds[style] || 400, style, elements: t.elements.slice(),
+      speed: (def && def.speed) || speeds[style] || 400, style, elements: t.elements.slice(),
+      colors: this.towerColors(t),
       fly: target.flying,
     });
   }
 
-  fireBeam(t, target) {
+  // ลำแสงตรงไปยังเป้าเดียว
+  hitBeam(t, target) {
+    this.applyHit(target, t, 1);
+    this.emit('beam', {
+      tower: t, x1: t.x, y1: t.y, x2: target.x, y2: target.y, fly: target.flying,
+      colors: this.towerColors(t), width: t.stats.global ? 2.6 + t.tier * 0.4 : 1.4 + t.tier * 0.25,
+      life: t.stats.global ? 0.4 : 0.22, style: t.stats.global ? 'sun' : 'eclipse',
+    });
+  }
+
+  // ลำแสงทะลุแนว
+  fireLine(t, target) {
     const s = t.stats;
     const ang = Math.atan2(target.y - t.y, target.x - t.x);
     const len = s.range + 20;
     const x2 = t.x + Math.cos(ang) * len, y2 = t.y + Math.sin(ang) * len;
-    const hit = new Set();
+    const hit = new Set([target]);
     for (const e of this.creeps) {
-      if (!e.alive) continue;
-      if (distToSegment(e.x, e.y, t.x, t.y, x2, y2) <= e.size + 6) hit.add(e);
+      if (e.alive && distToSegment(e.x, e.y, t.x, t.y, x2, y2) <= e.size + 6) hit.add(e);
     }
-    hit.add(target);
     for (const e of hit) this.applyHit(e, t, 1);
-    if (s.splash) {
-      for (const e of this.creeps) {
-        if (!e.alive || hit.has(e)) continue;
-        if (dist2(e.x, e.y, target.x, target.y) <= s.splash * s.splash) this.applyHit(e, t, 0.5);
-      }
-      this.emit('explosion', { x: target.x, y: target.y, r: s.splash, color: ELEMENTS.fire.color, fly: target.flying });
-    }
     this.emit('beam', {
       tower: t, x1: t.x, y1: t.y, x2, y2, fly: target.flying,
-      colors: t.elements.map((e) => ELEMENTS[e].color),
-      width: 1 + (t.elements.length - 1) * 0.7 + t.tier * 0.25,
+      colors: this.towerColors(t), width: 1.2 + t.tier * 0.25, life: 0.25, style: s.chill ? 'frost' : 'arrow',
     });
+  }
+
+  // ลำแสงหักเหชิ่งไปยังตัวถัดไป
+  fireChain(t, target) {
+    const c = t.stats.chain;
+    const hit = [target];
+    let cur = target, mul = 1;
+    this.applyHit(target, t, 1);
+    for (let b = 0; b < c.bounces; b++) {
+      let best = null, bd = c.jump * c.jump;
+      for (const e of this.creeps) {
+        if (!e.alive || hit.includes(e)) continue;
+        const d = dist2(e.x, e.y, cur.x, cur.y);
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (!best) break;
+      mul *= c.falloff;
+      hit.push(best);
+      this.applyHit(best, t, mul);
+      cur = best;
+    }
+    this.emit('chain', { tower: t, pts: hit.map((e) => ({ x: e.x, y: e.y, fly: e.flying })), colors: this.towerColors(t) });
+  }
+
+  // ลำแสงต่อเนื่อง ยิ่งยิงเป้าเดิมนานยิ่งแรง
+  fireRamp(t, target) {
+    const r = t.stats.ramp;
+    if (t.rampTarget !== target) { t.rampTarget = target; t.rampT = 0; }
+    t.rampT += 1 / t.stats.rate;
+    const k = Math.min(1, t.rampT / r.time);
+    const mul = r.min + (r.max - r.min) * k;
+    this.applyHit(target, t, mul);
+    this.emit('beam', {
+      tower: t, x1: t.x, y1: t.y, x2: target.x, y2: target.y, fly: target.flying,
+      colors: this.towerColors(t), width: 1 + k * 2.4, life: 0.2, style: 'solar', heat: k,
+    });
+  }
+
+  // คลื่นรอบป้อม
+  firePulse(t) {
+    const s = t.stats;
+    for (const e of this.creeps) {
+      if (e.alive && dist2(t.x, t.y, e.x, e.y) <= (s.range + e.size * 0.5) ** 2) this.applyHit(e, t, 1);
+    }
+    this.emit('pulse', { x: t.x, y: t.y, r: s.range, color: this.towerColor(t), tower: t });
+  }
+
+  // กรวยทราย
+  fireCone(t, target) {
+    const s = t.stats;
+    const ang = Math.atan2(target.y - t.y, target.x - t.x);
+    for (const e of this.creeps) {
+      if (!e.alive) continue;
+      const rr = s.range + e.size * 0.5;
+      if (dist2(t.x, t.y, e.x, e.y) > rr * rr) continue;
+      let d = Math.atan2(e.y - t.y, e.x - t.x) - ang;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      if (Math.abs(d) <= s.cone.spread || e === target) this.applyHit(e, t, 1);
+    }
+    this.emit('cone', { tower: t, x: t.x, y: t.y, angle: ang, r: s.range, spread: s.cone.spread, color: '#e8c27a' });
+  }
+
+  fireMeteors(t, target) {
+    const m = t.stats.meteor;
+    this.addDelayed({ kind: 'meteor', big: true, x: target.x, y: target.y, t: m.delay, tower: t, fly: target.flying });
+    for (let i = 0; i < m.count; i++) {
+      const a = Math.random() * Math.PI * 2, d = rand(m.area * 0.3, m.area);
+      this.addDelayed({ kind: 'meteor', big: false, x: target.x + Math.cos(a) * d, y: target.y + Math.sin(a) * d, t: m.delay + 0.12 * (i + 1), tower: t, fly: target.flying });
+    }
+  }
+
+  addDelayed(d) {
+    d.id = this.nextId++;
+    d.total = d.t;
+    this.delayed.push(d);
+  }
+
+  resolveDelayed(d) {
+    const t = d.tower;
+    const s = t.stats;
+    if (d.kind === 'meteor') {
+      const m = s.meteor;
+      const r = d.big ? m.mainR : m.r;
+      for (const e of this.creeps) {
+        if (!e.alive || dist2(e.x, e.y, d.x, d.y) > (r + e.size * 0.5) ** 2) continue;
+        this.applyHit(e, t, d.big ? 1 : m.small);
+        if (d.big && e.alive) { e.silenceT = Math.max(e.silenceT, m.silence); this.setStun(e, m.stun); }
+      }
+      this.emit('explosion', { x: d.x, y: d.y, r, color: '#ff7a2a', fly: false, big: d.big });
+      if (d.big) this.emit('quake', { s: 0.12 });
+      this.sound('fire', 60);
+    } else if (d.kind === 'erupt') {
+      const er = s.erupt;
+      for (const e of this.creeps) {
+        if (!e.alive || dist2(e.x, e.y, d.x, d.y) > (er.r + e.size * 0.5) ** 2) continue;
+        this.applyHit(e, t, 1);
+        if (e.alive) this.setStun(e, er.stun);
+      }
+      this.addZone({ kind: 'lava', ...er.lava, x: d.x, y: d.y, tower: t });
+      this.emit('explosion', { x: d.x, y: d.y, r: er.r, color: '#ff5a1e', fly: false, big: true });
+      this.emit('quake', { s: 0.2 });
+      this.sound('earth', 60);
+    }
+  }
+
+  addZone(z) {
+    z.id = this.nextId++;
+    z.t = z.dur;
+    this.zones.push(z);
+  }
+
+  updateZone(z, dt) {
+    z.t -= dt;
+    const t = z.tower;
+    for (const e of this.creeps) {
+      if (!e.alive || dist2(e.x, e.y, z.x, z.y) > (z.r + e.size * 0.5) ** 2) continue;
+      const immune = this.isImmune(e);
+      let d = z.dps;
+      if (z.kind === 'abyss') {
+        e.poolT = Math.min(10, (e.poolT || 0) + dt * 2);
+        const pct = Math.min(z.capPct, z.pct + z.grow * e.poolT) * (e.ability === 'boss' ? 0.25 : 1);
+        d += Math.min(e.hp * pct, z.cap);
+      } else if (z.kind === 'lava') {
+        if (!immune) e.zoneF = Math.min(e.zoneF, z.sticky);
+        if (z.burn) this.setBurn(e, z.burn, t);
+      } else if (z.kind === 'mud') {
+        e.mudT = Math.min(8, (e.mudT || 0) + dt * 2);
+        const f = Math.max(z.minF, 1 - z.sink * e.mudT);
+        e.zoneF = Math.min(e.zoneF, immune ? Math.sqrt(f) : f);
+      } else if (z.kind === 'void') {
+        const k = e.ability === 'boss' ? 0.15 : immune ? 0.5 : 1;
+        const dx = z.x - e.x, dy = z.y - e.y, dd = Math.hypot(dx, dy);
+        if (dd > 4) {
+          const step = Math.min(dd, z.pull * k * dt);
+          const nx = e.x + (dx / dd) * step, ny = e.y + (dy / dd) * step;
+          if (this.canStand(e, nx, ny)) { e.x = nx; e.y = ny; }
+        }
+      }
+      this.dealDamage(e, d * dt, t, { quiet: true });
+    }
+    return z.t > 0;
+  }
+
+  /* ---------- พายุเคลื่อนตามทาง (ย้อนสวนทางมอนสเตอร์) ---------- */
+  routePoints() {
+    if (this._routeV !== this.routeVersion) {
+      this._routeV = this.routeVersion;
+      this._route = this.getRoute().map((i) => tileCenter(i));
+    }
+    return this._route;
+  }
+
+  spawnTornado(t, target) {
+    const tn = t.stats.tornado;
+    const pts = this.routePoints();
+    let ri = 0, bd = Infinity;
+    pts.forEach((p, i) => { const d = dist2(p.x, p.y, target.x, target.y); if (d < bd) { bd = d; ri = i; } });
+    this.movers.push({
+      id: this.nextId++, kind: tn.trail ? 'lavastorm' : 'firestorm',
+      x: target.x, y: target.y, ri, t: tn.dur, max: tn.dur, tower: t, drop: 0,
+    });
+  }
+
+  updateMover(m, dt) {
+    m.t -= dt;
+    const t = m.tower;
+    const tn = t.stats.tornado;
+    if (!tn) return false;
+    const pts = this.routePoints();
+    let step = tn.speed * dt;
+    while (step > 0 && m.ri >= 0 && pts[m.ri]) {
+      const p = pts[m.ri];
+      const dx = p.x - m.x, dy = p.y - m.y, d = Math.hypot(dx, dy);
+      if (d <= step) { m.x = p.x; m.y = p.y; step -= d; m.ri -= 1; }
+      else { m.x += (dx / d) * step; m.y += (dy / d) * step; step = 0; }
+    }
+    for (const e of this.creeps) {
+      if (!e.alive || dist2(e.x, e.y, m.x, m.y) > (tn.r + e.size * 0.5) ** 2) continue;
+      this.dealDamage(e, tn.dps * dt, t, { quiet: true });
+      if (e.alive && tn.burn) this.setBurn(e, tn.burn, t);
+    }
+    if (tn.trail) {
+      m.drop -= dt;
+      if (m.drop <= 0) {
+        m.drop = tn.trail.every;
+        this.addZone({ kind: 'lava', ...tn.trail, x: m.x, y: m.y, tower: t });
+      }
+    }
+    return m.t > 0;
   }
 
   updateProjectile(p, dt) {
@@ -834,14 +1165,17 @@ export class Game {
   impact(p) {
     const t = p.tower;
     const s = t.stats;
-    const color = t.kind === 'basic' ? BASIC[t.base].color : ELEMENTS[t.elements[t.elements.length - 1]].color;
-    if (s.splash) {
+    const color = this.towerColor(t);
+    if (s.zone) {
+      this.addZone({ ...s.zone, x: p.tx, y: p.ty, tower: t });
+      this.emit('hit', { x: p.tx, y: p.ty, color, fly: false });
+    } else if (s.splash) {
       for (const e of this.creeps) {
         if (!e.alive) continue;
         const rr = s.splash + e.size * 0.5;
         if (dist2(e.x, e.y, p.tx, p.ty) <= rr * rr) this.applyHit(e, t, e === p.target ? 1 : 0.5);
       }
-      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: t.kind === 'basic' ? '#ffb060' : ELEMENTS[t.elements[0]].color, fly: p.fly });
+      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: t.kind === 'basic' ? '#ffb060' : color, fly: p.fly });
     } else if (p.target && p.target.alive) {
       this.applyHit(p.target, t, 1);
       this.emit('hit', { x: p.tx, y: p.ty, color, fly: p.fly });
@@ -867,6 +1201,17 @@ export class Game {
         this.nextWaveIn -= dt;
         if (this.nextWaveIn <= 0) this.startWave();
       }
+    }
+    for (const e of this.creeps) e.zoneF = 1;
+    if (!this.over) {
+      this.zones = this.zones.filter((z) => this.updateZone(z, dt));
+      this.movers = this.movers.filter((m) => this.updateMover(m, dt));
+      this.delayed = this.delayed.filter((d) => {
+        d.t -= dt;
+        if (d.t > 0) return true;
+        this.resolveDelayed(d);
+        return false;
+      });
     }
     for (const e of this.creeps) if (e.alive) this.updateCreep(e, dt);
     if (this.over) {

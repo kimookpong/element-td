@@ -21,12 +21,12 @@ export const ELEMENTS = {
   fire: {
     name: 'Fire', th: 'ไฟ', icon: 'el_fire', color: '#ff5a2a', glow: '#ffb347',
     rate: 1.0, range: 100, dpsF: 0.85,
-    desc: 'ระเบิดวงกว้าง + เผาไหม้ต่อเนื่อง',
+    desc: 'ระเบิดวงกว้าง เผาไหม้ต่อเนื่อง',
   },
   water: {
     name: 'Water', th: 'น้ำ', icon: 'el_water', color: '#2f8fff', glow: '#8fd3ff',
     rate: 1.2, range: 105, dpsF: 0.95,
-    desc: 'ทำให้มอนสเตอร์ช้าลง',
+    desc: 'กระจายเป็นวง ทำให้เปียกชุ่มและช้าลง',
   },
   earth: {
     name: 'Earth', th: 'ดิน', icon: 'el_earth', color: '#c08a42', glow: '#e9c27a',
@@ -36,17 +36,17 @@ export const ELEMENTS = {
   wind: {
     name: 'Wind', th: 'ลม', icon: 'el_wind', color: '#3fe0a8', glow: '#b6ffe3',
     rate: 2.4, range: 115, dpsF: 0.5,
-    desc: 'ยิงรัวหลายเป้าพร้อมกัน ผลักถอยหลัง',
+    desc: 'ยิงรัวหลายเป้า สะสมพลังปล่อยลมผลักถอย',
   },
   light: {
     name: 'Light', th: 'แสง', icon: 'el_light', color: '#ffe14a', glow: '#fffbd0',
     rate: 0.8, range: 150, dpsF: 0.8,
-    desc: 'ลำแสงระยะไกล ทะลุทุกตัวในแนว',
+    desc: 'ลำแสงชาร์จยิงได้ทั่วแผนที่ ดาเมจต่อนัดสูง',
   },
   dark: {
     name: 'Dark', th: 'มืด', icon: 'el_dark', color: '#a24dff', glow: '#d6b3ff',
     rate: 0.9, range: 105, dpsF: 0.9,
-    desc: 'สาปให้รับดาเมจเพิ่ม + ดาเมจตาม % HP',
+    desc: 'กัดกร่อนชีวิตตาม % HP ปัจจุบัน',
   },
 };
 
@@ -67,19 +67,6 @@ export function elementMultiplier(atk, def) {
   if (BEATS[atk] === def) return MULT_STRONG;
   if (BEATS[def] === atk) return MULT_WEAK;
   return 1;
-}
-
-/* ผลพิเศษของแต่ละธาตุตามระดับพลัง (1–3) — dps คือ DPS ของป้อม */
-export function elementEffects(el, lv, dps) {
-  switch (el) {
-    case 'fire': return { splash: 38 + 8 * lv, burn: { dps: dps * 0.3, dur: 3 } };
-    case 'water': return { slow: { factor: 0.62 - 0.07 * lv, dur: 1.8 + 0.2 * lv } };
-    case 'earth': return { stun: { chance: 0.12 + 0.05 * lv, dur: 0.75 } };
-    case 'wind': return { multi: 1 + lv, knock: { chance: 0.08 + 0.04 * lv, dist: 26 } };
-    case 'light': return { pierce: true };
-    case 'dark': return { curse: { amp: 1.15 + 0.1 * lv, dur: 3 }, percent: 0.015 + 0.01 * lv };
-    default: return {};
-  }
 }
 
 /* ป้อมพื้นฐาน (ไม่มีธาตุ) */
@@ -105,46 +92,7 @@ export const ELEMENT_TOWER = {
 export const MAX_TIER = { 1: 3, 2: 3, 3: 2 };
 export const MAX_ELEMENT_LEVEL = 3;
 
-export const DUALS = {
-  'fire+water': { name: 'Steam', th: 'ไอน้ำเดือด' },
-  'earth+fire': { name: 'Magma', th: 'แมกมา' },
-  'fire+wind': { name: 'Wildfire', th: 'พายุเพลิง' },
-  'fire+light': { name: 'Solar', th: 'สุริยะ' },
-  'dark+fire': { name: 'Hellfire', th: 'เพลิงนรก' },
-  'earth+water': { name: 'Swamp', th: 'หนองโคลน' },
-  'water+wind': { name: 'Blizzard', th: 'พายุหิมะ' },
-  'light+water': { name: 'Prism', th: 'ปริซึม' },
-  'dark+water': { name: 'Abyss', th: 'ห้วงลึก' },
-  'earth+wind': { name: 'Sandstorm', th: 'พายุทราย' },
-  'earth+light': { name: 'Crystal', th: 'คริสตัล' },
-  'dark+earth': { name: 'Gravity', th: 'แรงโน้มถ่วง' },
-  'light+wind': { name: 'Thunder', th: 'อัสนี' },
-  'dark+wind': { name: 'Void', th: 'ความว่างเปล่า' },
-  'dark+light': { name: 'Eclipse', th: 'สุริยคราส' },
-};
-
-export const TRIPLES = {
-  'dark+earth+fire': { name: 'Inferno Pit', th: 'หลุมนรก' },
-  'dark+earth+light': { name: 'Obsidian', th: 'ศิลาออบซิเดียน' },
-  'dark+earth+water': { name: 'Plague Bog', th: 'บึงพิษ' },
-  'dark+earth+wind': { name: 'Dust Wraith', th: 'วิญญาณฝุ่น' },
-  'dark+fire+light': { name: 'Supernova', th: 'ซูเปอร์โนวา' },
-  'dark+fire+water': { name: 'Witch Cauldron', th: 'หม้อแม่มด' },
-  'dark+fire+wind': { name: 'Ash Storm', th: 'พายุเถ้าถ่าน' },
-  'dark+light+water': { name: 'Moonwell', th: 'บ่อจันทรา' },
-  'dark+light+wind': { name: 'Astral Gate', th: 'ประตูดารา' },
-  'dark+water+wind': { name: 'Kraken', th: 'คราเคน' },
-  'earth+fire+light': { name: 'Sunforge', th: 'เตาหลอมสุริยะ' },
-  'earth+fire+water': { name: 'Geyser', th: 'น้ำพุร้อน' },
-  'earth+fire+wind': { name: 'Meteor', th: 'อุกกาบาต' },
-  'earth+light+water': { name: 'Life Tree', th: 'ต้นไม้แห่งชีวิต' },
-  'earth+light+wind': { name: 'Crystal Spire', th: 'ยอดคริสตัล' },
-  'earth+water+wind': { name: 'Tsunami', th: 'สึนามิ' },
-  'fire+light+water': { name: 'Aurora', th: 'ออโรร่า' },
-  'fire+light+wind': { name: 'Storm Lord', th: 'จ้าวอัสนี' },
-  'fire+water+wind': { name: 'Tempest', th: 'พายุคลั่ง' },
-  'light+water+wind': { name: 'Heaven Tide', th: 'กระแสสวรรค์' },
-};
+/* ป้อมธาตุทั้งหมดอยู่ใน towers.js */
 
 export const comboKey = (els) => els.slice().sort().join('+');
 

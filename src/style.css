@@ -253,10 +253,14 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .creatureTable div { display: flex; gap: 8px; align-items: center; background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; line-height: 1.35; }
 .creatureTable .ico { width: 48px; height: 48px; flex-shrink: 0; }
 .creatureTable b { font-size: .88rem; }
-#compendium { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 5px; text-align: left; }
-#compendium div { background: #0004; border-radius: 6px; padding: 4px 8px; font-size: .78rem; display: flex; align-items: center; gap: 2px; }
-#compendium .ico { width: 18px; height: 18px; }
-#compendium small { color: var(--muted); margin-left: 4px; }
+#compendium { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; text-align: left; }
+#compendium .combo { background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+#compendium .portrait { width: 52px; height: 52px; flex-shrink: 0; }
+#compendium .els .ico { width: 16px; height: 16px; vertical-align: -3px; }
+#compendium .look { color: var(--gold2); opacity: .8; }
+#compendium .weak, #infoPanel .weak { color: #ff9a8a; }
+#compendium .weak .ico, #infoPanel .weak .ico { width: 13px; height: 13px; vertical-align: -2px; }
+#infoPanel .effects.desc { color: var(--text, #eee); opacity: .92; line-height: 1.45; }
 
 /* ---------- จอเล็ก ---------- */
 @media (max-width: 900px) {

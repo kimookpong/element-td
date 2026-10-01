@@ -17,9 +17,10 @@ try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = requ
   const dir = path.join(__dirname, '..', 'public', 'icons');
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, data] of Object.entries(icons)) {
+    if (name.startsWith('x_')) continue;
     fs.writeFileSync(path.join(dir, name + '.png'), Buffer.from(data.split(',')[1], 'base64'));
   }
   if (process.argv[3]) await page.screenshot({ path: process.argv[3], fullPage: true });
-  console.log('wrote', Object.keys(icons).length, 'icons to', dir);
+  console.log('wrote', Object.keys(icons).filter((n) => !n.startsWith('x_')).length, 'icons to', dir);
   await browser.close();
 })();

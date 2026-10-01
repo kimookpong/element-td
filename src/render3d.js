@@ -15,6 +15,8 @@ import { buildWorld } from './world.js';
 import { buildTowerModel } from './models.js';
 import { buildCreatureModel } from './creatures.js';
 import { withIcons } from './icons.js';
+import { installVfx } from './vfx.js';
+import { TOWERS } from './towers.js';
 
 /* ---------------- ระบบอนุภาค ---------------- */
 class Particles {
@@ -448,14 +450,28 @@ export class Renderer3D {
         break;
       case 'explosion': {
         const y = ev.fly ? FLY_HEIGHT : FLOOR;
-        this.addRing(wx(ev.x), y + 0.06, wz(ev.y), ev.r / TILE, ev.color, 0.35);
-        P.burst(wx(ev.x), y + 0.3, wz(ev.y), ev.color, 16, 3, 0.2);
-        P.burst(wx(ev.x), y + 0.3, wz(ev.y), '#ffd27a', 6, 2, 0.14);
+        const gy = ev.fly ? y : this.groundAt(ev.x, ev.y);
+        this.addRing(wx(ev.x), gy + 0.06, wz(ev.y), ev.r / TILE, ev.color, ev.big ? 0.5 : 0.35);
+        P.burst(wx(ev.x), gy + 0.3, wz(ev.y), ev.color, ev.big ? 40 : 16, ev.big ? 4.5 : 3, ev.big ? 0.26 : 0.2, -5, gy);
+        P.burst(wx(ev.x), gy + 0.3, wz(ev.y), '#ffd27a', ev.big ? 18 : 6, 2, 0.14, -5, gy);
         break;
       }
       case 'beam':
         this.addBeam(ev);
         break;
+      case 'chain': this.addChain(ev); break;
+      case 'pulse': this.addPulse(ev); break;
+      case 'cone': this.addCone(ev); break;
+      case 'gust': this.addGust(ev); break;
+      case 'shatter': this.addShatter(ev); break;
+      case 'eclipse': this.addEclipse(ev); break;
+      case 'soulSpread': this.addSoulSpread(ev); break;
+      case 'quake': this.shake = Math.max(this.shake, ev.s); break;
+      case 'freeze': {
+        const e = ev.creep;
+        P.burst(wx(e.x), this.creepY(e) + 0.3, wz(e.y), '#dff6ff', 16, 2, 0.14, -4);
+        break;
+      }
       case 'shot': {
         const v = this.towerViews.get(ev.tower.id);
         if (v) v.recoil = 1;
@@ -485,43 +501,6 @@ export class Renderer3D {
     });
   }
 
-  addBeam(ev) {
-    const t = ev.tower;
-    const base = this.tileGround(t.c, t.r);
-    const a = new THREE.Vector3(wx(ev.x1), base + 0.95, wz(ev.y1));
-    const b = new THREE.Vector3(wx(ev.x2), (ev.fly ? FLY_HEIGHT : FLOOR) + 0.35, wz(ev.y2));
-    const dir = b.clone().sub(a);
-    const len = dir.length();
-    const g = new THREE.Group();
-    g.position.copy(a).add(b).multiplyScalar(0.5);
-    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
-    const cyl = geo('beamCyl', () => new THREE.CylinderGeometry(1, 1, 1, 8, 1, true));
-    const parts = ev.colors.map((c, i) => {
-      const m = new THREE.Mesh(cyl, new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.6), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      m.scale.set(0.04 * ev.width * (1 - i * 0.25), len, 0.04 * ev.width * (1 - i * 0.25));
-      return m;
-    });
-    const core = new THREE.Mesh(cyl, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffffff).multiplyScalar(1.5), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-    core.scale.set(0.014 * ev.width, len, 0.014 * ev.width);
-    parts.push(core);
-    g.add(...parts);
-    this.dynamic.add(g);
-    const baseS = parts.map((p) => p.scale.x);
-    this.effects.push({
-      obj: g, life: 0.22, max: 0.22,
-      update(k) {
-        parts.forEach((p, i) => {
-          p.material.opacity = k;
-          p.scale.x = p.scale.z = baseS[i] * (0.4 + 0.6 * k);
-        });
-      },
-    });
-    for (let i = 0; i < 6; i++) {
-      const k = Math.random();
-      this.particles.emit(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k, rand(-0.3, 0.3), rand(0.2, 0.8), rand(-0.3, 0.3), ev.colors[0], 0.4, 0.12, 0);
-    }
-  }
-
   addFloater(ev) {
     if (this.floaters.length > 45) {
       const old = this.floaters.shift();
@@ -549,6 +528,7 @@ export class Renderer3D {
     this.effects = [];
     this.floaters = [];
     this.particles.clear();
+    this.clearVfx();
     this.routeVersion = -1;
     this.chevrons.count = 0;
   }
@@ -696,12 +676,36 @@ export class Renderer3D {
       }
       const mtl = v.body;
       if (e.flash > 0) { mtl.emissive.setRGB(1, 1, 1); mtl.emissiveIntensity = 0.22; }
+      else if (e.freezeT > 0) { mtl.emissive.setRGB(0.55, 0.85, 1); mtl.emissiveIntensity = 0.7; }
       else if (e.slowT > 0) { mtl.emissive.setRGB(0.3, 0.7, 1); mtl.emissiveIntensity = 0.45; }
       else { mtl.emissive.set(ELEMENTS[e.element].color); mtl.emissiveIntensity = 0.12; }
       const r = v.r;
-      this.statusFx(v, 'slow', e.slowT > 0, () => mesh(G.torus(), glow(0x9ad8ff, 2.5), { rx: Math.PI / 2, y: 0.05, s: r + 0.15, shadow: false }));
-      this.statusFx(v, 'curse', e.curseT > 0, () => mesh(G.sph(), glow(0x9b4dff, 1.4, 0.25), { y: v.height * 0.5, s: Math.max(r * 1.6, v.height * 0.6), shadow: false }));
-      const stun = this.statusFx(v, 'stun', e.stunT > 0, () => {
+      const px = g.position.x, pz = g.position.z;
+      this.statusFx(v, 'slow', e.slowT > 0 && e.freezeT <= 0, () => mesh(G.torus(), glow(0x9ad8ff, 2.5), { rx: Math.PI / 2, y: 0.05, s: r + 0.15, shadow: false }));
+      this.statusFx(v, 'freeze', e.freezeT > 0, () => mesh(G.ico1(), std(0xcff4ff, { transparent: true, opacity: 0.5, roughness: 0.05, metalness: 0.2, emissive: 0x6ac8ff, emissiveIntensity: 0.5, flatShading: true, depthWrite: false }), { y: v.height * 0.5, s: [Math.max(r * 1.7, 0.3), Math.max(v.height * 0.62, 0.25), Math.max(r * 1.7, 0.3)], shadow: false }));
+      const root = this.statusFx(v, 'root', e.rootT > 0, () => {
+        const rg = new THREE.Group();
+        for (let i = 0; i < 2; i++) rg.add(mesh(G.torus(), glow(0x7a3dff, 1.8), { rx: Math.PI / 2, y: 0.06 + i * 0.12, s: r + 0.08 - i * 0.03, shadow: false }));
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          rg.add(mesh(G.cyl6(), std(0x1a1024, { metalness: 0.6, roughness: 0.4 }), { x: Math.cos(a) * (r + 0.2), y: 0.1, z: Math.sin(a) * (r + 0.2), rz: Math.cos(a) * 0.9, rx: -Math.sin(a) * 0.9, s: [0.015, 0.32, 0.015], shadow: false }));
+        }
+        return rg;
+      });
+      if (root && root.visible) root.rotation.y = this.time * 0.8;
+      this.statusFx(v, 'expose', e.exposeT > 0, () => mesh(G.torus(), glow(0xffd34a, 2.6), { rx: Math.PI / 2, y: 0.02, s: r + 0.25, shadow: false }));
+      this.statusFx(v, 'shred', e.shredT > 0, () => mesh(geo('shredRing', () => new THREE.TorusGeometry(1, 0.07, 4, 10)), glow(0xff3a2a, 2.2), { rx: Math.PI / 2, y: 0.03, s: r + 0.2, shadow: false }));
+      const marks = this.statusFx(v, 'marks', e.marks > 0 && e.markT > 0, () => {
+        const mg = new THREE.Group();
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          mg.add(mesh(G.sphLo(), glow(i % 2 ? 0xffd34a : 0x8a3dff, 2.4), { x: Math.cos(a) * (r + 0.12), z: Math.sin(a) * (r + 0.12), s: 0.045, shadow: false }));
+        }
+        mg.position.y = v.height + 0.05;
+        return mg;
+      });
+      if (marks && marks.visible) { marks.rotation.y = this.time * 3; marks.children.forEach((c, i) => { c.visible = i < e.marks; }); }
+      const stun = this.statusFx(v, 'stun', e.stunT > 0 || e.silenceT > 0, () => {
         const sg = new THREE.Group();
         for (let i = 0; i < 3; i++) {
           const a = (i / 3) * Math.PI * 2;
@@ -711,9 +715,14 @@ export class Renderer3D {
         return sg;
       });
       if (stun && stun.visible) stun.rotation.y = this.time * 6;
-      if (e.burnT > 0 && Math.random() < dt * 25) {
-        this.particles.emit(g.position.x + rand(-0.12, 0.12), baseY + v.height * rand(0.3, 1), g.position.z + rand(-0.12, 0.12), rand(-0.2, 0.2), rand(0.8, 1.6), rand(-0.2, 0.2), Math.random() < 0.5 ? '#ff7a2a' : '#ffcf4a', 0.45, 0.13, 1);
-      }
+      const puff = (rate, cols, up, size, grav) => {
+        if (Math.random() < dt * rate) this.particles.emit(px + rand(-0.12, 0.12), baseY + v.height * rand(0.3, 1), pz + rand(-0.12, 0.12), rand(-0.2, 0.2), up, rand(-0.2, 0.2), cols[Math.random() < 0.5 ? 0 : 1], 0.45, size, grav);
+      };
+      if (e.burnT > 0) puff(25, ['#ff7a2a', '#ffcf4a'], rand(0.8, 1.6), 0.13, 1);
+      if (e.soulT > 0) puff(22, ['#ff3aa0', '#9a4dff'], rand(0.8, 1.5), 0.13, 1);
+      if (e.corrodeT > 0) puff(14, ['#9a4dff', '#4a1a6a'], rand(0.3, 0.7), 0.12, 0.3);
+      if (e.wetT > 0) puff(10, ['#8fd3ff', '#2f8fff'], -0.5, 0.09, -4);
+      if (e.chill > 0 && e.freezeT <= 0) puff(e.chill / 8, ['#dff6ff', '#8fdcff'], 0.2, 0.09, -0.5);
       if (e.ability === 'regen' && Math.random() < dt * 6) {
         this.particles.emit(g.position.x + rand(-0.2, 0.2), baseY + 0.1, g.position.z + rand(-0.2, 0.2), 0, rand(0.5, 1), 0, '#7dff7a', 0.8, 0.12, 0);
       }
@@ -784,14 +793,25 @@ export class Renderer3D {
           m = mesh(G.sph(), std(0x222228, { metalness: 0.6, roughness: 0.4 }), { s: 0.08 });
         } else if (st === 'earth') {
           m = mesh(G.dode(), std(0x8a6a45, { flatShading: true }), { s: 0.12 });
+        } else if (st === 'shell') {
+          m = new THREE.Group();
+          m.add(mesh(G.sph(), std(0x2a2830, { metalness: 0.7, roughness: 0.35, emissive: 0xff5a1e, emissiveIntensity: 0.6 }), { s: 0.09, shadow: false }));
+        } else if (st === 'ice') {
+          m = mesh(G.octa(), glow(0xcff4ff, 2.6), { s: [0.07, 0.12, 0.07], shadow: false });
+        } else if (st === 'chain') {
+          m = new THREE.Group();
+          m.add(mesh(G.sphLo(), glow(0x7a3dff, 3), { s: 0.07, shadow: false }));
+          m.add(mesh(G.torus(), glow(0xb070ff, 2.5), { s: 0.11, shadow: false }));
+        } else if (st === 'lob') {
+          m = mesh(G.sphLo(), glow(color, 3), { s: 0.1, shadow: false });
         } else if (st === 'wind') {
           m = mesh(geo('crescent', () => new THREE.TorusGeometry(0.1, 0.02, 4, 12, Math.PI)), glow(0x7affd0, 3), { rx: Math.PI / 2, shadow: false });
         } else {
-          const size = { fire: 0.11, water: 0.09, dark: 0.1 }[st] || 0.08;
+          const size = { fire: 0.13, water: 0.09, dark: 0.1, soul: 0.11 }[st] || 0.08;
           m = mesh(G.sphLo(), glow(color, 3.5), { s: size * (p.elements.length > 1 ? 1.35 : 1), shadow: false });
         }
         const ty = this.tileGround(t.c, t.r);
-        v = { mesh: m, trail: t.kind === 'basic' ? (st === 'cannon' ? '#9a9a9a' : null) : ELEMENTS[p.elements[0]].color, total: Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1, y0: ty + 0.85 };
+        v = { mesh: m, trail: t.kind === 'basic' ? (st === 'cannon' ? '#9a9a9a' : null) : st === 'soul' ? '#ff3aa0' : st === 'ice' ? '#ffffff' : color, total: Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1, y0: ty + 0.85 };
         this.dynamic.add(m);
         this.projViews.set(p.id, v);
       }
@@ -799,7 +819,7 @@ export class Renderer3D {
       v.total = Math.max(v.total, remain);
       const k = Math.min(1, Math.max(0, 1 - remain / v.total));
       const y1 = (p.fly ? FLY_HEIGHT : FLOOR) + 0.3;
-      const lob = p.style === 'earth' || p.style === 'cannon' ? 1 : 0.15;
+      const lob = ['earth', 'cannon', 'shell', 'lob'].includes(p.style) ? 1 : 0.15;
       const y = v.y0 + (y1 - v.y0) * k + Math.sin(k * Math.PI) * lob;
       const prev = v.mesh.position.clone();
       v.mesh.position.set(wx(p.x), y, wz(p.y));
@@ -807,7 +827,7 @@ export class Renderer3D {
         const d = v.mesh.position.clone().sub(prev);
         if (d.lengthSq() > 1e-6) v.mesh.rotation.set(0, Math.atan2(-d.z, d.x), Math.atan2(d.y, Math.hypot(d.x, d.z)));
       } else if (p.style === 'wind') v.mesh.rotation.z += dt * 20;
-      else if (p.style === 'earth') { v.mesh.rotation.x += dt * 8; v.mesh.rotation.z += dt * 6; }
+      else if (p.style === 'earth' || p.style === 'ice' || p.style === 'chain') { v.mesh.rotation.x += dt * 8; v.mesh.rotation.z += dt * 6; }
       if (v.trail && Math.random() < 0.85) {
         this.particles.emit(v.mesh.position.x, v.mesh.position.y, v.mesh.position.z, 0, 0.1, 0, v.trail, 0.28, p.style === 'wind' ? 0.08 : 0.13, 0);
       }
@@ -872,6 +892,9 @@ export class Renderer3D {
       this.syncTowers(game, dt);
       this.syncCreeps(game, dt);
       this.syncProjectiles(game, dt);
+      this.syncZones(game, dt);
+      this.syncMovers(game, dt);
+      this.syncDelayed(game, dt);
       this.updateRoute(game, view);
     } else {
       this.chevrons.count = 0;
@@ -940,19 +963,19 @@ export class Renderer3D {
 
     if (selectedTower) {
       const y = this.tileGround(selectedTower.c, selectedTower.r);
-      this.showRange(wx(selectedTower.x), y, wz(selectedTower.y), selectedTower.stats.range / TILE, true);
+      if (selectedTower.stats.range < 1000) this.showRange(wx(selectedTower.x), y, wz(selectedTower.y), selectedTower.stats.range / TILE, true);
       this.selRing.visible = true;
       this.selRing.position.set(wx(selectedTower.x), y + 0.04, wz(selectedTower.y));
       this.selRing.scale.setScalar(1 + Math.sin(this.time * 5) * 0.04);
     }
     if (hover && selectedBuild) {
-      const range = BASIC[selectedBuild] ? BASIC[selectedBuild].range : ELEMENTS[selectedBuild].range;
+      const range = BASIC[selectedBuild] ? BASIC[selectedBuild].range : TOWERS[selectedBuild].range;
       const ok = hoverCheck && hoverCheck.ok;
       const x = tileX(hover.c), z = tileZ(hover.r), y = this.tileGround(hover.c, hover.r);
       this.hoverTile.visible = true;
       this.hoverTile.position.set(x, y + 0.025, z);
       this.hoverTile.material.color.set(ok ? 0xffffff : 0xff4040);
-      this.showRange(x, y, z, range / TILE, ok);
+      if (range < 1000) this.showRange(x, y, z, range / TILE, ok); else this.range.visible = false;
       if (ok) {
         const gh = this.getGhost(selectedBuild);
         gh.visible = true;
@@ -974,3 +997,5 @@ export class Renderer3D {
     this.rangeEdge.material.color.set(c);
   }
 }
+
+installVfx(Renderer3D);

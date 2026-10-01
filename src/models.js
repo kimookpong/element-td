@@ -8,9 +8,10 @@ import { ELEMENTS, BASIC } from './data.js';
 import { std, glow } from './gfx.js';
 import { brickTexture, runeTexture } from './textures.js';
 import { Rig, G, xf } from './modelkit.js';
+import { ELEMENT_HEADS } from './towerHeads.js';
 
 const PI = Math.PI;
-const SHADOW_ROLES = new Set(['stone', 'stoneDark', 'marble', 'wood', 'roof', 'iron', 'rock', 'bronze', 'thatch']);
+const SHADOW_ROLES = new Set(['stone', 'stoneDark', 'marble', 'wood', 'roof', 'iron', 'rock', 'bronze', 'thatch', 'brick', 'copper', 'obsidian', 'sand', 'bone']);
 const TIER_SCALE = [0.8, 0.93, 1.08];
 
 /* ---------------- วัสดุตาม role ---------------- */
@@ -33,6 +34,19 @@ const FIXED = {
   water: () => std(0x3aa0ff, { roughness: 0.05, metalness: 0.15, emissive: 0x1260ff, emissiveIntensity: 0.6, transparent: true, opacity: 0.86 }),
   waterSheet: () => std(0x8fd8ff, { roughness: 0.05, emissive: 0x2a8aff, emissiveIntensity: 0.6, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }),
   voidOrb: () => std(0x120820, { emissive: 0x8a3dff, emissiveIntensity: 1.5, roughness: 0.2 }),
+  brick: () => std(0x4a3a36, { map: brickTexture('stone'), roughness: 0.9 }),
+  copper: () => std(0xc8743a, { metalness: 0.85, roughness: 0.28 }),
+  obsidian: () => std(0x1c1624, { roughness: 0.18, metalness: 0.3, flatShading: true }),
+  blackSun: () => new THREE.MeshBasicMaterial({ color: 0x050008 }),
+  abyssWater: () => std(0x14061e, { roughness: 0.05, emissive: 0x3a0a6a, emissiveIntensity: 0.8 }),
+  lava: () => std(0xff5a1e, { emissive: 0xff4a10, emissiveIntensity: 1.8, roughness: 0.6 }),
+  steam: () => std(0xffffff, { transparent: true, opacity: 0.45, roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.3, depthWrite: false }),
+  mud: () => std(0x4e3620, { roughness: 0.35, metalness: 0.05 }),
+  moss: () => std(0x5a8a3a, { roughness: 0.9 }),
+  sand: () => std(0xd8b878, { roughness: 0.95, flatShading: true }),
+  sandDark: () => std(0xa8844a, { roughness: 0.9 }),
+  mirror: () => std(0xfff4c8, { metalness: 0.5, roughness: 0.2, emissive: 0xffc040, emissiveIntensity: 0.9, side: THREE.DoubleSide }),
+  blade: () => std(0xdde6ea, { metalness: 0.8, roughness: 0.25, side: THREE.DoubleSide }),
 };
 function towerMat(role) {
   if (FIXED[role]) return FIXED[role]();
@@ -93,7 +107,7 @@ function buildPad(rig, t, cols, T) {
 }
 
 /* ---------------- หัวป้อมแต่ละชนิด: build(rig, head, tier) ---------------- */
-const HEADS = {
+const HEADS_BASE = {
   arrow: {
     build(rig, h, T) {
       if (T === 1) {
@@ -187,172 +201,6 @@ const HEADS = {
     },
     anim() {},
   },
-  fire: {
-    build(rig, h, T) {
-      if (T === 1) {
-        rig.add(h, 'stone', G.lathe([[0.2, 0], [0.22, 0.06], [0.2, 0.14], [0.16, 0.15], [0.14, 0.08], [0, 0.08]], {}, 12));
-        ring(5, 0.08, (x, z, a, i) => rig.add(h, i % 2 ? 'glow:#ff5a1e' : 'glow:#ffb030', G.ico(0.05, { x, y: 0.12, z })));
-        const fl = rig.bone('flames', h, { y: 0.12 });
-        const tongues = rig.bone('tongues', fl);
-        ring(4, 0.05, (x, z, a, i) => rig.add(tongues, i % 2 ? 'glow:#ff5a1e' : 'glow:#ffc24a', G.cone(0.05, 0.22, { x, y: 0.12, z }, 6)));
-        rig.add(tongues, 'glow:#ffe08a', G.cone(0.05, 0.3, { y: 0.16 }, 6));
-        return {};
-      }
-      const big = T === 3;
-      const colH = big ? 0.5 : 0.3;
-      rig.add(h, 'stone', G.lathe([[0.18, 0], [0.16, 0.05], [0.1, 0.12], [0.09, colH - 0.08], [0.13, colH - 0.02], [0.15, colH], [0, colH]], {}, 12));
-      if (big) rig.add(h, 'gold', G.torus(0.1, 0.014, { y: colH * 0.5, rx: PI / 2 }), G.torus(0.11, 0.014, { y: colH * 0.7, rx: PI / 2 }));
-      const by = colH + 0.06, br = big ? 1.25 : 1;
-      ring(3, 1, (c, s) => {
-        rig.add(h, 'gold', G.tube([[c * 0.08, colH - 0.04, s * 0.08], [c * 0.22 * br, colH + 0.04, s * 0.22 * br], [c * 0.24 * br, colH + 0.16, s * 0.24 * br], [c * 0.2 * br, colH + 0.22, s * 0.2 * br]], [0.026, 0.012], {}, 10, 6));
-      });
-      rig.add(h, 'gold', G.lathe([[0.06, 0], [0.14, 0.02], [0.24, 0.09], [0.28, 0.17], [0.265, 0.18], [0.22, 0.1], [0.12, 0.05], [0, 0.05]], { y: by, s: [br, 1, br] }, 16));
-      rig.add(h, 'gold', G.torus(0.275 * br, 0.016, { y: by + 0.175, rx: PI / 2 }));
-      ring(big ? 12 : 8, 0.275 * br, (x, z, a) => rig.add(h, 'gold', G.cone(0.016, 0.07, { x, y: by + 0.21, z, rx: Math.sin(a) * 0.3, rz: -Math.cos(a) * 0.3 }, 4)));
-      ring(7, 0.12 * br, (x, z, a, i) => rig.add(h, i % 2 ? 'glow:#ff5a1e' : 'glow:#ffb030', G.ico(0.06, { x, y: by + 0.11, z })));
-      const fl = rig.bone('flames', h, { y: by + 0.16 });
-      rig.add(fl, 'glow:#ffa030', G.sphere(0.14 * br, { y: 0.1 }, 14));
-      const tongues = rig.bone('tongues', fl);
-      ring(big ? 9 : 7, 0.1 * br, (x, z, a, i) => rig.add(tongues, i % 2 ? 'glow:#ff5a1e' : 'glow:#ffc24a', G.cone(0.07 * br, (0.34 + (i % 3) * 0.06) * br, { x, y: 0.25 * br, z, rx: Math.sin(a) * 0.2, rz: -Math.cos(a) * 0.2 }, 6)));
-      rig.add(tongues, 'glow:#ffe08a', G.cone(0.08 * br, 0.5 * br, { y: 0.32 * br }, 8));
-      const emb = rig.bone('embers', h, { y: by + 0.34 });
-      ring(6, 0.33 * br, (x, z, a, i) => rig.add(emb, 'glow:#ffcf4a', G.octa(0.022, { x, y: Math.sin(i * 2) * 0.08, z })));
-      if (big) {
-        const fr = rig.bone('fireRing', h, { y: by + 0.25 });
-        rig.add(fr, 'glow:#ff7a2a', G.torus(0.45, 0.014, { rx: PI / 2 }));
-        ring(3, 0.45, (x, z) => rig.add(fr, 'glow:#ffd060', G.sphere(0.05, { x, z }, 10)));
-      }
-      return {};
-    },
-    anim(B, t) {
-      B.tongues.scale.set(1, 1 + Math.sin(t * 13) * 0.1, 1);
-      B.tongues.rotation.y = t * 1.8;
-      B.flames.scale.setScalar(1 + Math.sin(t * 9) * 0.04);
-      if (B.embers) { B.embers.rotation.y = -t * 1.2; }
-      if (B.fireRing) { B.fireRing.rotation.y = t * 1.5; B.fireRing.rotation.x = Math.sin(t) * 0.2; }
-    },
-  },
-  water: {
-    build(rig, h, T) {
-      if (T === 1) {
-        rig.add(h, 'stone', G.lathe([[0.26, 0], [0.27, 0.04], [0.25, 0.11], [0.22, 0.12], [0.21, 0.05], [0, 0.05]], {}, 16));
-        rig.add(h, 'water', G.cyl(0.22, 0.22, 0.015, { y: 0.1 }, 16));
-        const orb = rig.bone('orb', h, { y: 0.36 });
-        rig.add(orb, 'water', G.sphere(0.11, {}, 16));
-        const r1 = rig.bone('ring1', orb);
-        rig.add(r1, 'glow:#8fdcff', G.torus(0.17, 0.01));
-        return {};
-      }
-      const big = T === 3;
-      rig.add(h, 'stone', G.lathe([[0.36, 0], [0.37, 0.04], [0.35, 0.14], [0.31, 0.15], [0.3, 0.06], [0, 0.06]], {}, 18));
-      rig.add(h, 'water', G.cyl(0.31, 0.31, 0.02, { y: 0.12 }, 20));
-      const colH = big ? 0.62 : 0.36;
-      rig.add(h, 'marble', G.lathe([[0.09, 0], [0.07, 0.1], [0.05, colH - 0.1], [0.08, colH - 0.04], [0.05, colH], [0, colH]], { y: 0.06 }, 12));
-      const tiers = big ? [[0.4, 0.21], [0.66, 0.15]] : [[0.4, 0.21]];
-      tiers.forEach(([y, r], i) => {
-        rig.add(h, 'marble', G.lathe([[0.04, 0], [r * 0.6, 0.02], [r, 0.06], [r + 0.01, 0.09], [r - 0.03, 0.07], [0, 0.07]], { y }, 16));
-        rig.add(h, 'gold', G.torus(r, 0.01, { y: y + 0.09, rx: PI / 2 }));
-        rig.add(h, 'water', G.cyl(r - 0.03, r - 0.03, 0.015, { y: y + 0.07 }, 16));
-        const falls = rig.bone('falls' + i, h);
-        rig.add(falls, 'waterSheet', G.cyl(r, r + 0.08, y - (i ? 0.47 : 0.09), { y: (y + (i ? 0.47 : 0.12)) / 2 + 0.03 }, 18));
-      });
-      const oy = big ? 1.08 : 0.85;
-      const orb = rig.bone('orb', h, { y: oy });
-      rig.add(orb, 'water', G.sphere(big ? 0.22 : 0.17, {}, 20));
-      rig.add(orb, 'glow:#d8f4ff', G.sphere(0.06, {}, 10));
-      const r1 = rig.bone('ring1', orb);
-      rig.add(r1, 'glow:#8fdcff', G.torus(big ? 0.33 : 0.27, 0.012));
-      const r2 = rig.bone('ring2', orb);
-      rig.add(r2, 'glow:#5ab8ff', G.torus(big ? 0.29 : 0.23, 0.01));
-      const drops = rig.bone('drops', h, { y: oy });
-      ring(big ? 6 : 4, big ? 0.4 : 0.32, (x, z, a, i) => rig.add(drops, 'glow:#bfeaff', G.sphere(0.03, { x, y: Math.sin(i * 3) * 0.06, z, s: [1, 1.4, 1] }, 8)));
-      if (big) {
-        const arcs = rig.bone('arcs', h, { y: 0.15 });
-        ring(3, 1, (c, s, a) => rig.add(arcs, 'waterSheet', G.torus(0.42, 0.02, { ry: -a, rx: 0 }, PI)));
-      }
-      return {};
-    },
-    anim(B, t) {
-      B.ring1.rotation.set(t * 1.5, t * 0.8, 0);
-      if (B.ring2) B.ring2.rotation.set(-t * 0.9, 0, t * 1.3);
-      if (B.drops) B.drops.rotation.y = t * 1.6;
-      for (const k of ['falls0', 'falls1']) if (B[k]) B[k].scale.set(1 + Math.sin(t * 6) * 0.02, 1, 1 + Math.sin(t * 6) * 0.02);
-      if (B.arcs) B.arcs.rotation.y = t * 0.6;
-    },
-  },
-  earth: {
-    build(rig, h, T) {
-      if (T === 1) {
-        ring(4, 0.15, (x, z, a, i) => rig.add(h, 'rock', G.ico(0.09, { x, y: 0.06, z, rx: i, ry: i * 2 }, 0)));
-        rig.add(h, 'crystal:#9ccf4a', G.octa(1, { y: 0.22, s: [0.07, 0.24, 0.07] }));
-        rig.add(h, 'crystal:#e0a040', G.octa(1, { x: 0.07, y: 0.15, z: 0.04, rz: -0.5, s: [0.04, 0.12, 0.04] }));
-        return {};
-      }
-      const big = T === 3;
-      ring(big ? 8 : 6, big ? 0.3 : 0.24, (x, z, a, i) => rig.add(h, 'rock', G.ico(0.1 + (i % 2) * 0.03, { x, y: 0.07, z, rx: i, ry: i * 2 }, 0)));
-      rig.add(h, 'rock', G.ico(0.17, { y: 0.1, s: [1, 0.7, 1] }, 0));
-      const k = big ? 1.6 : 1;
-      const cr = [['#9ccf4a', 0, 0.42, 0, 0, 0, 0.09, 0.4], ['#c6f06a', 0.11, 0.3, 0.05, 0.3, -0.45, 0.06, 0.26], ['#e0a040', -0.1, 0.3, 0.07, 0.4, 0.5, 0.065, 0.24],
-        ['#9ccf4a', 0.02, 0.28, -0.12, -0.5, 0.1, 0.055, 0.22], ['#e0a040', -0.05, 0.26, -0.08, -0.35, 0.5, 0.05, 0.18], ['#c6f06a', 0.08, 0.25, -0.05, -0.3, -0.5, 0.05, 0.2]];
-      for (const [col, x, y, z, rx, rz, w, len] of cr) rig.add(h, 'crystal:' + col, G.octa(1, { x: x * k, y: y * (big ? 1.5 : 1), z: z * k, rx, rz, s: [w * k, len * k, w * k] }));
-      if (big) {
-        ring(4, 0.4, (x, z, a) => {
-          rig.add(h, 'stone', G.box(0.09, 0.4, 0.07, { x: Math.cos(a + PI / 4) * 0.4, y: 0.2, z: Math.sin(a + PI / 4) * 0.4, ry: -a }));
-          rig.add(h, 'glow:#ffd27a', G.box(0.02, 0.26, 0.075, { x: Math.cos(a + PI / 4) * 0.4, y: 0.22, z: Math.sin(a + PI / 4) * 0.4, ry: -a }));
-        });
-      }
-      const orbit = rig.bone('orbit', h, { y: big ? 0.75 : 0.45 });
-      ring(big ? 6 : 4, big ? 0.48 : 0.38, (x, z, a) => {
-        rig.add(orbit, 'slab', G.box(0.075, 0.12, 0.04, { x, z, ry: -a + PI / 2 }));
-        rig.add(orbit, 'glow:#ffd27a', G.box(0.05, 0.016, 0.046, { x, y: 0.02, z, ry: -a + PI / 2 }), G.box(0.016, 0.07, 0.046, { x, z, ry: -a + PI / 2 }));
-      });
-      return {};
-    },
-    anim(B, t) {
-      if (B.orbit) { B.orbit.rotation.y = t * 0.9; }
-    },
-  },
-  wind: {
-    build(rig, h, T) {
-      if (T === 1) {
-        rig.add(h, 'wood', G.cyl(0.035, 0.05, 0.42, { y: 0.21 }, 8));
-        const aim = rig.bone('aim', h, { y: 0.42 });
-        const rotor = rig.bone('rotor', aim, { x: 0.05 });
-        ring(4, 1, (c, s, a) => rig.add(rotor, 'cloth', xf(G.sheet([[0, 0.02], [0.0, 0.16], [0.07, 0.12]]), { rx: -a + PI / 2, ry: PI / 2 })));
-        rig.add(aim, 'gold', G.sphere(0.03, { x: 0.05 }, 8));
-        const swirl = rig.bone('swirl', h);
-        rig.add(swirl, 'glow:#7affd0', G.torus(0.2, 0.008, { y: 0.1, rx: PI / 2 }, PI * 1.2));
-        return { aim: 'aim' };
-      }
-      const big = T === 3;
-      const H = big ? 0.95 : 0.68;
-      rig.add(h, 'marble', G.lathe([[0.17, 0], [0.15, 0.06], [0.1, 0.2], [0.08, H - 0.18], [0.1, H - 0.06], [0.07, H], [0, H]], {}, 12));
-      for (const y of big ? [0.06, 0.34, 0.6, 0.86] : [0.06, 0.34, 0.6]) rig.add(h, 'gold', G.torus(0.12 - y * 0.05, 0.012, { y, rx: PI / 2 }));
-      const swirl = rig.bone('swirl', h);
-      for (let k = 0; k < (big ? 3 : 2); k++) {
-        const pts = [];
-        for (let i = 0; i <= 24; i++) {
-          const a = (i / 24) * PI * 3 + (k * 2 * PI) / (big ? 3 : 2);
-          pts.push([Math.cos(a) * (0.27 - i * 0.004), 0.05 + i * H * 0.036, Math.sin(a) * (0.27 - i * 0.004)]);
-        }
-        rig.add(swirl, 'glow:#7affd0', G.tube(pts, (t) => 0.012 * Math.sin(t * PI) + 0.002, {}, 48, 4));
-      }
-      const aim = rig.bone('aim', h, { y: H + 0.02 });
-      rig.add(aim, 'gold', G.sphere(0.05, { x: 0.06 }, 10), G.cyl(0.02, 0.02, 0.12, { x: 0.02, rz: PI / 2 }, 6));
-      const rotor = rig.bone('rotor', aim, { x: 0.1 });
-      const blades = big ? 6 : 4, L = big ? 0.44 : 0.36;
-      ring(blades, 1, (c, s, a) => {
-        rig.add(rotor, 'wood', G.box(0.015, L, 0.015, { y: c * L / 2, z: s * L / 2, rx: -a }));
-        rig.add(rotor, 'cloth', xf(G.sheet([[0, 0.05], [0.0, L - 0.02], [0.11, L - 0.02], [0.08, 0.06]]), { rx: -a + PI / 2, ry: PI / 2, x: 0.005 }));
-      });
-      if (big) rig.add(h, 'gold', G.cone(0.04, 0.12, { y: H + 0.12 }, 6));
-      return { aim: 'aim' };
-    },
-    anim(B, t, dt, boost) {
-      B.rotor.rotation.x += dt * (6 + boost * 22);
-      B.swirl.rotation.y = -t * 2.5;
-    },
-  },
   light: {
     build(rig, h, T) {
       if (T === 1) {
@@ -390,62 +238,9 @@ const HEADS = {
       if (B.halo) B.halo.scale.setScalar(1 + Math.sin(t * 3) * 0.06);
     },
   },
-  dark: {
-    build(rig, h, T) {
-      if (T === 1) {
-        ring(5, 0.17, (x, z, a, i) => rig.add(h, 'rock', G.ico(0.06, { x, y: 0.04, z, rx: i }, 0)));
-        rig.add(h, 'iron', G.lathe([[0.04, 0], [0.14, 0.03], [0.18, 0.1], [0.17, 0.17], [0.15, 0.2], [0.16, 0.21], [0.14, 0.21], [0, 0.19]], { y: 0.04 }, 14));
-        rig.add(h, 'glow:#a84dff', G.cyl(0.13, 0.13, 0.01, { y: 0.24 }, 14));
-        for (let i = 0; i < 2; i++) {
-          const b = rig.bone('bub' + i, h);
-          rig.add(b, 'glow:#d09aff', G.sphere(0.03, {}, 8));
-        }
-        return {};
-      }
-      const big = T === 3;
-      const k = big ? 1.25 : 1;
-      ring(3, 1, (c, s, a) => {
-        rig.add(h, 'iron', G.tube([[c * 0.26 * k, 0, s * 0.26 * k], [c * 0.2 * k, 0.2, s * 0.2 * k], [c * 0.17 * k, 0.4, s * 0.17 * k]], [0.022, 0.016], {}, 8, 6));
-        const sa = a + PI / 3;
-        rig.add(h, 'bone', G.sphere(0.045, { x: Math.cos(sa) * 0.3 * k, y: 0.045, z: Math.sin(sa) * 0.3 * k }, 10));
-      });
-      if (big) {
-        ring(6, 0.42, (x, z, a, i) => rig.add(h, 'bone', G.sphere(0.035, { x, y: 0.035, z }, 8)));
-        for (const s of [-1, 1]) {
-          rig.add(h, 'iron', G.cone(0.06, 0.8, { x: -0.3, y: 0.4, z: s * 0.3 }, 5));
-          rig.add(h, 'glow:#b070ff', G.octa(0.04, { x: -0.3, y: 0.84, z: s * 0.3 }));
-        }
-      }
-      rig.add(h, 'iron', G.lathe([[0.05, 0], [0.2, 0.04], [0.27, 0.14], [0.26, 0.26], [0.22, 0.31], [0.235, 0.33], [0.21, 0.33], [0, 0.3]], { y: 0.16, s: [k, 1, k] }, 18));
-      rig.add(h, 'iron', G.torus(0.225 * k, 0.02, { y: 0.49, rx: PI / 2 }));
-      ring(3, 0.235 * k, (x, z, a) => { for (let j = 0; j < 3; j++) rig.add(h, 'iron', G.torus(0.018, 0.005, { x, y: 0.45 - j * 0.03, z, ry: j % 2 ? 0 : PI / 2 })); });
-      rig.add(h, 'glow:#a84dff', G.cyl(0.2 * k, 0.2 * k, 0.01, { y: 0.475 }, 18));
-      for (let i = 0; i < 4; i++) {
-        const b = rig.bone('bub' + i, h);
-        rig.add(b, 'glow:#d09aff', G.sphere(0.035, {}, 8));
-      }
-      const orb = rig.bone('orb', h, { y: big ? 1.05 : 0.92 });
-      rig.add(orb, 'voidOrb', G.sphere(big ? 0.16 : 0.12, {}, 16));
-      const r1 = rig.bone('ring1', orb);
-      rig.add(r1, 'glow:#b070ff', G.torus(big ? 0.27 : 0.21, 0.012));
-      ring(big ? 8 : 6, big ? 0.27 : 0.21, (x, z, a) => rig.add(r1, 'glow:#b070ff', G.cone(0.015, 0.06, { x, y: z, rz: a - PI / 2 }, 4)));
-      const r2 = rig.bone('ring2', orb);
-      rig.add(r2, 'glow:#7a3dff', G.torus(big ? 0.22 : 0.17, 0.01));
-      return {};
-    },
-    anim(B, t) {
-      if (B.ring1) { B.ring1.rotation.set(t * 1.2, t * 0.6, 0); B.ring2.rotation.set(-t * 0.8, 0, t * 1.5); }
-      for (let i = 0; i < 4; i++) {
-        const b = B['bub' + i];
-        if (!b) continue;
-        const k = (t * 0.6 + i / 4) % 1;
-        const base = B.orb ? 0.48 : 0.24;
-        b.position.set(Math.cos(i * 2.3) * 0.08, base + k * 0.25, Math.sin(i * 2.3) * 0.08);
-        b.scale.setScalar(1 - k);
-      }
-    },
-  },
 };
+
+const HEADS = { ...HEADS_BASE, ...ELEMENT_HEADS };
 
 /* ---------------- แม่แบบ ---------------- */
 const templates = new Map();
@@ -457,27 +252,13 @@ function buildTemplate(t) {
   const cols = t.kind === 'basic' ? [BASIC[t.base].color] : t.elements.map((e) => ELEMENTS[e].color);
   const top = buildPad(rig, t, cols, T);
   const head = rig.bone('head', rig.root, { y: top });
-  const style = t.kind === 'basic' ? t.base : t.elements[0];
+  const style = t.kind === 'basic' ? t.base : t.elements.slice().sort().join('+');
   const meta = HEADS[style].build(rig, head, T);
   const n = t.kind === 'basic' ? 0 : t.elements.length;
-  const extraH = { 1: 0.45, 2: 0.6, 3: 0.85 }[T];
+  const extraH = meta.height || { 1: 0.45, 2: 0.6, 3: 0.85 }[T];
   if (n >= 2) {
-    const others = t.elements.slice(1);
-    const orbit = rig.bone('orbit2', rig.root, { y: top + extraH });
-    const per = others.length * 2;
-    for (let i = 0; i < per; i++) {
-      const a = (i / per) * PI * 2;
-      rig.add(orbit, 'crystal:' + ELEMENTS[others[i % others.length]].color, G.octa(1, { x: Math.cos(a) * 0.46, z: Math.sin(a) * 0.46, s: [0.05, 0.11, 0.05] }));
-    }
-    others.forEach((e, i) => rig.add(rig.root, 'glow:' + ELEMENTS[e].color, G.torus(0.48 + i * 0.05, 0.012, { y: top * 0.5 + 0.03 + i * 0.04, rx: PI / 2 })));
-    if (n === 3) {
-      const crown = rig.bone('crown', rig.root, { y: top + extraH + 0.5 });
-      rig.add(crown, 'gold', G.torus(0.16, 0.014, { rx: PI / 2 }));
-      ring(6, 0.16, (x, z, a, i) => {
-        rig.add(crown, 'gold', G.cone(0.025, 0.1, { x, y: 0.05, z }, 4));
-        rig.add(crown, 'crystal:' + ELEMENTS[t.elements[i % 3]].color, G.octa(0.02, { x, y: 0.11, z }));
-      });
-    }
+    // วงแหวนธาตุเสริมรอบฐาน บอกว่าเป็นป้อมผสม
+    t.elements.forEach((e, i) => rig.add(rig.root, 'glow:' + ELEMENTS[e].color, G.torus(0.5 + i * 0.045, 0.01, { y: top * 0.5 + 0.03 + i * 0.035, rx: PI / 2 })));
   }
   const root = rig.finalize();
   root.traverse((o) => {
@@ -499,7 +280,7 @@ function buildTemplate(t) {
   const wrap = new THREE.Group();
   wrap.add(root);
   root.name = 'model';
-  return { root: wrap, style, n, aim: meta.aim || null, top, extraH, height: (top + extraH + 0.4) * TIER_SCALE[T - 1] };
+  return { root: wrap, style, n, aim: meta.aim || null, top, extraH, height: (top + extraH + (meta.height ? 0.05 : 0.4)) * TIER_SCALE[T - 1] };
 }
 
 export function buildTowerModel(t) {
@@ -521,9 +302,6 @@ export function buildTowerModel(t) {
   if (B.embers) bob('embers', B.embers.position.y, 0.05, 2);
   if (B.rune) anims.push((tt) => { B.rune.rotation.z = tt * 0.4; });
   if (B.padOrbs) anims.push((tt) => { B.padOrbs.rotation.y = tt * 0.8; B.padOrbs.position.y = Math.sin(tt * 2) * 0.03; });
-  if (B.orbit2) anims.push((tt) => { B.orbit2.rotation.y = tt * 1.8; B.orbit2.position.y = tpl.top + tpl.extraH + Math.sin(tt * 2.5) * 0.05; });
-  if (B.crown) anims.push((tt) => { B.crown.rotation.y = tt; B.crown.position.y = tpl.top + tpl.extraH + 0.5 + Math.sin(tt * 2) * 0.04; });
-  if (tpl.n >= 2) B.head.scale.setScalar(1 + (tpl.n - 1) * 0.07);
-  const aimTarget = tpl.aim ? B[tpl.aim] : new THREE.Group();
+  const aimTarget = (tpl.aim && B[tpl.aim]) || new THREE.Group();
   return { group, head: B.head, model: B.model, aim: aimTarget, anims, height: tpl.height };
 }

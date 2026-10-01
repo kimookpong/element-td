@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { buildCreatureModel } from '../src/creatures.js';
 import { buildTowerModel } from '../src/models.js';
+import { TOWERS } from '../src/towers.js';
 
 const S = 128;
 const ICONS = {};
@@ -421,15 +422,22 @@ async function buildPortraits() {
     m.group.rotation.y = 0.9;
     shoot('c_' + name, m.group, { yaw: 0, pitch: 0.25, fill: 1.22 });
   }
+  // ป้อมพื้นฐาน + ป้อมธาตุทั้ง 25 แบบ (ระดับสูงสุด) · x_* = ภาพตรวจระดับ ไม่ถูกบันทึกเป็นไฟล์
   const towers = [
     ['arrow', { kind: 'basic', base: 'arrow', elements: [], tier: 2 }], ['cannon', { kind: 'basic', base: 'cannon', elements: [], tier: 2 }],
-    ...['fire', 'water', 'earth', 'wind', 'light', 'dark'].map((e) => [e, { kind: 'element', elements: [e], tier: 2 }]),
+    ...Object.keys(TOWERS).map((k) => {
+      const els = k.split('+');
+      return [k.replace(/\+/g, '_'), { kind: 'element', elements: els, tier: els.length === 3 ? 2 : 3 }];
+    }),
   ];
+  if (new URLSearchParams(location.search).has('tiers')) {
+    for (const e of ['light', 'dark', 'water', 'fire', 'wind', 'earth']) for (const tier of [1, 2]) towers.push([`x_${e}_${tier}`, { kind: 'element', elements: [e], tier }]);
+  }
   for (const [name, t] of towers) {
     const m = buildTowerModel(t);
     for (const a of m.anims) a(1.2, 0.016, 0);
     m.aim.rotation.y = -0.6;
-    shoot('t_' + name, m.group, { yaw: 0.5, pitch: 0.42, fill: 1.12 });
+    shoot(name.startsWith('x_') ? name : 't_' + name, m.group, { yaw: 0.5, pitch: 0.42, fill: 1.12 });
   }
   renderer.dispose();
 }
