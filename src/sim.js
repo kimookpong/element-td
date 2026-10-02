@@ -577,6 +577,7 @@ export class Game {
       corrodeT: 0, corrodePct: 0, corrodeCap: 0, corrodeSrc: null, soulT: 0, soulDps: 0, soulSrc: null,
       exposeT: 0, exposeAmp: 1, shredT: 0, shredAmp: 1, marks: 0, markT: 0, erosion: 0, poolT: 0, mudT: 0, zoneF: 1, pullT: 0, pullImm: 0,
       alive: true, flash: 0, revived: false, moving: 1,
+      lane: rand(-0.27, 0.27), // ช่องเดินด้านข้าง (หน่วยช่อง) ให้เดินเหลื่อมกันไม่ต่อแถวทับกัน
       wave: entry.wave || (from && from.wave) || this.wave,
     };
     if (from) {
@@ -820,7 +821,8 @@ export class Game {
         if (ti === goal) {
           const gc = tileCenter(goal);
           tx = gc.x; ty = gc.y;
-          if (dist2(e.x, e.y, tx, ty) < 100) {
+          // ถึงจุดตรวจเมื่อเข้าใกล้กลางช่อง (เผื่อระยะช่องเดินด้านข้าง)
+          if (dist2(e.x, e.y, tx, ty) < Math.pow(10 + Math.abs(e.lane || 0) * TILE, 2)) {
             if (e.stage >= goals.length - 1) arrive = true;
             else e.stage += 1;
           }
@@ -828,6 +830,14 @@ export class Game {
           const nx = f.next[ti];
           const target = nx >= 0 ? tileCenter(nx) : tileCenter(goal);
           tx = target.x; ty = target.y;
+        }
+        // เลื่อนจุดหมายไปด้านข้างตามช่องเดินของตัวเอง (ตั้งฉากกับทิศที่จะไป)
+        if (e.lane) {
+          const cc = tileCenter(ti);
+          let ux = tx - cc.x, uy = ty - cc.y;
+          let ul = Math.hypot(ux, uy);
+          if (ul < 1) { ux = Math.cos(e.angle); uy = Math.sin(e.angle); ul = 1; }
+          tx += (-uy / ul) * e.lane * TILE; ty += (ux / ul) * e.lane * TILE;
         }
         const d = Number.isFinite(f.dist[ti]) ? f.dist[ti] : 99;
         e.progress = e.stage * 1000 + 500 - d;
@@ -861,6 +871,51 @@ export class Game {
       if (d <= step) { e.x = tx; e.y = ty; }
       else { e.x += (dx / d) * step; e.y += (dy / d) * step; }
     }
+  }
+
+  /* ดันมอนสเตอร์ที่ซ้อนกันให้แยกออกจากกัน (แยกพวกเดินดินกับพวกบิน) — ใช้ตารางช่องเพื่อให้เร็ว */
+  separateCreeps(dt) {
+    const grid = new Map();
+    for (const e of this.creeps) {
+      if (!e.alive) continue;
+      const k = (Math.floor(e.x / TILE) + 2) * 64 + Math.floor(e.y / TILE) + 2 + (e.flying ? 1e5 : 0);
+      let b = grid.get(k);
+      if (!b) grid.set(k, (b = []));
+      b.push(e);
+    }
+    const k = Math.min(1, dt * 12);
+    for (const e of this.creeps) {
+      if (!e.alive) continue;
+      const cx = Math.floor(e.x / TILE) + 2, cy = Math.floor(e.y / TILE) + 2, fl = e.flying ? 1e5 : 0;
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+        const b = grid.get((cx + ox) * 64 + cy + oy + fl);
+        if (!b) continue;
+        for (const o of b) {
+          if (o.id <= e.id || !o.alive) continue;
+          const min = (e.size + o.size) * 1.0;
+          let dx = o.x - e.x, dy = o.y - e.y;
+          let d = Math.hypot(dx, dy);
+          if (d >= min) continue;
+          if (d < 0.01) { const a = (e.id * 2.39996) % (Math.PI * 2); dx = Math.cos(a); dy = Math.sin(a); d = 1; }
+          const push = (min - d) * 0.5 * k;
+          const ux = dx / d, uy = dy / d;
+          const we = o.size * o.size / (e.size * e.size + o.size * o.size); // ตัวใหญ่ขยับน้อยกว่า
+          this.nudge(e, -ux * push * 2 * we, -uy * push * 2 * we);
+          this.nudge(o, ux * push * 2 * (1 - we), uy * push * 2 * (1 - we));
+        }
+      }
+    }
+  }
+
+  // ขยับเล็กน้อยโดยไม่ทะลุกำแพง/ป้อม (เผื่อขอบจากกำแพง)
+  nudge(e, dx, dy) {
+    if (!dx && !dy) return;
+    const l = Math.hypot(dx, dy), m = 9;
+    const nx = e.x + dx, ny = e.y + dy;
+    if (this.canStand(e, nx + (dx / l) * m, ny + (dy / l) * m)) { e.x = nx; e.y = ny; return; }
+    // ลองขยับทีละแกน
+    if (dx && this.canStand(e, e.x + dx + Math.sign(dx) * m, e.y)) e.x += dx;
+    else if (dy && this.canStand(e, e.x, e.y + dy + Math.sign(dy) * m)) e.y += dy;
   }
 
   gameOver() {
@@ -1251,6 +1306,7 @@ export class Game {
       });
     }
     for (const e of this.creeps) if (e.alive) this.updateCreep(e, dt);
+    this.separateCreeps(dt);
     if (this.over) {
       this.creeps = this.creeps.filter((e) => e.alive);
       return;

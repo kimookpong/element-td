@@ -151,10 +151,7 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   overflow-x: auto; overflow-y: hidden;
 }
 .dockGroup { display: flex; flex-direction: column; gap: 3px; }
-.dockLabel { font-size: .68rem; color: var(--gold2); letter-spacing: .5px; display: flex; align-items: center; gap: 6px; }
 .dockSep { width: 1px; background: linear-gradient(180deg, transparent, var(--goldDark), transparent); }
-.badge { background: linear-gradient(180deg, #b070ff, #6a2ac0); color: #fff; border-radius: 10px; padding: 0 7px; font-size: .72rem; line-height: 1.4; }
-.badge.zero { background: #3a3326; color: var(--muted); }
 #elemGrid, #buildGrid { display: flex; gap: 5px; }
 
 .elemOrb { flex-direction: column; gap: 1px; padding: 3px 4px 2px; width: 50px; height: 58px; border-radius: 10px; }

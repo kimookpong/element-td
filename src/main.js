@@ -312,9 +312,6 @@ function renderWaveChip(force) {
 function renderElements() {
   const g = view.game;
   if (!g) return;
-  const badge = $('pointsBadge');
-  badge.textContent = g.elemPoints;
-  badge.classList.toggle('zero', g.elemPoints === 0);
   document.querySelector('.stat.essence').classList.toggle('pulse', g.elemPoints > 0);
   ui.elems.innerHTML = '';
   for (const el of ELEMENT_ORDER) {
