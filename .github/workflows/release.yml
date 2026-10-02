@@ -1,0 +1,28 @@
+name: Release
+
+# push tag เช่น v1.0.1 แล้วสร้าง GitHub Release จาก docs/releases/<tag>.md
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Zip build
+        run: cd dist && zip -qr ../element-td-${{ github.ref_name }}.zip .
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Element TD 3D ${{ github.ref_name }}
+          body_path: docs/releases/${{ github.ref_name }}.md
+          files: element-td-${{ github.ref_name }}.zip

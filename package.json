@@ -1,9 +1,9 @@
 {
   "name": "element-td",
   "private": true,
-  "version": "2.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "Element TD — 3D tower defense with six elements, built on Three.js",
+  "description": "Element TD 3D: tower defense with six elements, built on Three.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
