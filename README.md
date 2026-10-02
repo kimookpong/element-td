@@ -223,7 +223,7 @@ npm run build     # สร้างไฟล์สำหรับขึ้นเ
 npm run preview   # เปิดดูไฟล์ที่ build แล้ว
 ```
 
-ทุกครั้งที่ push ขึ้น `main` GitHub Actions จะ build และ deploy ขึ้น GitHub Pages ให้อัตโนมัติ และเมื่อ push tag `v*` จะสร้าง Release ให้จากไฟล์ใน `docs/releases/`
+ทุกครั้งที่ push ขึ้น `main` GitHub Actions จะ build และ deploy ขึ้น GitHub Pages ให้อัตโนมัติ ถ้าเปลี่ยนเวอร์ชันใน `package.json` และเพิ่มไฟล์ `docs/releases/v<เวอร์ชัน>.md` ระบบจะสร้าง tag และ Release ของเวอร์ชันนั้นให้เอง
 
 <details>
 <summary><b>โครงสร้างโค้ด</b></summary>

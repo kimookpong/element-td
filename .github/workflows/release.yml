@@ -1,9 +1,12 @@
 name: Release
 
-# push tag เช่น v1.0.1 แล้วสร้าง GitHub Release จาก docs/releases/<tag>.md
+# ทุกครั้งที่ push ขึ้น main: อ่านเวอร์ชันจาก package.json
+# ถ้ายังไม่มี Release ของเวอร์ชันนั้น จะสร้าง tag v<เวอร์ชัน> และ Release ให้
+# โดยใช้บันทึกจาก docs/releases/v<เวอร์ชัน>.md และแนบไฟล์ build (zip)
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,16 +16,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read version
+        id: v
+        run: |
+          echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Check existing release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.v.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.exists == 'false'
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run build
-      - name: Zip build
-        run: cd dist && zip -qr ../element-td-${{ github.ref_name }}.zip .
+      - name: Build
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          npm ci
+          npm run build
+          cd dist && zip -qr ../element-td-${{ steps.v.outputs.tag }}.zip .
       - uses: softprops/action-gh-release@v2
+        if: steps.check.outputs.exists == 'false'
         with:
-          name: Element TD 3D ${{ github.ref_name }}
-          body_path: docs/releases/${{ github.ref_name }}.md
-          files: element-td-${{ github.ref_name }}.zip
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Element TD 3D ${{ steps.v.outputs.tag }}
+          body_path: docs/releases/${{ steps.v.outputs.tag }}.md
+          files: element-td-${{ steps.v.outputs.tag }}.zip
+          make_latest: true
