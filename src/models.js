@@ -203,6 +203,130 @@ const HEADS_BASE = {
     },
     anim() {},
   },
+  /* ---------------- ป้อมสนับสนุน (ไม่โจมตี) ---------------- */
+  // ธงศึก — เสาธงแดงขนาดใหญ่ ระดับสูงมีธงคู่ข้างและยอดทอง
+  banner: {
+    build(rig, h, T) {
+      const H = [0.62, 0.78, 0.95][T - 1];
+      rig.add(h, 'stone', G.cyl(0.16, 0.2, 0.1, { y: 0.05 }, 8));
+      rig.add(h, 'woodDark', G.cyl(0.022, 0.026, H, { y: H / 2 + 0.05 }, 6));
+      rig.add(h, 'gold', G.cone(0.04, 0.1, { y: H + 0.1 }, 6), G.sphere(0.03, { y: H + 0.05 }, 8));
+      rig.add(h, 'gold', G.box(0.34, 0.02, 0.02, { x: 0.16, y: H - 0.01 }));
+      const flag = rig.bone('flag', h, { x: 0.02, y: H - 0.02 });
+      const w = [0.3, 0.34, 0.38][T - 1], fh = [0.3, 0.36, 0.42][T - 1];
+      rig.add(flag, 'banner:#d23a2a', G.sheet([[0, 0], [w, 0], [w, -fh * 0.8], [w * 0.5, -fh], [0, -fh * 0.8]], { rx: -PI / 2 }));
+      rig.add(flag, 'gold', G.box(0.06, 0.06, 0.012, { x: w * 0.5, y: -fh * 0.42, z: 0.004 }));
+      if (T >= 2) {
+        for (const s of [-1, 1]) {
+          rig.add(h, 'wood', G.cyl(0.012, 0.014, H * 0.6, { x: -0.12, y: H * 0.3 + 0.05, z: s * 0.14 }, 5));
+          const f2 = rig.bone('flag' + (s > 0 ? 'L' : 'R'), h, { x: -0.11, y: H * 0.58, z: s * 0.14 });
+          rig.add(f2, 'banner:#f0c040', G.sheet([[0, 0], [0.14, 0], [0.14, -0.14], [0.07, -0.19], [0, -0.14]], { rx: -PI / 2 }));
+        }
+      }
+      if (T === 3) ring(6, 0.2, (x, z) => rig.add(h, 'glow:#ff7a5a', G.octa(0.03, { x, y: 0.16, z })));
+      return { height: H + 0.1 };
+    },
+    anim(B, t) {
+      if (B.flag) B.flag.rotation.y = Math.sin(t * 2.6) * 0.25;
+      if (B.flagL) B.flagL.rotation.y = Math.sin(t * 3 + 1) * 0.3;
+      if (B.flagR) B.flagR.rotation.y = Math.sin(t * 3 + 2) * 0.3;
+    },
+  },
+  // กลองศึก — กลองใหญ่บนขาตั้งไม้ ไม้ตีขยับตามจังหวะ
+  drum: {
+    build(rig, h, T) {
+      const r = [0.2, 0.23, 0.26][T - 1], dh = [0.22, 0.26, 0.3][T - 1];
+      ring(4, r * 0.9, (x, z) => rig.add(h, 'woodDark', G.box(0.035, 0.18, 0.035, { x: x * 0.7, y: 0.09, z: z * 0.7 })));
+      const y0 = 0.18 + dh / 2;
+      rig.add(h, 'roof', G.cyl(r, r, dh, { y: y0 }, 16));
+      rig.add(h, 'cloth', G.cyl(r * 0.97, r * 0.97, 0.012, { y: y0 + dh / 2 + 0.004 }, 16));
+      for (const yy of [y0 - dh / 2, y0 + dh / 2]) rig.add(h, 'gold', G.torus(r + 0.004, 0.014, { y: yy, rx: PI / 2 }));
+      ring(8, r + 0.01, (x, z, a) => rig.add(h, 'bronze', G.box(0.012, dh * 0.9, 0.012, { x, y: y0, z, rz: 0.35, ry: -a })));
+      const top = y0 + dh / 2;
+      for (const s of [-1, 1]) {
+        const st = rig.bone('stick' + (s > 0 ? 'L' : 'R'), h, { x: s * r * 0.45, y: top + 0.03 });
+        rig.add(st, 'wood', G.cyl(0.012, 0.012, 0.26, { x: s * 0.06, y: 0.1, rz: -s * 0.6 }, 5));
+        rig.add(st, 'cloth', G.sphere(0.028, { x: s * 0.13, y: 0.2 }, 8));
+      }
+      if (T >= 2) {
+        // กลองเล็กคู่ข้าง
+        for (const s of [-1, 1]) {
+          rig.add(h, 'roof', G.cyl(0.08, 0.08, 0.1, { x: s * (r + 0.1), y: 0.11, z: 0.08 }, 10));
+          rig.add(h, 'cloth', G.cyl(0.078, 0.078, 0.01, { x: s * (r + 0.1), y: 0.165, z: 0.08 }, 10));
+        }
+      }
+      if (T === 3) {
+        rig.add(h, 'woodDark', G.box(0.03, 0.42, 0.03, { x: 0, y: top + 0.21, z: -r - 0.04 }));
+        const f = rig.bone('flag', h, { x: 0.01, y: top + 0.4, z: -r - 0.04 });
+        rig.add(f, 'banner:#e09a3c', G.sheet([[0, 0], [0.16, 0], [0.16, 0.1], [0, 0.1]], { rx: -PI / 2 }));
+      }
+      return { height: top + (T === 3 ? 0.42 : 0.25) };
+    },
+    anim(B, t) {
+      const k = Math.max(0, Math.sin(t * 6));
+      if (B.stickL) B.stickL.rotation.z = -k * 0.5;
+      if (B.stickR) B.stickR.rotation.z = Math.max(0, Math.sin(t * 6 + PI)) * 0.5;
+      if (B.flag) B.flag.rotation.y = Math.sin(t * 3) * 0.3;
+    },
+  },
+  // ศาลหัวใจ — แท่นหินอ่อนกับหัวใจคริสตัลสีชมพูลอยหมุน
+  shrine: {
+    build(rig, h, T) {
+      const H = [0.22, 0.3, 0.4][T - 1];
+      rig.add(h, 'marble', G.lathe([[0.22, 0], [0.2, 0.04], [0.12, 0.08], [0.1, H - 0.05], [0.16, H - 0.02], [0.16, H], [0, H]], {}, 12));
+      rig.add(h, 'gold', G.torus(0.15, 0.012, { y: H - 0.01, rx: PI / 2 }));
+      if (T >= 2) ring(4, 0.26, (x, z, a) => {
+        const rx = Math.cos(a + PI / 4) * 0.26, rz = Math.sin(a + PI / 4) * 0.26;
+        rig.add(h, 'marble', G.cyl(0.03, 0.035, H + 0.18, { x: rx, y: (H + 0.18) / 2, z: rz }, 8));
+        rig.add(h, 'crystal:#ff8aa8', G.octa(0.035, { x: rx, y: H + 0.22, z: rz }));
+      });
+      const hs = [0.8, 1, 1.25][T - 1];
+      const heart = rig.bone('crystal', h, { y: H + 0.24 * hs });
+      const hk = 0.11 * hs;
+      rig.add(heart, 'crystal:#ff3a6a', G.sphere(hk, { x: -hk * 0.62, y: hk * 0.35 }, 12), G.sphere(hk, { x: hk * 0.62, y: hk * 0.35 }, 12));
+      rig.add(heart, 'crystal:#ff3a6a', G.cone(hk * 1.55, hk * 2.1, { y: -hk * 0.75, rx: PI }, 12));
+      rig.add(heart, 'glow:#ffd0dc', G.sphere(hk * 0.45, { y: hk * 0.1 }, 8));
+      if (T === 3) {
+        const halo = rig.bone('halo', h, { y: H + 0.24 * hs });
+        rig.add(halo, 'glow:#ff9ab4', G.torus(0.26, 0.008, { rx: PI / 2 }));
+      }
+      return { height: H + 0.24 * hs + hk * 1.6 };
+    },
+    anim(B, t) {
+      if (B.crystal) { B.crystal.rotation.y = t * 1.2; B.crystal.scale.setScalar(1 + Math.max(0, Math.sin(t * 4)) * 0.08); }
+      if (B.halo) B.halo.rotation.z = t * 0.5;
+    },
+  },
+  // เหมืองทอง — ปากเหมืองโครงไม้ รถรางบรรทุกทองคำ ระดับสูงมีรอกและกองทอง
+  mine: {
+    build(rig, h, T) {
+      const W = [0.36, 0.4, 0.44][T - 1], H = [0.34, 0.4, 0.46][T - 1];
+      rig.add(h, 'rock', G.ico(0.26, { x: 0, y: 0.1, z: -0.12, s: [1.3, 0.8, 0.8] }, 0));
+      for (const s of [-1, 1]) rig.add(h, 'wood', G.box(0.05, H, 0.05, { x: s * W / 2, y: H / 2, z: -0.02 }));
+      rig.add(h, 'wood', G.box(W + 0.1, 0.05, 0.07, { y: H, z: -0.02 }));
+      rig.add(h, 'iron', G.box(W - 0.06, H - 0.06, 0.02, { y: (H - 0.06) / 2 + 0.01, z: -0.06 }));
+      // รางและรถ
+      for (const s of [-1, 1]) rig.add(h, 'iron', G.box(0.015, 0.012, 0.42, { x: s * 0.07, y: 0.01, z: 0.14 }));
+      const cart = rig.bone('cart', h, { y: 0.06, z: 0.18 });
+      rig.add(cart, 'bronze', G.box(0.2, 0.09, 0.15, { y: 0.03 }));
+      for (const [x, z] of [[-0.08, -0.06], [0.08, -0.06], [-0.08, 0.06], [0.08, 0.06]]) rig.add(cart, 'iron', G.cyl(0.025, 0.025, 0.015, { x, y: -0.02, z, rx: PI / 2 }, 8));
+      ring(T + 3, 0.05, (x, z) => rig.add(cart, 'gold', G.octa(0.035, { x, y: 0.09, z })));
+      rig.add(cart, 'gold', G.octa(0.045, { y: 0.11 }));
+      if (T >= 2) ring(5, 0.06, (x, z) => rig.add(h, 'gold', G.octa(0.04, { x: x - 0.22, y: 0.03, z: z + 0.18 })));
+      if (T === 3) {
+        rig.add(h, 'wood', G.box(0.04, 0.5, 0.04, { x: 0.26, y: 0.25, z: 0.06 }), G.box(0.26, 0.035, 0.035, { x: 0.15, y: 0.5, z: 0.06 }));
+        const hook = rig.bone('hook', h, { x: 0.04, y: 0.5, z: 0.06 });
+        rig.add(hook, 'iron', G.cyl(0.004, 0.004, 0.2, { y: -0.1 }, 4));
+        rig.add(hook, 'gold', G.octa(0.04, { y: -0.22 }));
+      }
+      rig.add(h, 'glow:#ffe680', G.sphere(0.03, { y: H - 0.08, z: 0.02 }, 6));
+      return { height: H + 0.12 };
+    },
+    anim(B, t) {
+      if (B.cart) B.cart.position.z = 0.18 + Math.sin(t * 1.2) * 0.04;
+      if (B.hook) B.hook.rotation.z = Math.sin(t * 2) * 0.15;
+    },
+  },
   light: {
     build(rig, h, T) {
       if (T === 1) {

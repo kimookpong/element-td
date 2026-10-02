@@ -81,7 +81,36 @@ export const BASIC = {
     cost: [70, 80, 200], dps: [14, 30, 70], rate: 0.6, range: 100, splash: [40, 46, 52],
     desc: 'ระเบิดวงกว้าง ยิงช้า', en: { th: 'Cannon Tower', desc: 'Wide splash, slow fire' },
   },
+  /* ---- ป้อมสนับสนุน (ไม่โจมตี) ----
+   * support.kind: dmg = เพิ่มดาเมจป้อมรอบ ๆ · rate = เพิ่มความเร็วโจมตีป้อมรอบ ๆ
+   *               life = สะสมหัวใจ ได้ชีวิต +1 ทุก ๆ N เวฟที่เคลียร์ · gold = ได้ทองทุกครั้งที่เคลียร์เวฟ
+   * บัฟหลายอันไม่ซ้อนกัน (ใช้ค่าสูงสุดที่ครอบคลุมป้อมนั้น) · max = จำนวนที่สร้างได้สูงสุดต่อเกม
+   */
+  banner: {
+    th: 'ธงศึก', name: 'War Banner', icon: 't_banner', color: '#e0503c',
+    cost: [120, 150, 250], range: 85, support: { kind: 'dmg', amt: [0.15, 0.25, 0.35] },
+    desc: 'ไม่ยิง แต่เพิ่มดาเมจให้ป้อมรอบ ๆ', en: { th: 'War Banner', desc: 'Doesn\'t shoot. Boosts damage of nearby towers' },
+  },
+  drum: {
+    th: 'กลองศึก', name: 'War Drum', icon: 't_drum', color: '#e09a3c',
+    cost: [120, 150, 250], range: 85, support: { kind: 'rate', amt: [0.12, 0.2, 0.3] },
+    desc: 'ไม่ยิง แต่ทำให้ป้อมรอบ ๆ ยิงเร็วขึ้น', en: { th: 'War Drum', desc: 'Doesn\'t shoot. Nearby towers fire faster' },
+  },
+  shrine: {
+    th: 'ศาลหัวใจ', name: 'Heart Shrine', icon: 't_shrine', color: '#ff6a8f',
+    cost: [250, 300, 450], range: 0, max: 1, support: { kind: 'life', every: [6, 4, 3] },
+    desc: 'ไม่ยิง สะสมหัวใจแล้วคืนชีวิตให้ทุก ๆ ไม่กี่เวฟ (สร้างได้ 1 หลัง)', en: { th: 'Heart Shrine', desc: 'Doesn\'t shoot. Gives back a life every few waves (max 1)' },
+  },
+  mine: {
+    th: 'เหมืองทอง', name: 'Gold Mine', icon: 't_mine', color: '#ffcf4a',
+    cost: [150, 200, 350], range: 0, max: 4, support: { kind: 'gold', mul: [0.5, 1.1, 2] },
+    desc: 'ไม่ยิง ได้ทองทุกครั้งที่เคลียร์เวฟ (สร้างได้ 4 หลัง)', en: { th: 'Gold Mine', desc: 'Doesn\'t shoot. Pays out gold after every wave (max 4)' },
+  },
 };
+export const ATTACK_BASICS = ['arrow', 'cannon'];
+export const SUPPORT_TYPES = ['banner', 'drum', 'shrine', 'mine'];
+// ทองที่เหมืองให้ต่อเวฟ = mul × (10 + เลขเวฟ)
+export const mineGold = (mul, n) => Math.round(mul * (10 + n));
 
 /* ราคาสะสมและ DPS ตามจำนวนธาตุ (index = tier-1) */
 export const ELEMENT_TOWER = {
@@ -100,13 +129,13 @@ export const comboKey = (els) => els.slice().sort().join('+');
 export const ABILITIES = {
   normal:  { th: 'ปกติ', creature: 'หมาป่าคริสตัล', icon: 'c_wolf', model: 'wolf', hp: 1, speed: 46, size: 12, reward: 1, lives: 1, desc: 'มอนสเตอร์ธรรมดา' , en: { th: 'Normal', creature: 'Crystal Wolf', desc: 'An ordinary monster' } },
   fast:    { th: 'ว่องไว', creature: 'ยูนิคอร์น', icon: 'c_unicorn', model: 'unicorn', hp: 0.6, speed: 80, size: 10, reward: 0.9, lives: 1, desc: 'เคลื่อนที่เร็วมาก' , en: { th: 'Fast', creature: 'Unicorn', desc: 'Moves very fast' } },
-  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: 'c_turtle', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' , en: { th: 'Stone armor', creature: 'Dragon Turtle', desc: 'Immune to slow/stun/knock-back and takes 20% less damage' } },
+  armored: { th: 'เกราะหิน', creature: 'เต่ามังกร', icon: 'c_turtle', model: 'turtle', hp: 1.3, speed: 34, size: 14, reward: 1.3, def: 20, lives: 1, desc: 'ไม่ติดสถานะชะลอ/มึนงง/ผลัก และลดดาเมจ 20%' , en: { th: 'Stone armor', creature: 'Dragon Turtle', desc: 'Immune to slow/stun/knock-back and takes 20% less damage' } },
   regen:   { th: 'ฟื้นฟู', creature: 'ไฮดรา', icon: 'c_hydra', model: 'hydra', hp: 1.0, speed: 44, size: 12, reward: 1.1, lives: 1, desc: 'ฟื้นพลังชีวิต 2.5% ต่อวินาที' , en: { th: 'Regenerate', creature: 'Hydra', desc: 'Regenerates 2.5% HP per second' } },
   split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: 'c_kitsune', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' , en: { th: 'Split', creature: 'Kitsune', desc: 'Splits into 2 foxes on death' } },
   undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' , en: { th: 'Undying', creature: 'Phoenix', desc: 'Rises from its ashes once with 50% HP' } },
   flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' , en: { th: 'Flying', creature: 'Griffin', desc: 'Flies straight over mazes' } },
-  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 12, speed: 26, size: 24, reward: 20, lives: 1, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' , en: { th: 'Dragon boss', creature: 'Ancient Dragon', desc: 'Massive HP, resists status effects' } },
-  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 1, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' , en: { th: 'Guardian', creature: 'Elemental Guardian', desc: 'Summoned with essence — defeat it to unlock / level up its element' } },
+  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 12, speed: 26, size: 24, reward: 20, lives: 1, desc: 'พลังชีวิตมหาศาล ต้านสถานะ ฆ่าได้รับชีวิตคืน +1' , en: { th: 'Dragon boss', creature: 'Ancient Dragon', desc: 'Massive HP, resists status effects. Killing it gives back 1 life' } },
+  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 1, desc: 'เรียกด้วยผลึกธาตุ กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' , en: { th: 'Guardian', creature: 'Elemental Guardian', desc: 'Summoned with essence, defeat it to unlock / level up its element' } },
   child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' , en: { th: 'Split spawn', creature: 'Fox Spawn', desc: '' } },
 };
 
@@ -154,8 +183,8 @@ function laneLayout(points) {
 export const MAPS = [
   {
     id: 'meadow',
-    name: 'ลานวงกตแห่งทุ่งหญ้า', en: { name: 'Meadow Maze', desc: 'Open field in classic Element TD style — build your own maze' },
-    desc: 'สนามเปิดแบบ Element TD — วางป้อมสร้างเขาวงกตเอง',
+    name: 'ลานวงกตแห่งทุ่งหญ้า', en: { name: 'Meadow Maze', desc: 'Open field in classic Element TD style, build your own maze' },
+    desc: 'สนามเปิดแบบ Element TD วางป้อมสร้างเขาวงกตเอง',
     theme: 'meadow',
     layout: [
       '####################',
@@ -174,8 +203,8 @@ export const MAPS = [
   },
   {
     id: 'ruins',
-    name: 'ซากปราการโบราณ', en: { name: 'Ancient Ruins', desc: 'A desert maze among ruined walls, pyramids and a sphinx — 2 checkpoints' },
-    desc: 'เขาวงกตกลางซากกำแพงในทะเลทราย มีพีระมิดและสฟิงซ์ — จุดตรวจ 2 จุด',
+    name: 'ซากปราการโบราณ', en: { name: 'Ancient Ruins', desc: 'A desert maze among ruined walls, pyramids and a sphinx, 2 checkpoints' },
+    desc: 'เขาวงกตกลางซากกำแพงในทะเลทราย มีพีระมิดและสฟิงซ์ จุดตรวจ 2 จุด',
     theme: 'desert',
     layout: [
       '########W###########',
@@ -194,22 +223,22 @@ export const MAPS = [
   },
   {
     id: 'canyon',
-    name: 'หุบเขาคดเคี้ยว', en: { name: 'Winding Canyon', desc: 'Fixed path — build on the ridges along the road' },
+    name: 'หุบเขาคดเคี้ยว', en: { name: 'Winding Canyon', desc: 'Fixed path, build on the ridges along the road' },
     desc: 'ทางเดินตายตัว วางป้อมบนเนินสองข้างทาง',
     theme: 'canyon',
     layout: laneLayout([[0, 6], [2, 6], [2, 1], [6, 1], [6, 10], [10, 10], [10, 1], [14, 1], [14, 10], [17, 10], [17, 4], [19, 4]]),
   },
   {
     id: 'spiral',
-    name: 'วังวนแห่งห้วงมืด', en: { name: 'Abyss Spiral', desc: 'A short spiral path at night — hard' },
-    desc: 'ทางวนสั้นยามค่ำคืน — ยาก',
+    name: 'วังวนแห่งห้วงมืด', en: { name: 'Abyss Spiral', desc: 'A short spiral path at night, hard' },
+    desc: 'ทางวนสั้นยามค่ำคืน ยาก',
     theme: 'night',
     layout: laneLayout([[0, 1], [18, 1], [18, 10], [1, 10], [1, 4], [15, 4], [15, 7], [6, 7]]),
   },
   {
     id: 'volcano', element: 'fire',
-    name: 'ภูเขาไฟลาวา', en: { name: 'Lava Volcano', desc: 'Fire map — maze around rivers of lava at the foot of an erupting volcano' },
-    desc: 'แผนที่ธาตุไฟ — สร้างเขาวงกตหลบธารลาวาเชิงภูเขาไฟ',
+    name: 'ภูเขาไฟลาวา', en: { name: 'Lava Volcano', desc: 'Fire map: maze around rivers of lava at the foot of an erupting volcano' },
+    desc: 'แผนที่ธาตุไฟ: สร้างเขาวงกตหลบธารลาวาเชิงภูเขาไฟ',
     theme: 'volcano',
     layout: [
       '####################',
@@ -228,15 +257,15 @@ export const MAPS = [
   },
   {
     id: 'river', element: 'water',
-    name: 'แม่น้ำไหลวน', en: { name: 'Swirling River', desc: 'Water map — monsters wade along a long serpentine river' },
-    desc: 'แผนที่ธาตุน้ำ — มอนสเตอร์ลุยตามสายน้ำที่คดเคี้ยวไปมา',
+    name: 'แม่น้ำไหลวน', en: { name: 'Swirling River', desc: 'Water map: monsters wade along a long serpentine river' },
+    desc: 'แผนที่ธาตุน้ำ: มอนสเตอร์ลุยตามสายน้ำที่คดเคี้ยวไปมา',
     theme: 'river',
     layout: laneLayout([[0, 1], [17, 1], [17, 4], [2, 4], [2, 7], [17, 7], [17, 10], [19, 10]]),
   },
   {
     id: 'clouds', element: 'wind',
-    name: 'ก้อนเมฆ', en: { name: 'Sky Clouds', desc: 'Wind map — a maze on a floating cloud island full of holes to the sky' },
-    desc: 'แผนที่ธาตุลม — เขาวงกตบนเกาะเมฆลอยฟ้าที่มีช่องโหว่มองเห็นท้องฟ้า',
+    name: 'ก้อนเมฆ', en: { name: 'Sky Clouds', desc: 'Wind map: a maze on a floating cloud island full of holes to the sky' },
+    desc: 'แผนที่ธาตุลม: เขาวงกตบนเกาะเมฆลอยฟ้าที่มีช่องโหว่มองเห็นท้องฟ้า',
     theme: 'sky',
     layout: [
       '####################',
@@ -255,8 +284,8 @@ export const MAPS = [
   },
   {
     id: 'underground', element: 'earth',
-    name: 'ใต้ดิน', en: { name: 'Underground', desc: 'Earth map — winding tunnels through a crystal cavern' },
-    desc: 'แผนที่ธาตุดิน — อุโมงค์คดเคี้ยวในถ้ำคริสตัลใต้พิภพ',
+    name: 'ใต้ดิน', en: { name: 'Underground', desc: 'Earth map: winding tunnels through a crystal cavern' },
+    desc: 'แผนที่ธาตุดิน: อุโมงค์คดเคี้ยวในถ้ำคริสตัลใต้พิภพ',
     theme: 'cave',
     layout: withRocks(laneLayout([[0, 10], [3, 10], [3, 6], [1, 6], [1, 1], [7, 1], [7, 8], [10, 8], [10, 3], [13, 3], [13, 10], [16, 10], [16, 1], [19, 1]]),
       [[5, 4], [5, 9], [12, 6], [18, 6], [8, 11], [15, 5]]),

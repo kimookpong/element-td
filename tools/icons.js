@@ -187,6 +187,10 @@ function buildUI() {
     F(poly([[86, 54], [116, 38], [116, 94], [86, 78]]));
     F(circle(36, 30, 14), 'gold'); F(circle(66, 30, 14), 'gold');
   });
+  glyph('shield', 'silver', ({ F }) => {
+    F(poly([[64, 12], [108, 28], [104, 70], [64, 116], [24, 70], [20, 28]]));
+    F(poly([[64, 28], [92, 38], [89, 68], [64, 98]]), 'gold');
+  });
   glyph('home', 'gold', ({ F }) => {
     F(poly([[64, 14], [118, 60], [104, 60], [104, 112], [24, 112], [24, 60], [10, 60]]));
     F(rrect(52, 76, 24, 36, 4), 'orange');
@@ -455,6 +459,7 @@ async function buildPortraits() {
   // ป้อมพื้นฐาน + ป้อมธาตุทั้ง 25 แบบ (ระดับสูงสุด) · x_* = ภาพตรวจระดับ ไม่ถูกบันทึกเป็นไฟล์
   const towers = [
     ['arrow', { kind: 'basic', base: 'arrow', elements: [], tier: 2 }], ['cannon', { kind: 'basic', base: 'cannon', elements: [], tier: 2 }],
+    ...['banner', 'drum', 'shrine', 'mine'].map((b) => [b, { kind: 'basic', base: b, elements: [], tier: 2 }]),
     ...Object.keys(TOWERS).map((k) => {
       const els = k.split('+');
       return [k.replace(/\+/g, '_'), { kind: 'element', elements: els, tier: els.length === 3 ? 2 : 3 }];

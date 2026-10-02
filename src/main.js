@@ -3,8 +3,8 @@
  * ============================================================ */
 import './style.css';
 import {
-  COLS, ROWS, ELEMENTS, ELEMENT_ORDER, BEATS, BASIC, ABILITIES,
-  MAPS, DIFFICULTIES, TOTAL_WAVES, MAX_ELEMENT_LEVEL, MAX_TIER,
+  COLS, ROWS, ELEMENTS, ELEMENT_ORDER, BEATS, BASIC, ABILITIES, ELEMENT_TOWER,
+  MAPS, DIFFICULTIES, TOTAL_WAVES, MAX_ELEMENT_LEVEL, MAX_TIER, SUPPORT_TYPES, ATTACK_BASICS, mineGold,
 } from './data.js';
 import { Sound } from './audio.js';
 import { Music } from './music.js';
@@ -15,7 +15,8 @@ import { TOWERS, towerDef } from './towers.js';
 import { t as T, tr, elName, getLang, setLang } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
-const BUILD_TYPES = ['arrow', 'cannon', ...ELEMENT_ORDER];
+const BUILD_TYPES = [...ATTACK_BASICS, ...ELEMENT_ORDER, ...SUPPORT_TYPES];
+const BUILD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
 const typeIcon = (type) => (BASIC[type] ? BASIC[type].icon : ELEMENTS[type].icon);
 const towerIcon = (type) => (BASIC[type] ? BASIC[type].icon : 't_' + type);
 const comboIcon = (els) => 't_' + els.slice().sort().join('_');
@@ -321,7 +322,7 @@ function renderWaveChip(force) {
   ui.next.innerHTML = `${g.wave > 0 ? `<span class="muted">${T('wave.upcoming')}</span>` : ""}${ico(e.icon)}${ico(a.icon)}<span class="txt">${w.ability === 'boss' ? `<span class="boss">${T('wave.boss')}</span>` : tr(a, 'creature')}</span> ×${w.count}`;
   ui.pop.innerHTML = `
     <div class="row">${ico(a.icon)}<div><b>${T('wave.popTitle', { n: w.n, creature: tr(a, 'creature') })}</b><br><span class="muted">${T('wave.popEl')}</span><b style="color:${e.color}"> ${elName(e)}</b> · ${tr(a, 'th')} · ×${w.count}</div></div>
-    <div>${ico('heart')} ${T('wave.hp', { hp: hp.toLocaleString() })}</div>
+    <div>${ico('heart')} ${T('wave.hp', { hp: hp.toLocaleString() })} · ${ico('speed')} ${T('mon.speed', { n: a.speed })} · ${ico('shield')} ${T('mon.def', { n: a.def || 0 })}</div>
     <div class="muted">${tr(a, 'desc')}</div>
     <div>${T('wave.weakTo')} ${weak.map((k) => `${ico(ELEMENTS[k].icon)} ${elName(ELEMENTS[k])}`).join(' ')}</div>`;
 }
@@ -363,8 +364,9 @@ function renderBuild() {
     b.style.borderColor = e.color;
     b.dataset.cost = cost;
     b.dataset.ok = locked ? '0' : '1';
-    b.title = `${basic ? tr(basic, 'th') : tr(TOWERS[type], 'th')} (${i + 1}) — ${basic ? tr(basic, 'desc') : tr(TOWERS[type], 'attack')}${locked ? `\n${T('build.locked', { el: elName(e) })}` : ''}`;
-    b.innerHTML = `<span class="k">${i + 1}</span>${ico(towerIcon(type))}${locked ? ico('lock', 'lockIco') : ''}<span class="c">${ico('gold')}${cost}</span>`;
+    b.title = `${basic ? tr(basic, 'th') : tr(TOWERS[type], 'th')} (${BUILD_KEYS[i]})\n${basic ? tr(basic, 'desc') : tr(TOWERS[type], 'attack')}${locked ? `\n${T('build.locked', { el: elName(e) })}` : ''}`;
+    if (basic && basic.support) b.classList.add('support');
+    b.innerHTML = `<span class="k">${BUILD_KEYS[i]}</span>${ico(towerIcon(type))}${locked ? ico('lock', 'lockIco') : ''}<span class="c">${ico('gold')}${cost}</span>`;
     b.addEventListener('click', () => selectBuild(type));
     ui.build.appendChild(b);
   });
@@ -436,6 +438,62 @@ const descBlock = (def) => (def ? `<div class="effects desc">${tr(def, 'attack')
 const strongAgainst = (els) => (els.length ? [...new Set(els.map((e) => BEATS[e]))].map((e) => ico(ELEMENTS[e].icon)).join(' ') : T('info.neutral'));
 const stars = (n, max) => ico('star').repeat(n) + ico('star_empty').repeat(Math.max(0, max - n));
 
+/* ---------------- ราคา / สถานะแต่ละเลเวล ----------------
+ * key = ชนิดป้อมพื้นฐาน (arrow, banner, ...) หรือคีย์ธาตุ (fire, fire+water, ...)
+ * ราคา = เงินที่ต้องจ่ายเพื่อขึ้นเลเวลนั้น · รวม = เงินที่ลงไปทั้งหมดถึงเลเวลนั้น
+ * ป้อมผสมเลเวล 1 = ราคาเพิ่มธาตุเข้าไปในป้อมเลเวล 1 ที่มีอยู่ */
+function levelCosts(key) {
+  if (BASIC[key]) {
+    let sum = 0;
+    return BASIC[key].cost.map((c) => ({ cost: c, total: (sum += c) }));
+  }
+  const n = key.split('+').length;
+  const cum = ELEMENT_TOWER[n].cum;
+  return cum.map((c, i) => ({ cost: i ? c - cum[i - 1] : c - (n > 1 ? ELEMENT_TOWER[n - 1].cum[0] : 0), total: c }));
+}
+const statsAt = (key, tier) => towerStats(BASIC[key] ? { kind: 'basic', base: key, tier } : { kind: 'element', elements: key.split('+'), tier });
+const pctTxt = (x) => Math.round(x * 100);
+
+// ความสามารถของป้อมสนับสนุน (สั้น สำหรับตาราง / ยาว สำหรับการ์ด)
+function supportShort(sp) {
+  if (sp.kind === 'dmg') return T('sup.dmgShort', { p: pctTxt(sp.amt) });
+  if (sp.kind === 'rate') return T('sup.rateShort', { p: pctTxt(sp.amt) });
+  if (sp.kind === 'life') return T('sup.lifeShort', { n: sp.every });
+  return T('sup.goldShort', { a: mineGold(sp.mul, 10), b: mineGold(sp.mul, 50) });
+}
+function supportLines(sp, t, g) {
+  const out = [];
+  if (sp.kind === 'dmg') out.push(`${ico('sparkle')} ${T('sup.dmg', { p: pctTxt(sp.amt) })}`, `<small>${T('sup.noStack')}</small>`);
+  if (sp.kind === 'rate') out.push(`${ico('speed')} ${T('sup.rate', { p: pctTxt(sp.amt) })}`, `<small>${T('sup.noStack')}</small>`);
+  if (sp.kind === 'life') {
+    out.push(`${ico('heart')} ${T('sup.life', { n: sp.every })}`);
+    if (t) out.push(`${ico('clock')} ${T('sup.lifeCharge', { c: t.charge || 0, n: sp.every })}`);
+  }
+  if (sp.kind === 'gold') {
+    out.push(`${ico('gold')} ${T('sup.gold', { a: mineGold(sp.mul, 10), b: mineGold(sp.mul, 50) })}`);
+    if (g) out.push(`${ico('gold')} ${T('sup.goldNow', { g: mineGold(sp.mul, Math.max(1, g.wave)) })}`);
+  }
+  return out.join('<br>');
+}
+// แถวราคาแต่ละเลเวล (ไฮไลต์เลเวลปัจจุบัน)
+const costRow = (key, tier = 0) => `<tr><td>${T('info.costs')}</td><td>${levelCosts(key).map((c, i) => `<span class="${i + 1 === tier ? 'cur' : ''}">${ico('gold')}${c.cost}</span>`).join(' · ')}</td></tr>`;
+
+// ตารางสถานะทุกเลเวล (ใช้ในหน้าวิธีเล่น)
+function levelTable(key) {
+  const sup = BASIC[key] && BASIC[key].support;
+  const head = sup
+    ? `<tr><th>${T('tbl.lv')}</th><th>${T('tbl.price')}</th><th>${T('tbl.effect')}</th><th>${T('tbl.range')}</th></tr>`
+    : `<tr><th>${T('tbl.lv')}</th><th>${T('tbl.price')}</th><th>${T('tbl.dmg')}</th><th>${T('tbl.rate')}</th><th>${T('tbl.dps')}</th><th>${T('tbl.range')}</th></tr>`;
+  const rows = levelCosts(key).map((c, i) => {
+    const s = statsAt(key, i + 1);
+    const price = `${c.cost}${c.total !== c.cost ? ` <small>(${c.total})</small>` : ''}`;
+    return sup
+      ? `<tr><td>${i + 1}</td><td>${price}</td><td>${supportShort(s.support)}</td><td>${s.range ? Math.round(s.range) : '-'}</td></tr>`
+      : `<tr><td>${i + 1}</td><td>${price}</td><td>${fmt(s.dmg)}</td><td>${fmt(s.rate)}</td><td>${fmt(s.dps)}</td><td>${rangeText(s.range)}</td></tr>`;
+  }).join('');
+  return `<table class="lvTable">${head}${rows}</table>`;
+}
+
 function renderInfo() {
   const g = view.game;
   const t = view.selectedTower;
@@ -447,6 +505,20 @@ function renderInfo() {
     const e = basic || ELEMENTS[type];
     const s = towerStats(basic ? { kind: 'basic', base: type, tier: 1 } : { kind: 'element', elements: [type], tier: 1 });
     const hc = view.hoverCheck;
+    if (s.support) {
+      ui.info.innerHTML = `
+      <div class="title"><img class="portrait" src="${iconUrl(towerIcon(type))}" alt=""><span>${tr(basic, 'th')}<br><small style="color:var(--muted);font-weight:400">${T('info.support')}</small></span><span class="lv">${ico('gold')} ${buildCost(type)}</span></div>
+      <div class="effects">${tr(basic, 'desc')}</div>
+      <table>
+        ${s.range ? `<tr><td>${T('info.range')}</td><td>${Math.round(s.range)}</td></tr>` : ''}
+        ${costRow(type)}
+        ${basic.max ? `<tr><td>${T('info.limit')}</td><td>${T('sup.max', { n: basic.max })}</td></tr>` : ''}
+        <tr><td>${T('info.buildTime')}</td><td>${T('sec', { n: '2.5' })}</td></tr>
+      </table>
+      <div class="effects">${supportLines(s.support, null, g)}</div>
+      <div class="hint">${hc && !hc.ok && hc.reason ? `${ico('warning')} ${hc.reason}<br>` : ''}${T('info.placeHint')}</div>`;
+      return;
+    }
     ui.info.innerHTML = `
       <div class="title"><img class="portrait" src="${iconUrl(towerIcon(type))}" alt=""><span>${basic ? tr(basic, 'th') : tr(TOWERS[type], 'th')}</span><span class="lv">${ico('gold')} ${buildCost(type)}</span></div>
       ${basic ? `<div class="effects">${tr(basic, 'desc')}</div>` : descBlock(TOWERS[type])}
@@ -454,7 +526,9 @@ function renderInfo() {
         <tr><td>${T('info.dmg')}</td><td>${fmt(s.dmg)}</td></tr>
         <tr><td>${T('info.rate')}</td><td>${T('info.perSec', { n: fmt(s.rate) })}</td></tr>
         <tr><td>${T('info.range')}</td><td>${rangeText(s.range)}</td></tr>
+        <tr><td>${T('info.dps')}</td><td>${fmt(s.dps)}</td></tr>
         <tr><td>${T('info.strong')}</td><td>${strongAgainst(basic ? [] : [type])}</td></tr>
+        ${costRow(type)}
         <tr><td>${T('info.buildTime')}</td><td>${T('sec', { n: basic ? '2.5' : '3.5' })}</td></tr>
       </table>
       <div class="effects">${effectLines(s)}</div>
@@ -468,7 +542,10 @@ function renderInfo() {
   const addOpts = opts.filter((o) => o.type === 'add');
   const preview = tierOpt ? towerStats({ ...t, tier: t.tier + 1 }) : null;
   const up = (b, f = fmt) => (preview ? ` <span class="up">→ ${f(b)}</span>` : '');
-  const kindLabel = t.kind === 'basic' ? T('info.basic') : T('info.k' + t.elements.length);
+  const sup = s.support;
+  const key = t.kind === 'basic' ? t.base : t.elements.slice().sort().join('+');
+  const kindLabel = sup ? T('info.support') : t.kind === 'basic' ? T('info.basic') : T('info.k' + t.elements.length);
+  const buffs = [t.buffDmg ? `${ico('sparkle')} ${T('buff.dmg', { p: pctTxt(t.buffDmg) })}` : '', t.buffRate ? `${ico('speed')} ${T('buff.rate', { p: pctTxt(t.buffRate) })}` : ''].filter(Boolean).join('<br>');
   const portrait = towerPortrait(t);
   const elIcons = t.elements.map((e) => ico(ELEMENTS[e].icon)).join('');
   const b = t.build;
@@ -476,22 +553,29 @@ function renderInfo() {
   ui.info.innerHTML = `
     <div class="title"><img class="portrait" src="${iconUrl(portrait)}" alt=""><span>${towerName(t)}<br><small style="color:var(--muted);font-weight:400">${kindLabel} ${elIcons}</small></span><span class="lv">${stars(t.tier, maxT)}</span></div>
     ${building}
-    ${t.kind === 'basic' ? '' : descBlock(towerDef(t.elements))}
-    <table>
+    ${t.kind === 'basic' ? (sup ? `<div class="effects">${tr(BASIC[t.base], 'desc')}</div>` : '') : descBlock(towerDef(t.elements))}
+    ${sup ? `<table>
+      ${s.range ? `<tr><td>${T('info.range')}</td><td>${Math.round(s.range)}</td></tr>` : ''}
+      <tr><td>${T('info.effect')}</td><td>${supportShort(sup)}${preview ? ` <span class="up">→ ${supportShort(preview.support)}</span>` : ''}</td></tr>
+      ${costRow(key, t.tier)}
+    </table>
+    <div class="effects">${supportLines(sup, t, g)}</div>` : `<table>
       <tr><td>${T('info.dmg')}</td><td>${fmt(s.dmg)}${up(preview && preview.dmg)}</td></tr>
       <tr><td>${T('info.rate')}</td><td>${T('info.perSec', { n: fmt(s.rate) })}${up(preview && preview.rate)}</td></tr>
+      <tr><td>${T('info.dps')}</td><td>${fmt(s.dps)}${up(preview && preview.dps)}</td></tr>
       <tr><td>${T('info.range')}</td><td>${rangeText(s.range)}${s.range < 1000 ? up(preview && preview.range, Math.round) : ''}</td></tr>
       <tr><td>${T('info.strong')}</td><td>${strongAgainst(t.elements)}</td></tr>
+      ${costRow(key, t.tier)}
       <tr><td>${T('info.kills')}</td><td>${t.kills} / ${Math.round(t.dmgDealt)}</td></tr>
-    </table>
-    <div class="effects">${effectLines(s)}${MAPS[g.mapIndex].element && t.elements.includes(MAPS[g.mapIndex].element) ? `<br>${ico(ELEMENTS[MAPS[g.mapIndex].element].icon)} <b style="color:var(--gold2)">${T('info.home', { el: elName(ELEMENTS[MAPS[g.mapIndex].element]) })}</b>` : ''}</div>
+    </table>`}
+    <div class="effects">${buffs ? buffs + '<br>' : ''}${sup ? '' : effectLines(s)}${MAPS[g.mapIndex].element && t.elements.includes(MAPS[g.mapIndex].element) ? `<br>${ico(ELEMENTS[MAPS[g.mapIndex].element].icon)} <b style="color:var(--gold2)">${T('info.home', { el: elName(ELEMENTS[MAPS[g.mapIndex].element]) })}</b>` : ''}</div>
     <div class="btnRow">
       ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok && !b ? 1 : 0}" title="${tierOpt.reason || ''}">${ico('upgrade')} ${T('info.upgrade', { n: t.tier + 1 })} (${ico('gold')}${tierOpt.cost})${tierOpt.ok ? '' : ' ' + ico('lock')}</button>` : `<button class="full" disabled>${ico('crown')} ${T('info.maxed')}</button>`}
     </div>
     ${tierOpt && !tierOpt.ok ? `<div class="effects" style="margin-top:4px">${ico('lock')} ${tierOpt.reason}</div>` : ''}
     ${addOpts.length ? `<div class="sect">${ico('sparkle')} ${T('info.addEl', { kind: T(t.elements.length === 1 ? 'info.toDual' : 'info.toTriple') })}</div><div class="addGrid" id="addGrid"></div>` : ''}
     <div class="btnRow" style="margin-top:8px">
-      <button id="bMode">${ico('target')} ${TARGET_LABEL[t.mode]}</button>
+      ${sup ? '' : `<button id="bMode">${ico('target')} ${TARGET_LABEL[t.mode]}</button>`}
       <button id="bSell" class="danger">${ico('sell')} ${T('info.sell', { n: b && b.kind === 'build' ? t.spent : sellValue(t) })}</button>
     </div>`;
   if (tierOpt) $('bUp').addEventListener('click', () => g.applyUpgrade(t, tierOpt));
@@ -503,13 +587,13 @@ function renderInfo() {
       btn.dataset.cost = o.cost;
       btn.dataset.ok = o.ok && !b ? 1 : 0;
       btn.title = o.ok ? T('info.tierOf', { name: o.label, n: o.tier }) : o.reason;
-      btn.title = `${o.label}${o.ok ? '' : ' — ' + o.reason}\n${tr(towerDef(o.els), 'attack')}`;
+      btn.title = `${o.label}${o.ok ? '' : ' (' + o.reason + ')'}\n${tr(towerDef(o.els), 'attack')}`;
       btn.innerHTML = `${ico(comboIcon(o.els))}<span><span class="nm">${o.label}</span><span class="c">${ico('gold')}${o.cost}</span>${o.ok ? '' : ' ' + ico('lock')}</span>`;
       btn.addEventListener('click', () => g.applyUpgrade(t, o));
       grid.appendChild(btn);
     }
   }
-  $('bMode').addEventListener('click', () => g.cycleMode(t));
+  if ($('bMode')) $('bMode').addEventListener('click', () => g.cycleMode(t));
   $('bSell').addEventListener('click', () => g.sellTower(t));
   refreshAffordability();
 }
@@ -613,7 +697,8 @@ document.addEventListener('keydown', (ev) => {
   if ($('settings').classList.contains('show')) { if (ev.key === 'Escape') closeSettings(); return; }
   if (!view.game || view.menu) return;
   const k = ev.key.toLowerCase();
-  if (k >= '1' && k <= '8') { selectBuild(BUILD_TYPES[Number(k) - 1]); return; }
+  const bi = BUILD_KEYS.indexOf(k);
+  if (bi >= 0 && BUILD_TYPES[bi]) { selectBuild(BUILD_TYPES[bi]); return; }
   const t = view.selectedTower;
   switch (k) {
     case ' ': ev.preventDefault(); togglePause(); break;
@@ -846,13 +931,29 @@ function renderMenu() {
 function renderHelp() {
   const items = [['play', 'help.i1'], ['heart', 'help.i2'], ['hammer', 'help.i3'], ['essence', 'help.i4'], ['t_arrow', 'help.i5'], ['sparkle', 'help.i6'], ['map_maze', 'help.i7'], ['gold', 'help.i8'], ['sign', 'help.i9']].map(([i, k]) => [i, T(k)]);
   $('helpList').innerHTML = items.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('');
+  // มอนสเตอร์: HP (เท่าของ HP เวฟ) · ความเร็ว · เกราะ · ธาตุ/แพ้ทาง · ความสามารถพิเศษ
   $('creatureTable').innerHTML = ['normal', 'fast', 'armored', 'regen', 'split', 'undead', 'flying', 'boss', 'elemental'].map((k) => {
     const a = ABILITIES[k];
-    return `<div>${ico(a.icon)}<span><b>${tr(a, 'creature')}</b><br>${tr(a, 'th')} — ${tr(a, 'desc')}</span></div>`;
+    const hpTxt = k === 'elemental' ? T('mon.hpGuardian') : T('mon.hp', { m: a.hp });
+    return `<div class="combo"><img class="portrait" src="${iconUrl(a.icon)}" alt=""><div><b>${tr(a, 'creature')}</b> <small class="look">${tr(a, 'th')}</small>
+      <table class="lvTable"><tr><th>HP</th><th>${T('tbl.speed')}</th><th>${T('tbl.def')}</th><th>${T('tbl.lives')}</th></tr>
+      <tr><td>${hpTxt}</td><td>${a.speed}</td><td>${a.def || 0}%</td><td>1</td></tr></table>
+      <small>${k === 'elemental' ? T('mon.elGuardian') : T('mon.el')}</small><br>${ico('sparkle')} ${tr(a, 'desc')}</div></div>`;
+  }).join('');
+  // ป้อมพื้นฐานและป้อมสนับสนุน
+  $('basicTable').innerHTML = [...ATTACK_BASICS, ...SUPPORT_TYPES].map((k) => {
+    const b = BASIC[k];
+    return `<div class="combo"><img class="portrait" src="${iconUrl(b.icon)}" alt=""><div><b>${tr(b, 'th')}</b> <small class="look">${b.support ? T('info.support') : T('info.basic')}</small><br>${tr(b, 'desc')}${levelTable(k)}</div></div>`;
   }).join('');
   // การ์ดป้อม: รูป · ชื่อ + ไอคอนธาตุ · ลักษณะ · การโจมตี · จุดอ่อน (ใช้ทั้งป้อมเดี่ยวและป้อมผสม)
   const icons = (k) => k.split('+').map((e) => ico(ELEMENTS[e].icon)).join('');
-  const towerCard = (k, d, extra = '') => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${tr(d, 'th')}</b> <span class="els">${icons(k)}</span><br><small class="look">${tr(d, 'look')}</small><br>${tr(d, 'attack')}<br><small class="weak">${ico('warning')} ${tr(d, 'weak')}</small>${extra}</div></div>`;
+  const towerCard = (k, d, extra = '') => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${tr(d, 'th')}</b> <span class="els">${icons(k)}</span><br><small class="look">${tr(d, 'look')}</small><br>${tr(d, 'attack')}<br><small class="weak">${ico('warning')} ${tr(d, 'weak')}</small>${extra}${levelTable(k)}${effectSummary(k)}</div></div>`;
+  // ความสามารถพิเศษของป้อม (ที่เลเวลสูงสุด)
+  const effectSummary = (k) => {
+    const n = k.split('+').length;
+    const fx = effectLines(statsAt(k, MAX_TIER[n]));
+    return fx ? `<small class="fx">${T('help.fxAtMax')}<br>${fx}</small>` : '';
+  };
   $('elemTable').innerHTML = ELEMENT_ORDER.map((el) => {
     const b = ELEMENTS[BEATS[el]];
     return towerCard(el, TOWERS[el], `<br><small class="beats">${T('help.beats')}: ${ico(b.icon)} ${elName(b)}</small>`);

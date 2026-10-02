@@ -260,6 +260,14 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .compendium .els .ico { width: 16px; height: 16px; vertical-align: -3px; }
 .compendium .look { color: var(--gold2); opacity: .8; }
 .compendium .beats { opacity: .85; }
+.compendium .fx { display: block; margin-top: 4px; opacity: .9; }
+.compendium .fx .ico { width: 13px; height: 13px; vertical-align: -2px; }
+.lvTable { width: 100%; border-collapse: collapse; margin: 5px 0 3px; font-size: .72rem; }
+.lvTable th { color: var(--gold2); font-weight: 600; text-align: left; padding: 2px 4px; border-bottom: 1px solid #ffffff22; }
+.lvTable td { padding: 2px 4px; border-bottom: 1px solid #ffffff10; }
+.lvTable small { opacity: .6; }
+#infoPanel .cur, #infoCard .cur { color: var(--gold2); font-weight: 700; }
+.buildBtn.support { border-style: dashed; }
 .compendium .beats .ico { width: 13px; height: 13px; vertical-align: -2px; }
 .compendium .weak, #infoPanel .weak { color: #ff9a8a; }
 .compendium .weak .ico, #infoPanel .weak .ico { width: 13px; height: 13px; vertical-align: -2px; }
@@ -287,6 +295,12 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   #waveChip { order: 2; height: 30px; padding: 0 8px 0 4px; font-size: .8rem; }
   #waveChip .next span.txt { display: none; }
   #dock { left: 6px; right: 6px; transform: none; max-width: none; bottom: 6px; padding: 4px 6px 6px; gap: 6px; }
+  /* มือถือ: แถวบนธาตุ แถวล่างป้อม (เลื่อนซ้ายขวาได้) */
+  #dock { flex-direction: column; gap: 4px; overflow: hidden; }
+  #dock .dockSep { display: none; }
+  #dock .dockGroup { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  #dock .dockGroup::-webkit-scrollbar { display: none; }
+  #elemGrid { justify-content: space-between; }
   .elemOrb { width: 44px; height: 52px; }
   .buildBtn { width: 48px; height: 52px; }
   .elemOrb .ico, .buildBtn > .ico { width: 28px; height: 28px; }

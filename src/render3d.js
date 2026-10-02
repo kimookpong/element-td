@@ -963,7 +963,7 @@ export class Renderer3D {
 
     if (selectedTower) {
       const y = this.tileGround(selectedTower.c, selectedTower.r);
-      if (selectedTower.stats.range < 1000) this.showRange(wx(selectedTower.x), y, wz(selectedTower.y), selectedTower.stats.range / TILE, true);
+      if (selectedTower.stats.range > 0 && selectedTower.stats.range < 1000) this.showRange(wx(selectedTower.x), y, wz(selectedTower.y), selectedTower.stats.range / TILE, true);
       this.hoverTile.visible = true;
       this.hoverTile.position.set(wx(selectedTower.x), y + 0.025, wz(selectedTower.y));
       this.hoverTile.material.color.set(0xffe680);
@@ -975,7 +975,7 @@ export class Renderer3D {
       this.hoverTile.visible = true;
       this.hoverTile.position.set(x, y + 0.025, z);
       this.hoverTile.material.color.set(ok ? 0xffffff : 0xff4040);
-      if (range < 1000) this.showRange(x, y, z, range / TILE, ok); else this.range.visible = false;
+      if (range > 0 && range < 1000) this.showRange(x, y, z, range / TILE, ok); else this.range.visible = false;
       if (ok) {
         const gh = this.getGhost(selectedBuild);
         gh.visible = true;

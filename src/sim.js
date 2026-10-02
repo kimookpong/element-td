@@ -8,7 +8,7 @@ import {
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES, MAP_AFFINITY_CHANCE, MAP_AFFINITY_BONUS,
   ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, LEAK_LIVES, BOSS_LIFE_REWARD, SELL_RATIO, INTEREST_RATE,
-  FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
+  FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP, mineGold,
 } from './data.js';
 import { towerDef } from './towers.js';
 import { t as tt, tr, elName } from './i18n.js';
@@ -120,6 +120,15 @@ export function towerStats(t) {
   if (t.kind === 'basic') {
     const B = BASIC[t.base];
     const L = t.tier - 1;
+    if (B.support) {
+      // ป้อมสนับสนุน: ไม่โจมตี
+      const sp = B.support;
+      const support = { kind: sp.kind };
+      if (sp.amt) support.amt = sp.amt[L];
+      if (sp.every) support.every = sp.every[L];
+      if (sp.mul) support.mul = sp.mul[L];
+      return { dps: 0, rate: 0, dmg: 0, range: B.range || 0, support };
+    }
     const rate = B.rate * (1 + 0.1 * L);
     const dps = B.dps[L];
     const s = { dps, rate, dmg: dps / rate, range: B.range * (1 + 0.08 * L) };
@@ -216,7 +225,7 @@ export class Game {
       towers: this.towers.map((t) => ({
         c: t.c, r: t.r, kind: t.kind, base: t.base, elements: t.elements.slice(), tier: t.tier,
         spent: t.spent, mode: t.mode, kills: t.kills, dmgDealt: Math.round(t.dmgDealt),
-        build: t.build ? { ...t.build } : null,
+        build: t.build ? { ...t.build } : null, charge: t.charge || 0,
       })),
     };
   }
@@ -241,6 +250,7 @@ export class Game {
         spent: s.spent || 0, cd: 0.3, angle: -Math.PI / 2,
         mode: TARGET_MODES.includes(s.mode) ? s.mode : 'first', kills: s.kills || 0, dmgDealt: s.dmgDealt || 0, version: 0,
         build: s.build && s.build.t > 0 ? { t: s.build.t, total: s.build.total || s.build.t, kind: s.build.kind || 'build' } : null,
+        charge: s.charge || 0,
       };
       if (t.kind === 'basic' && !BASIC[t.base]) continue;
       if (t.kind === 'element' && !t.elements.length) continue;
@@ -364,7 +374,11 @@ export class Game {
 
   /* ---------- ป้อม ---------- */
   canBuildType(type) {
-    if (BASIC[type]) return { ok: true };
+    if (BASIC[type]) {
+      const max = BASIC[type].max;
+      if (max && this.towers.filter((t) => t.base === type).length >= max) return { ok: false, reason: tt('sim.maxBuilt', { n: max }) };
+      return { ok: true };
+    }
     if (this.elemLevel[type] < 1) return { ok: false, reason: tt(this.pendingElem[type] ? 'sim.killGuardian' : 'sim.summonGuardian', { el: EN_(type) }) };
     return { ok: true };
   }
@@ -556,6 +570,7 @@ export class Game {
     const interest = Math.floor(Math.min(this.gold * INTEREST_RATE, 20 + n * 5));
     this.gold += bonus + interest;
     this.emit('waveEnd', { n, bonus, interest });
+    this.supportPayout(n);
     if (n % ELEMENT_POINT_EVERY === 0) {
       this.elemPoints += 1;
       this.emit('elementPoint');
@@ -567,6 +582,41 @@ export class Game {
       this.emit('win');
     }
     this.emit('changed');
+  }
+
+  /* ป้อมสนับสนุนหลังเคลียร์เวฟ: เหมืองทองให้ทอง · ศาลหัวใจสะสมจนได้ชีวิต */
+  supportPayout(n) {
+    for (const t of this.towers) {
+      const sp = t.stats.support;
+      if (!sp || (t.build && t.build.kind === 'build')) continue;
+      if (sp.kind === 'gold') {
+        const g = mineGold(sp.mul, n);
+        this.gold += g;
+        this.floater(t.x, t.y, `+${g} :gold:`, '#ffcf4a', 14, 1);
+      } else if (sp.kind === 'life') {
+        t.charge = (t.charge || 0) + 1;
+        if (t.charge >= sp.every) {
+          t.charge = 0;
+          this.lives += 1;
+          this.floater(t.x, t.y, '+1 :heart:', '#7dff9a', 18, 1);
+          this.toast(tt('sim.shrineLife'), 1400);
+        }
+      }
+    }
+  }
+
+  /* บัฟจากธงศึก/กลองศึก (ไม่ซ้อนกัน ใช้ค่าสูงสุดที่ครอบคลุม) */
+  refreshBuffs() {
+    const auras = this.towers.filter((t) => t.stats.support && t.stats.range > 0 && !(t.build && t.build.kind === 'build'));
+    for (const t of this.towers) {
+      t.buffDmg = 0; t.buffRate = 0;
+      if (t.stats.support) continue;
+      for (const a of auras) {
+        if (dist2(a.x, a.y, t.x, t.y) > a.stats.range * a.stats.range) continue;
+        if (a.stats.support.kind === 'dmg') t.buffDmg = Math.max(t.buffDmg, a.stats.support.amt);
+        else if (a.stats.support.kind === 'rate') t.buffRate = Math.max(t.buffRate, a.stats.support.amt);
+      }
+    }
   }
 
   continueEndless() {
@@ -709,6 +759,7 @@ export class Game {
       for (const a of atkElements) mult = Math.max(mult, elementMultiplier(a, e.element));
     }
     let dmg = amount * mult;
+    if (tower && tower.buffDmg) dmg *= 1 + tower.buffDmg; // บัฟจากธงศึก
     if (opts.direct && e.exposeT > 0) dmg *= e.exposeAmp;
     if (atkElements && this.map.def.element && atkElements.includes(this.map.def.element)) dmg *= MAP_AFFINITY_BONUS;
     if (e.shredT > 0) dmg *= e.shredAmp;
@@ -826,7 +877,8 @@ export class Game {
       const wps = this.flyPath;
       const target = tileCenter(wps[Math.min(e.wp, wps.length - 1)]);
       tx = target.x; ty = target.y;
-      if (dist2(e.x, e.y, tx, ty) < 36) {
+      // ถึงจุดเลี้ยวเมื่อเข้าใกล้ราวครึ่งช่อง (กว้างพอให้ฝูงที่ถูกดันแยกกันผ่านไปได้ ไม่ติดค้าง)
+      if (dist2(e.x, e.y, tx, ty) < (TILE * 0.5) ** 2) {
         if (e.wp >= wps.length - 1) arrive = true;
         else e.wp += 1;
       }
@@ -844,11 +896,9 @@ export class Game {
         if (ti === goal) {
           const gc = tileCenter(goal);
           tx = gc.x; ty = gc.y;
-          // ถึงจุดตรวจเมื่อเข้าใกล้กลางช่อง (เผื่อระยะช่องเดินด้านข้าง)
-          if (dist2(e.x, e.y, tx, ty) < Math.pow(10 + Math.abs(e.lane || 0) * TILE, 2)) {
-            if (e.stage >= goals.length - 1) arrive = true;
-            else e.stage += 1;
-          }
+          // เข้าช่องจุดตรวจแล้ว ถือว่าผ่าน (ถ้ารอให้ถึงกลางช่อง ฝูงที่ถูกดันแยกกันอาจติดค้าง)
+          if (e.stage >= goals.length - 1) arrive = true;
+          else e.stage += 1;
         } else {
           const nx = f.next[ti];
           const target = nx >= 0 ? tileCenter(nx) : tileCenter(goal);
@@ -979,8 +1029,9 @@ export class Game {
       }
       return;
     }
-    t.cd -= dt;
     const s = t.stats;
+    if (s.support) return; // ป้อมสนับสนุนไม่โจมตี
+    t.cd -= dt * (1 + (t.buffRate || 0));
     const targets = this.findTargets(t, s.multi || 1);
     if (targets.length) {
       const main = targets[0];
@@ -1334,6 +1385,7 @@ export class Game {
       this.creeps = this.creeps.filter((e) => e.alive);
       return;
     }
+    this.refreshBuffs();
     for (const t of this.towers) this.updateTower(t, dt);
     this.projectiles = this.projectiles.filter((p) => this.updateProjectile(p, dt));
     this.creeps = this.creeps.filter((e) => e.alive);
