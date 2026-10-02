@@ -120,6 +120,13 @@ export const WAVE_PATTERN = ['normal', 'fast', 'normal', 'armored', 'split', 're
  * 'R' โขดหิน  'W' กำแพงปรักหักพัง (ขวางทาง)
  * 'S' จุดเกิด  'C' แกนกลาง  '1'..'3' จุดตรวจที่มอนสเตอร์ต้องผ่านตามลำดับ
  */
+// วางหินกีดขวาง ('R') บนช่องที่สร้างได้
+function withRocks(layout, spots) {
+  const g = layout.map((row) => row.split(''));
+  for (const [c, r] of spots) if (g[r] && g[r][c] === '#') g[r][c] = 'R';
+  return g.map((row) => row.join(''));
+}
+
 function laneLayout(points) {
   const g = [];
   for (let r = 0; r < ROWS; r++) g.push(new Array(COLS).fill('#'));
@@ -199,6 +206,61 @@ export const MAPS = [
     theme: 'night',
     layout: laneLayout([[0, 1], [18, 1], [18, 10], [1, 10], [1, 4], [15, 4], [15, 7], [6, 7]]),
   },
+  {
+    id: 'volcano', element: 'fire',
+    name: 'ภูเขาไฟลาวา', en: { name: 'Lava Volcano', desc: 'Fire map — maze around rivers of lava at the foot of an erupting volcano' },
+    desc: 'แผนที่ธาตุไฟ — สร้างเขาวงกตหลบธารลาวาเชิงภูเขาไฟ',
+    theme: 'volcano',
+    layout: [
+      '####################',
+      '#.....XX...........#',
+      'S.....XX.....1.....#',
+      '#.....XX...........#',
+      '#..........XXX.....#',
+      '#..........XXX.....#',
+      '#...XX.............#',
+      '#...XX......2......#',
+      '#.........XX.......#',
+      '#.........XX.......C',
+      '#..................#',
+      '####################',
+    ],
+  },
+  {
+    id: 'river', element: 'water',
+    name: 'แม่น้ำไหลวน', en: { name: 'Swirling River', desc: 'Water map — monsters wade along a long serpentine river' },
+    desc: 'แผนที่ธาตุน้ำ — มอนสเตอร์ลุยตามสายน้ำที่คดเคี้ยวไปมา',
+    theme: 'river',
+    layout: laneLayout([[0, 1], [17, 1], [17, 4], [2, 4], [2, 7], [17, 7], [17, 10], [19, 10]]),
+  },
+  {
+    id: 'clouds', element: 'wind',
+    name: 'ก้อนเมฆ', en: { name: 'Sky Clouds', desc: 'Wind map — a maze on a floating cloud island full of holes to the sky' },
+    desc: 'แผนที่ธาตุลม — เขาวงกตบนเกาะเมฆลอยฟ้าที่มีช่องโหว่มองเห็นท้องฟ้า',
+    theme: 'sky',
+    layout: [
+      '####################',
+      '#....XX......XX....#',
+      'S....XX......XX....#',
+      '#..........1.......#',
+      '#..XX..........XX..#',
+      '#..XX....XX....XX..#',
+      '#........XX........#',
+      '#..XX..........XX..#',
+      '#..XX...2......XX..#',
+      '#....XX......XX....C',
+      '#....XX......XX....#',
+      '####################',
+    ],
+  },
+  {
+    id: 'underground', element: 'earth',
+    name: 'ใต้ดิน', en: { name: 'Underground', desc: 'Earth map — winding tunnels through a crystal cavern' },
+    desc: 'แผนที่ธาตุดิน — อุโมงค์คดเคี้ยวในถ้ำคริสตัลใต้พิภพ',
+    theme: 'cave',
+    layout: withRocks(laneLayout([[0, 10], [3, 10], [3, 6], [1, 6], [1, 1], [7, 1], [7, 8], [10, 8], [10, 3], [13, 3], [13, 10], [16, 10], [16, 1], [19, 1]]),
+      [[5, 4], [5, 9], [12, 6], [18, 6], [8, 11], [15, 5]]),
+  },
 ];
 
 export const DIFFICULTIES = {
@@ -208,6 +270,9 @@ export const DIFFICULTIES = {
 };
 
 export const TOTAL_WAVES = 30;
+// แผนที่ประจำธาตุ: มอนสเตอร์เป็นธาตุนั้นบ่อย + ป้อมที่มีธาตุนั้นได้ "พลังถิ่น"
+export const MAP_AFFINITY_CHANCE = 0.5;
+export const MAP_AFFINITY_BONUS = 1.15;
 export const ELEMENT_POINT_EVERY = 5;
 export const START_ELEMENT_POINTS = 1;
 export const SELL_RATIO = 0.75;

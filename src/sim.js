@@ -6,7 +6,7 @@
 import {
   TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier,
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
-  ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES,
+  ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES, MAP_AFFINITY_CHANCE, MAP_AFFINITY_BONUS,
   ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
   FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
 } from './data.js';
@@ -477,7 +477,9 @@ export class Game {
     else ability = WAVE_PATTERN[(n - 1) % WAVE_PATTERN.length];
     if (n > TOTAL_WAVES && n % 5 === 0) ability = 'boss';
     let element;
-    do { element = pick(ELEMENT_ORDER); } while (element === this.lastElement);
+    const home = this.map.def.element;
+    if (home && this.lastElement !== home && Math.random() < MAP_AFFINITY_CHANCE) element = home;
+    else do { element = pick(ELEMENT_ORDER); } while (element === this.lastElement);
     this.lastElement = element;
     const hpScale = this.waveHp(n);
     const entries = [];
@@ -690,6 +692,7 @@ export class Game {
     }
     let dmg = amount * mult;
     if (opts.direct && e.exposeT > 0) dmg *= e.exposeAmp;
+    if (atkElements && this.map.def.element && atkElements.includes(this.map.def.element)) dmg *= MAP_AFFINITY_BONUS;
     if (e.shredT > 0) dmg *= e.shredAmp;
     if (this.isImmune(e)) dmg *= 0.8;
     e.hp -= dmg;

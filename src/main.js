@@ -93,7 +93,8 @@ function newGame() {
   if (readSave() && !confirm(T('confirm.overwrite'))) return;
   clearSave();
   startWithGame(new Game(view.mapIndex, view.diffKey));
-  showToast(T('toast.mapStart', { map: tr(MAPS[view.mapIndex], 'name') }), 2000);
+  const homeEl = MAPS[view.mapIndex].element;
+  showToast(T('toast.mapStart', { map: tr(MAPS[view.mapIndex], 'name') }) + (homeEl ? `<br><small>${T('map.homeToast', { icon: ico(ELEMENTS[homeEl].icon), el: elName(ELEMENTS[homeEl]) })}</small>` : ''), 3200);
 }
 
 function startWithGame(game) {
@@ -468,7 +469,7 @@ function renderInfo() {
       <tr><td>${T('info.strong')}</td><td>${strongAgainst(t.elements)}</td></tr>
       <tr><td>${T('info.kills')}</td><td>${t.kills} / ${Math.round(t.dmgDealt)}</td></tr>
     </table>
-    <div class="effects">${effectLines(s)}</div>
+    <div class="effects">${effectLines(s)}${MAPS[g.mapIndex].element && t.elements.includes(MAPS[g.mapIndex].element) ? `<br>${ico(ELEMENTS[MAPS[g.mapIndex].element].icon)} <b style="color:var(--gold2)">${T('info.home', { el: elName(ELEMENTS[MAPS[g.mapIndex].element]) })}</b>` : ''}</div>
     <div class="btnRow">
       ${tierOpt ? `<button id="bUp" class="full primary" data-cost="${tierOpt.cost}" data-ok="${tierOpt.ok && !b ? 1 : 0}" title="${tierOpt.reason || ''}">${ico('upgrade')} ${T('info.upgrade', { n: t.tier + 1 })} (${ico('gold')}${tierOpt.cost})${tierOpt.ok ? '' : ' ' + ico('lock')}</button>` : `<button class="full" disabled>${ico('crown')} ${T('info.maxed')}</button>`}
     </div>
@@ -763,8 +764,14 @@ function drawThumb(def) {
   const g = c.getContext('2d');
   const m = parseMap(def);
   const s = 10;
-  const desert = def.theme === 'desert';
-  const colors = { '.': desert ? '#c9a466' : '#8a8378', '#': desert ? '#e6c882' : '#4f8f35', '=': '#a89a80', R: '#5a5a5a', W: desert ? '#a8844e' : '#6a5f50', S: '#3a9bff', C: '#ff3048' };
+  const TH = {
+    desert: { '.': '#c9a466', '#': '#e6c882', W: '#a8844e' },
+    volcano: { '.': '#4a3a34', '#': '#2a2220', '=': '#4a3a34', X: '#ff6a1a', R: '#1a1414' },
+    river: { '#': '#4f9a3a', '=': '#3a9ad8', R: '#7a7a6a' },
+    sky: { '.': '#c8d8f0', '#': '#ffffff', X: '#5aa0ff' },
+    cave: { '#': '#3a3028', '=': '#6a5a4a', R: '#a070ff' },
+  }[def.theme] || {};
+  const colors = { '.': '#8a8378', '#': '#4f8f35', '=': '#a89a80', R: '#5a5a5a', W: '#6a5f50', S: '#3a9bff', C: '#ff3048', ...TH };
   for (let r = 0; r < ROWS; r++) {
     for (let col = 0; col < COLS; col++) {
       g.fillStyle = colors[m.tiles[r][col]] || '#ffd65a';
@@ -786,6 +793,13 @@ function renderMenu() {
     const name = document.createElement('b');
     name.textContent = tr(m, 'name');
     b.appendChild(name);
+    if (m.element) {
+      const badge = document.createElement('span');
+      badge.className = 'mapEl';
+      badge.title = T('map.home', { el: elName(ELEMENTS[m.element]) });
+      badge.innerHTML = ico(ELEMENTS[m.element].icon);
+      b.appendChild(badge);
+    }
     b.addEventListener('click', () => { view.mapIndex = i; bgMapIndex = i; renderer.loadMap(i); renderMenu(); });
     mapList.appendChild(b);
   });

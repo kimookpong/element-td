@@ -23,6 +23,22 @@ export const THEMES = {
     sky: [0x5aa6f0, 0xfff1d2], fog: 0xf5e2b6, grass: 'desert', stone: 'sandstone', deco: 'desert', water: true,
     sun: 0xfff0c8, sunI: 2.35, hemiSky: 0xfff2d8, hemiGround: 0x8a6a3a, hemiI: 0.9, lantern: 0.5,
   },
+  volcano: {
+    sky: [0x2a0a06, 0xff7a3a], fog: 0x4a2018, grass: 'volcano', stone: 'basalt', deco: 'volcano', water: false, hazard: 'lava',
+    sun: 0xffc090, sunI: 2.0, hemiSky: 0xffa070, hemiGround: 0x3a1a10, hemiI: 0.9, lantern: 1.0,
+  },
+  river: {
+    sky: [0x3f9cff, 0xd8f0ff], fog: 0xcfe8ff, grass: 'river', stone: 'mossy', deco: 'river', water: false, floor: 'water',
+    sun: 0xfff2d8, sunI: 2.1, hemiSky: 0xcfe8ff, hemiGround: 0x3f5a2a, hemiI: 0.9, lantern: 0.6,
+  },
+  sky: {
+    sky: [0x2a78f0, 0x7ab8ff], fog: 0xbcd8ff, grass: 'sky', stone: 'cloud', deco: 'sky', water: false, hazard: 'void',
+    sun: 0xfff6e8, sunI: 1.55, hemiSky: 0xdceaff, hemiGround: 0x6a84b8, hemiI: 0.75, lantern: 0.5,
+  },
+  cave: {
+    sky: [0x060504, 0x1c1610], fog: 0x0e0b08, grass: 'cave', stone: 'cave', deco: 'cave', water: false, pointLights: true,
+    sun: 0xd8b898, sunI: 1.25, hemiSky: 0xb0a090, hemiGround: 0x2a2018, hemiI: 0.85, lantern: 1.9,
+  },
   canyon: {
     sky: [0xe9874a, 0xffe3b8], fog: 0xf2c79a, grass: 'canyon', stone: 'sand', deco: 'canyon', water: false,
     sun: 0xffd6a0, sunI: 2.2, hemiSky: 0xffe0c0, hemiGround: 0x6a4a2a, hemiI: 0.8, lantern: 0.5,
@@ -194,7 +210,8 @@ export function buildWorld(map, themeKey) {
   const cobbleMat = std(0xffffff, { map: cobbleTex, bumpMap: cobbleTex, bumpScale: 2.5, roughness: 0.9 });
   const brickTex = brickTexture(theme.stone);
   const brickMat = std(0xffffff, { map: brickTex, bumpMap: brickTex, bumpScale: 2, roughness: 0.92 });
-  const capMat = std(theme.stone === 'sand' ? 0xcbb388 : theme.stone === 'sandstone' ? 0xe6cc92 : theme.stone === 'night' ? 0x5c5f80 : 0x9a948a, { roughness: 0.85, flatShading: true });
+  const CAPS = { basalt: 0x2e2422, cloud: 0xf4f8ff, cave: 0x4a3e34, mossy: 0x7f8c6c };
+  const capMat = std(CAPS[theme.stone] || (theme.stone === 'sand' ? 0xcbb388 : theme.stone === 'sandstone' ? 0xe6cc92 : theme.stone === 'night' ? 0x5c5f80 : 0x9a948a), { roughness: 0.85, flatShading: true });
 
   // ---- พื้นหญ้า (บนกระดาน + รอบนอก) ----
   const grass = new QuadBuilder();
@@ -207,10 +224,12 @@ export function buildWorld(map, themeKey) {
   const floor = new QuadBuilder();
   const walls = new QuadBuilder();
   const caps = [];
+  const hazards = [];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const x0 = tileX(c) - 0.5, z0 = tileZ(r) - 0.5;
       if (!walk(c, r)) {
+        if (map.tiles[r][c] === 'X' && theme.hazard) { hazards.push({ c, r }); continue; }
         grass.flat(x0, z0, x0 + 1, z0 + 1, 0, 0.25);
         continue;
       }
@@ -232,6 +251,19 @@ export function buildWorld(map, themeKey) {
   const floorMesh = new THREE.Mesh(floor.build(), cobbleMat);
   floorMesh.receiveShadow = true;
   group.add(floorMesh);
+  // ---- ผิวน้ำแม่น้ำ (มอนสเตอร์เดินลุยน้ำ) ----
+  if (theme.floor === 'water') {
+    const wq = new QuadBuilder();
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (walk(c, r)) wq.flat(tileX(c) - 0.5, tileZ(r) - 0.5, tileX(c) + 0.5, tileZ(r) + 0.5, FLOOR + 0.17, 0.5);
+    const wtex = rippleTexture();
+    const water = new THREE.Mesh(wq.build(), new THREE.MeshStandardMaterial({ color: 0x4ab4ff, map: wtex, transparent: true, opacity: 0.72, roughness: 0.08, metalness: 0.25, emissive: 0x0a3a6a, emissiveIntensity: 0.35, depthWrite: false }));
+    water.renderOrder = 2;
+    group.add(water);
+    anim.push((t) => { wtex.offset.set(t * 0.05, -t * 0.12); });
+  }
+  // ---- ช่องอันตรายบนกระดาน: ธารลาวา / ช่องโหว่ในเมฆ ----
+  if (hazards.length) buildHazards(group, hazards, theme, anim, capMat);
+
   const wallMesh = new THREE.Mesh(walls.build(), brickMat);
   wallMesh.receiveShadow = true;
   wallMesh.castShadow = true;
@@ -275,13 +307,22 @@ export function buildWorld(map, themeKey) {
       }
     }
   }
-  const rockMat = std(theme.stone === 'sand' ? 0xb08a5c : theme.stone === 'sandstone' ? 0xd2aa6a : theme.stone === 'night' ? 0x4b4e70 : 0x8f8b84, { flatShading: true, roughness: 0.95 });
+  const ROCKS = { basalt: 0x2c2422, cave: 0x5a4a3c, mossy: 0x7a7a6a, cloud: 0xd8e2f4 };
+  const rockMat = std(ROCKS[theme.stone] || (theme.stone === 'sand' ? 0xb08a5c : theme.stone === 'sandstone' ? 0xd2aa6a : theme.stone === 'night' ? 0x4b4e70 : 0x8f8b84), { flatShading: true, roughness: 0.95 });
   if (rocks.length) {
     group.add(instanced(G.dode(), rockMat, rocks, (d, it) => {
       d.position.set(it.x, it.s * 0.55, it.z);
       d.rotation.set(rand(0, 3), rand(0, 3), 0);
       d.scale.set(it.s, it.s * rand(0.7, 1), it.s);
     }));
+  }
+  if (rocks.length && theme.deco === 'cave') {
+    const pal = [0x5ac8ff, 0xb070ff, 0xffb040, 0x5affa0];
+    group.add(instanced(G.octa(), new THREE.MeshBasicMaterial({ color: 0xffffff }), rocks.filter((it) => it.s > 0.25), (d, it) => {
+      d.position.set(it.x, it.s * 1.2, it.z);
+      d.rotation.set(rand(-0.3, 0.3), rand(0, 3), rand(-0.3, 0.3));
+      d.scale.set(0.09, 0.3, 0.09);
+    }, { shadow: false, colors: () => new THREE.Color(pal[Math.floor(Math.random() * pal.length)]).multiplyScalar(1.6).getHex() }));
   }
   if (ruinBlocks.length) {
     const ruinMat = std(0xd6d0c4, { map: brickTex, bumpMap: brickTex, bumpScale: 2, roughness: 0.9 });
@@ -405,14 +446,15 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
 
   const night = theme.deco === 'night';
   const desert = theme.deco === 'desert';
-  const canyon = theme.deco === 'canyon' || desert; // ฉากแห้งแล้ง: ไม่มีดอกไม้/ต้นไม้ใบเขียว
+  const barren = ['volcano', 'sky', 'cave'].includes(theme.deco); // ฉากพิเศษ: ไม่มีหญ้า/ต้นไม้ปกติ
+  const canyon = theme.deco === 'canyon' || desert || barren; // ฉากแห้งแล้ง: ไม่มีดอกไม้/ต้นไม้ใบเขียว
 
   // หญ้าเป็นกอ (ทั้งบนเนินในกระดานและรอบนอก)
-  const tufts = scatter(desert ? 500 : 2600, 0, 16, 0.2);
+  const tufts = scatter(barren ? 0 : desert ? 500 : 2600, 0, 16, 0.2);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       if (walk(c, r) || map.tiles[r][c] === 'W') continue;
-      for (let k = 0; k < (desert ? 1 : 4); k++) tufts.push({ x: tileX(c) + rand(-0.45, 0.45), z: tileZ(r) + rand(-0.45, 0.45) });
+      for (let k = 0; k < (barren ? 0 : desert ? 1 : 4); k++) tufts.push({ x: tileX(c) + rand(-0.45, 0.45), z: tileZ(r) + rand(-0.45, 0.45) });
     }
   }
   const tuftMat = std(0xffffff, { vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
@@ -434,10 +476,14 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   }
 
   // ต้นไม้
-  const treeSpots = scatter(desert ? 0 : canyon ? 30 : 150, 1.2, 15);
+  const treeSpots = scatter(desert || barren ? 0 : canyon ? 30 : 150, 1.2, 15);
   const trunkMat = std(night ? 0x3a2a30 : 0x6b4a2b, { roughness: 0.9 });
   if (desert) buildDesert(group, scatter, nearPortal, B);
-  if (canyon && !desert) {
+  if (theme.deco === 'volcano') buildVolcano(group, scatter, B, anim);
+  if (theme.deco === 'sky') buildSky(group, scatter, B, anim);
+  if (theme.deco === 'cave') buildCave(group, scatter, B, anim);
+  if (theme.deco === 'river') buildRiver(group, scatter, B, anim, map, walk);
+  if (canyon && !desert && !barren) {
     const mesas = scatter(40, 2, 18);
     group.add(instanced(geo('mesa', () => new THREE.CylinderGeometry(0.5, 0.65, 1, 7)), std(0xffffff, { flatShading: true, roughness: 0.95, map: brickTexture('sand') }), mesas, (d, it) => {
       const h = rand(0.6, 2.8) * (0.5 + it.d * 0.1), s = rand(0.6, 1.6);
@@ -494,8 +540,8 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
       d.scale.set(s * 1.3, s, s * 1.2);
     }, { colors: () => new THREE.Color(night ? 0x24585c : 0x3e8a30).offsetHSL(0, 0, rand(-0.06, 0.08)).getHex() }));
   }
-  const rocks = scatter(110, 0.6, 15);
-  group.add(instanced(G.dode(), std(desert ? 0xd2aa6a : canyon ? 0xb88a5a : night ? 0x45486a : 0x8d8a84, { flatShading: true, roughness: 0.95 }), rocks, (d, it) => {
+  const rocks = scatter(theme.deco === 'sky' ? 0 : 110, 0.6, 15);
+  group.add(instanced(G.dode(), std(theme.deco === 'volcano' ? 0x2a2220 : theme.deco === 'cave' ? 0x4e4034 : desert ? 0xd2aa6a : canyon ? 0xb88a5a : night ? 0x45486a : 0x8d8a84, { flatShading: true, roughness: 0.95 }), rocks, (d, it) => {
     const s = rand(0.15, 0.6);
     d.position.set(it.x, s * 0.45, it.z);
     d.rotation.set(rand(0, 3), rand(0, 3), 0);
@@ -577,7 +623,7 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
     s.scale.setScalar(0.7);
     group.add(s);
   });
-  if (night) {
+  if (night || theme.pointLights) {
     lanternSpots.filter((_, i) => i % 3 === 0).slice(0, 6).forEach((p) => {
       const l = new THREE.PointLight(0xffa850, 2.2, 5, 1.6);
       l.position.set(p.x, 1.1, p.z);
@@ -596,6 +642,321 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
 }
 
 /* ---------- ป้ายไม้แนะนำ (หันหากล้องเสมอ) ---------- */
+/* ---------- พื้นผิวเคลื่อนไหว: ระลอกน้ำ / ลาวา ---------- */
+const texMemo = {};
+function rippleTexture() {
+  if (texMemo.ripple) return texMemo.ripple;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#7fc8ff'; g.fillRect(0, 0, 128, 128);
+  g.lineCap = 'round';
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * 128, y = Math.random() * 128, w = 10 + Math.random() * 26;
+    g.strokeStyle = Math.random() < 0.6 ? 'rgba(255,255,255,0.75)' : 'rgba(30,90,170,0.5)';
+    g.lineWidth = 1 + Math.random() * 1.5;
+    for (const ox of [0, -128, 128]) for (const oy of [0, -128, 128]) {
+      g.beginPath(); g.moveTo(x + ox, y + oy); g.quadraticCurveTo(x + ox + w / 2, y + oy - 4, x + ox + w, y + oy); g.stroke();
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  return (texMemo.ripple = t);
+}
+function lavaTexture() {
+  if (texMemo.lava) return texMemo.lava;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 128, 128); gr.addColorStop(0, '#ff7a1a'); gr.addColorStop(1, '#ff4a0a');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const blob = (x, y, r, col) => { for (const ox of [0, -128, 128]) for (const oy of [0, -128, 128]) {
+    const rg = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r); rg.addColorStop(0, col); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.beginPath(); g.arc(x + ox, y + oy, r, 0, Math.PI * 2); g.fill(); } };
+  for (let i = 0; i < 18; i++) blob(Math.random() * 128, Math.random() * 128, 6 + Math.random() * 14, 'rgba(255,235,140,0.9)');
+  for (let i = 0; i < 14; i++) blob(Math.random() * 128, Math.random() * 128, 5 + Math.random() * 12, 'rgba(60,14,6,0.85)');
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  return (texMemo.lava = t);
+}
+
+// อนุภาคลอยขึ้น (ถ่านไฟ / ฝุ่นถ้ำ)
+function floaters(group, anim, { n, x0, x1, z0, z1, y0 = 0, y1 = 6, color, size = 0.12, speed = 0.6, additive = true }) {
+  const pos = new Float32Array(n * 3), vel = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = rand(x0, x1); pos[i * 3 + 1] = rand(y0, y1); pos[i * 3 + 2] = rand(z0, z1); vel[i] = rand(0.5, 1.5) * speed;
+  }
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geom, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0.85, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending, map: glowTexture() }));
+  pts.frustumCulled = false;
+  group.add(pts);
+  let last = 0;
+  anim.push((t) => {
+    const dt = Math.min(0.05, t - last); last = t;
+    for (let i = 0; i < n; i++) {
+      pos[i * 3 + 1] += vel[i] * dt;
+      pos[i * 3] += Math.sin(t * 0.7 + i) * 0.004;
+      if (pos[i * 3 + 1] > y1) pos[i * 3 + 1] = y0;
+    }
+    geom.attributes.position.needsUpdate = true;
+  });
+}
+
+/* ---------- ช่องอันตรายบนกระดาน ---------- */
+function buildHazards(group, list, theme, anim, capMat) {
+  const set = new Set(list.map((h) => h.r * COLS + h.c));
+  const isH = (c, r) => set.has(r * COLS + c);
+  const lava = theme.hazard === 'lava';
+  const depth = lava ? 0.2 : 0.8;
+  const walls = new QuadBuilder();
+  const caps = [];
+  const bottom = new QuadBuilder();
+  for (const { c, r } of list) {
+    const x0 = tileX(c) - 0.5, z0 = tileZ(r) - 0.5;
+    bottom.flat(x0, z0, x0 + 1, z0 + 1, -depth + 0.06, 0.5);
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (isH(c + dc, r + dr)) continue;
+      const cx = tileX(c) + dc * 0.5, cz = tileZ(r) + dr * 0.5;
+      const ax = cx - (dr ? 0.5 : 0), az = cz - (dc ? 0.5 : 0);
+      const bx = cx + (dr ? 0.5 : 0), bz = cz + (dc ? 0.5 : 0);
+      walls.wall(ax, az, bx, bz, -depth, 0, [-dc, 0, -dr], 0.9);
+      caps.push({ x: cx, z: cz, horiz: !!dr });
+    }
+  }
+  const wallMat = lava ? std(0xffffff, { map: brickTexture('basalt'), roughness: 0.9 }) : std(0xc8d8f4, { roughness: 1 });
+  group.add(new THREE.Mesh(walls.build(), wallMat));
+  if (lava) {
+    const tex = lavaTexture();
+    const lavaMesh = new THREE.Mesh(bottom.build(), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.6, 1.25, 1.1) }));
+    group.add(lavaMesh);
+    anim.push((t) => { tex.offset.set(t * 0.03, t * 0.05); });
+    group.add(instanced(G.dode(), std(0x221a18, { flatShading: true, roughness: 0.6 }), caps, (d, it) => {
+      d.position.set(it.x, 0.04, it.z);
+      d.rotation.set(rand(0, 3), rand(0, 3), 0);
+      d.scale.set(it.horiz ? 0.32 : 0.16, 0.1, it.horiz ? 0.16 : 0.32);
+    }));
+    // ฟองลาวาผุด
+    const bubbles = list.flatMap(({ c, r }) => [0, 1].map(() => ({ x: tileX(c) + rand(-0.35, 0.35), z: tileZ(r) + rand(-0.35, 0.35), p: rand(0, 6) })));
+    const bm = new THREE.InstancedMesh(G.sphLo(), glow(0xffd070, 2.4), bubbles.length);
+    const d = new THREE.Object3D();
+    group.add(bm);
+    anim.push((t) => {
+      bubbles.forEach((b, i) => {
+        const k = ((t * 0.6 + b.p) % 1);
+        d.position.set(b.x, -depth + 0.08 + k * 0.05, b.z);
+        d.scale.setScalar(0.06 * Math.sin(k * Math.PI));
+        d.updateMatrix(); bm.setMatrixAt(i, d.matrix);
+      });
+      bm.instanceMatrix.needsUpdate = true;
+    });
+    floaters(group, anim, { n: list.length * 6, x0: -COLS / 2, x1: COLS / 2, z0: -ROWS / 2, z1: ROWS / 2, y0: -0.1, y1: 2.5, color: 0xff8a3a, size: 0.1, speed: 0.5 });
+  } else {
+    // ขอบเมฆฟู ๆ รอบช่องโหว่ + หมอกจาง ๆ ด้านล่าง
+    group.add(instanced(G.sph(), std(0xffffff, { roughness: 1, emissive: 0xcfdcff, emissiveIntensity: 0.25 }), caps, (d, it) => {
+      d.position.set(it.x + rand(-0.1, 0.1), rand(-0.02, 0.06), it.z + rand(-0.1, 0.1));
+      d.scale.set(rand(0.14, 0.22), rand(0.06, 0.1), rand(0.14, 0.22));
+    }, { shadow: false }));
+    const mist = new THREE.Mesh(bottom.build(), new THREE.MeshBasicMaterial({ color: 0x5a9cf0, transparent: true, opacity: 0.85, depthWrite: false }));
+    mist.position.y = -1.6;
+    group.add(mist);
+  }
+}
+
+/* ---------- ฉากภูเขาไฟ ---------- */
+function makeVolcanoCone(h, r) {
+  const g = new THREE.Group();
+  const prof = [[r, 0], [r * 0.8, h * 0.25], [r * 0.55, h * 0.6], [r * 0.32, h * 0.92], [r * 0.26, h], [r * 0.2, h * 0.94], [0, h * 0.9]];
+  const cone = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 14), std(0x3a2a24, { flatShading: true, roughness: 0.95 }));
+  cone.castShadow = true;
+  g.add(cone);
+  const crater = new THREE.Mesh(new THREE.CircleGeometry(r * 0.2, 16), glow(0xff7a2a, 2.6));
+  crater.rotation.x = -Math.PI / 2; crater.position.y = h * 0.93;
+  g.add(crater);
+  // ธารลาวาไหลลงข้างภูเขา
+  for (let k = 0; k < 4; k++) {
+    const a = k * 1.6 + 0.4;
+    const pts = [];
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8, y = h * (0.92 - t * 0.9);
+      const rr = r * (0.24 + t * 0.6) + 0.05;
+      pts.push(new THREE.Vector3(Math.cos(a + Math.sin(t * 5) * 0.12) * rr, y, Math.sin(a + Math.sin(t * 5) * 0.12) * rr));
+    }
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.12 + r * 0.01, 5), glow(0xff5a1a, 2.2)));
+  }
+  return g;
+}
+function buildVolcano(group, scatter, B, anim) {
+  const big = makeVolcanoCone(9, 8);
+  big.position.set(3, 0, B.z0 - 16);
+  group.add(big);
+  const small = makeVolcanoCone(5, 4.5);
+  small.position.set(-14, 0, B.z0 - 9);
+  group.add(small);
+  // ควันพวยพุ่งจากปล่อง
+  const smoke = [];
+  for (let i = 0; i < 14; i++) {
+    const m = new THREE.Mesh(G.sphLo(), new THREE.MeshStandardMaterial({ color: 0x3a3030, transparent: true, opacity: 0.5, roughness: 1, depthWrite: false }));
+    m.userData.p = i / 14;
+    group.add(m); smoke.push(m);
+  }
+  anim.push((t) => smoke.forEach((m) => {
+    const k = (t * 0.06 + m.userData.p) % 1;
+    m.position.set(3 + Math.sin(k * 4 + m.userData.p * 9) * (1 + k * 3) + k * 4, 8.6 + k * 12, B.z0 - 16 + Math.cos(m.userData.p * 7) * k * 2);
+    m.scale.setScalar(0.8 + k * 3.5);
+    m.material.opacity = 0.55 * (1 - k);
+  }));
+  // หินออบซิเดียนแหลม
+  const spikes = scatter(55, 0.8, 14);
+  group.add(instanced(geo('spike', () => new THREE.ConeGeometry(0.25, 1, 5).translate(0, 0.5, 0)), std(0x14101a, { metalness: 0.6, roughness: 0.2, flatShading: true }), spikes, (d, it) => {
+    const h = rand(0.5, 1.8);
+    d.position.set(it.x, 0, it.z);
+    d.rotation.set(rand(-0.25, 0.25), rand(0, 3), rand(-0.25, 0.25));
+    d.scale.set(rand(0.6, 1.3), h, rand(0.6, 1.3));
+  }));
+  // บ่อลาวานอกกระดาน
+  const pools = scatter(7, 2, 12);
+  const tex = lavaTexture();
+  pools.forEach((p) => {
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.6, 1.25, 1.1) }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(p.x, 0.02, p.z);
+    pool.scale.set(rand(0.9, 1.8), rand(0.6, 1.2), 1);
+    group.add(pool);
+  });
+  floaters(group, anim, { n: 260, x0: -22, x1: 22, z0: -18, z1: 14, y0: 0, y1: 8, color: 0xff7a2a, size: 0.13, speed: 0.7 });
+}
+
+/* ---------- ฉากเกาะเมฆ ---------- */
+function buildSky(group, scatter, B, anim) {
+  const cloudMat = std(0xffffff, { roughness: 1, emissive: 0xd8e4ff, emissiveIntensity: 0.3, flatShading: false });
+  const puffs = [];
+  scatter(90, 1.5, 22).forEach((c) => {
+    const n = 3 + Math.floor(Math.random() * 4), s = rand(0.6, 1.6) * (0.6 + c.d * 0.06);
+    for (let k = 0; k < n; k++) puffs.push({ x: c.x + rand(-1.2, 1.2) * s, y: rand(-0.6, 0.25) * s, z: c.z + rand(-0.8, 0.8) * s, s: s * rand(0.6, 1.1) });
+  });
+  group.add(instanced(G.sph(), cloudMat, puffs, (d, it) => { d.position.set(it.x, it.y, it.z); d.scale.set(it.s * 1.3, it.s * 0.75, it.s); }, { shadow: false }));
+  // เกาะลอยฟ้า
+  const islands = [[-15, 4, -10], [16, 5.5, -9], [-19, 3, 6], [20, 3.5, 7], [4, 7, -20]];
+  islands.forEach(([x, y, z], i) => {
+    const g = new THREE.Group();
+    const s = 0.8 + (i % 3) * 0.35;
+    const rock = new THREE.Mesh(new THREE.ConeGeometry(1.6 * s, 2.6 * s, 7).rotateX(Math.PI), std(0x8a7a6a, { flatShading: true }));
+    rock.position.y = -1.3 * s;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.65 * s, 1.6 * s, 0.25 * s, 7), std(0x6ac04a, { flatShading: true }));
+    const tree = new THREE.Mesh(foliageGeometry(), std(0x3f9a3a, { flatShading: true }));
+    tree.position.set(0.3 * s, 0.9 * s, 0); tree.scale.setScalar(s);
+    const trunk = new THREE.Mesh(G.cyl(), std(0x6b4a2b)); trunk.position.set(0.3 * s, 0.45 * s, 0); trunk.scale.set(0.08 * s, 0.7 * s, 0.08 * s);
+    g.add(rock, top, trunk, tree);
+    g.position.set(x, y, z);
+    group.add(g);
+    anim.push((t) => { g.position.y = y + Math.sin(t * 0.5 + i) * 0.25; g.rotation.y = Math.sin(t * 0.1 + i) * 0.2; });
+  });
+  // สายรุ้ง
+  const cols = [0xff4a4a, 0xff9a3a, 0xffe14a, 0x5ae05a, 0x4aa8ff, 0x8a5aff];
+  cols.forEach((c, i) => {
+    const arc = new THREE.Mesh(new THREE.TorusGeometry(26 - i * 0.55, 0.28, 6, 64, Math.PI), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.32, depthWrite: false, fog: false }));
+    arc.position.set(6, -2, B.z0 - 30);
+    group.add(arc);
+  });
+  // สายลมพัด
+  const streaks = [];
+  for (let i = 0; i < 16; i++) {
+    const m = new THREE.Mesh(geo('streak', () => new THREE.PlaneGeometry(2.4, 0.05)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2;
+    m.userData = { y: rand(0.6, 3), z: rand(-12, 12), p: Math.random(), s: rand(0.6, 1.4) };
+    group.add(m); streaks.push(m);
+  }
+  anim.push((t) => streaks.forEach((m) => {
+    const k = (t * 0.05 * m.userData.s + m.userData.p) % 1;
+    m.position.set(-26 + k * 52, m.userData.y + Math.sin(t + m.userData.p * 6) * 0.2, m.userData.z);
+    m.material.opacity = 0.5 * Math.sin(k * Math.PI);
+  }));
+}
+
+/* ---------- ฉากถ้ำใต้ดิน ---------- */
+function buildCave(group, scatter, B, anim) {
+  const rockM = std(0x4a3c30, { flatShading: true, roughness: 0.95 });
+  const stal = scatter(140, 0.8, 16);
+  group.add(instanced(geo('stal', () => new THREE.ConeGeometry(0.3, 1, 6).translate(0, 0.5, 0)), rockM, stal, (d, it) => {
+    const h = rand(0.5, 1.6) * (1 + it.d * 0.18);
+    d.position.set(it.x, 0, it.z);
+    d.rotation.y = rand(0, 3);
+    d.scale.set(rand(0.7, 1.5) * (1 + it.d * 0.05), h, rand(0.7, 1.5) * (1 + it.d * 0.05));
+  }));
+  // ผนังถ้ำ (ก้อนหินยักษ์ล้อมรอบไกล ๆ)
+  const walls = scatter(70, 7, 20);
+  group.add(instanced(G.dode(), std(0x2e261f, { flatShading: true, roughness: 1 }), walls, (d, it) => {
+    const s = rand(1.5, 4) * (0.5 + it.d * 0.08);
+    d.position.set(it.x, s * 0.4, it.z);
+    d.rotation.set(rand(0, 3), rand(0, 3), 0);
+    d.scale.set(s, s * rand(0.8, 1.6), s);
+  }));
+  // กลุ่มคริสตัลเรืองแสง
+  const pal = [0x5ac8ff, 0xb070ff, 0xffb040, 0x5affa0, 0xff6ad0];
+  const clusters = scatter(46, 0.6, 13);
+  const shards = [];
+  clusters.forEach((c) => { const n = 3 + Math.floor(Math.random() * 3), col = pal[Math.floor(Math.random() * pal.length)]; for (let k = 0; k < n; k++) shards.push({ x: c.x + rand(-0.3, 0.3), z: c.z + rand(-0.3, 0.3), s: rand(0.12, 0.38), col }); });
+  group.add(instanced(G.octa(), new THREE.MeshBasicMaterial({ color: 0xffffff }), shards, (d, it) => {
+    d.position.set(it.x, it.s, it.z);
+    d.rotation.set(rand(-0.4, 0.4), rand(0, 3), rand(-0.4, 0.4));
+    d.scale.set(it.s * 0.45, it.s * 1.9, it.s * 0.45);
+  }, { shadow: false, colors: (it) => new THREE.Color(it.col).multiplyScalar(rand(1.1, 1.8)).getHex() }));
+  clusters.slice(0, 5).forEach((c, i) => {
+    const l = new THREE.PointLight(pal[i % pal.length], 2.4, 7, 1.6);
+    l.position.set(c.x, 1, c.z);
+    group.add(l);
+  });
+  // เห็ดเรืองแสง
+  const shrooms = scatter(70, 0.4, 11);
+  group.add(instanced(G.cyl(), std(0xd8d0c0), shrooms, (d, it) => { d.position.set(it.x, 0.08, it.z); d.scale.set(0.025, 0.16, 0.025); }, { shadow: false }));
+  group.add(instanced(G.sph(), new THREE.MeshBasicMaterial({ color: 0xffffff }), shrooms, (d, it) => { d.position.set(it.x, 0.17, it.z); d.scale.set(0.09, 0.05, 0.09); },
+    { shadow: false, colors: () => new THREE.Color(Math.random() < 0.6 ? 0x4affd8 : 0xb070ff).multiplyScalar(1.5).getHex() }));
+  floaters(group, anim, { n: 160, x0: -18, x1: 18, z0: -14, z1: 12, y0: 0.2, y1: 4, color: 0x9affd8, size: 0.07, speed: 0.12 });
+}
+
+/* ---------- ฉากแม่น้ำ ---------- */
+function buildRiver(group, scatter, B, anim, map, walk) {
+  // กกริมน้ำ
+  const reeds = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (walk(c, r)) continue;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (!walk(c + dc, r + dr) || Math.random() > 0.35) continue;
+      for (let k = 0; k < 4; k++) reeds.push({ x: tileX(c) + dc * 0.36 + rand(-0.12, 0.12) * (dr ? 4 : 1), z: tileZ(r) + dr * 0.36 + rand(-0.12, 0.12) * (dc ? 4 : 1) });
+    }
+  }
+  group.add(instanced(G.cyl6(), std(0x5a8a2a, { roughness: 0.8 }), reeds, (d, it) => {
+    const h = rand(0.25, 0.5);
+    d.position.set(it.x, h / 2, it.z); d.rotation.set(rand(-0.2, 0.2), 0, rand(-0.2, 0.2)); d.scale.set(0.015, h, 0.015);
+  }, { shadow: false }));
+  group.add(instanced(G.cyl6(), std(0x6a4a2a), reeds.filter((_, i) => i % 3 === 0), (d, it) => {
+    d.position.set(it.x, 0.48, it.z); d.scale.set(0.03, 0.1, 0.03);
+  }, { shadow: false }));
+  // ใบบัวบนผิวน้ำ
+  const pads = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (walk(c, r) && Math.random() < 0.12) pads.push({ x: tileX(c) + rand(-0.3, 0.3), z: tileZ(r) + rand(-0.3, 0.3) });
+  group.add(instanced(geo('lily', () => new THREE.CircleGeometry(0.15, 10, 0.4, Math.PI * 1.8)), std(0x4a9a3a, { side: THREE.DoubleSide }), pads, (d, it) => {
+    d.position.set(it.x, FLOOR + 0.19, it.z); d.rotation.set(-Math.PI / 2, 0, rand(0, 6));
+  }, { shadow: false }));
+  // น้ำตกต้นสายด้านหลังพอร์ทัลเกิด
+  const sc = map.spawn % COLS, sr = Math.floor(map.spawn / COLS);
+  const wx0 = tileX(sc) - 2.4, wz0 = tileZ(sr);
+  const cliff = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.4, 3.2), std(0x7a7466, { flatShading: true, roughness: 0.95, map: brickTexture('mossy') }));
+  cliff.position.set(wx0 - 0.6, 1.7, wz0); cliff.castShadow = true;
+  group.add(cliff);
+  const ftex = rippleTexture().clone(); ftex.needsUpdate = true; ftex.repeat.set(1, 3);
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 3.4), new THREE.MeshBasicMaterial({ map: ftex, color: 0xcfeaff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide }));
+  fall.rotation.y = Math.PI / 2; fall.position.set(wx0 + 0.12, 1.5, wz0);
+  group.add(fall);
+  anim.push((t) => { ftex.offset.y = t * 0.8; });
+  floaters(group, anim, { n: 40, x0: wx0, x1: wx0 + 1.4, z0: wz0 - 0.8, z1: wz0 + 0.8, y0: 0, y1: 1.2, color: 0xffffff, size: 0.18, speed: 0.4 });
+  // บึงน้ำใหญ่รอบนอก
+  const lakes = scatter(3, 4, 9);
+  lakes.forEach((p) => {
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshStandardMaterial({ color: 0x3a9ad8, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.85 }));
+    lake.rotation.x = -Math.PI / 2; lake.position.set(p.x, 0.02, p.z); lake.scale.set(rand(2, 3.2), rand(1.3, 2), 1);
+    group.add(lake);
+  });
+}
+
 /* ---------- ฉากทะเลทราย: พีระมิด สฟิงซ์ เสาโอเบลิสก์ ต้นปาล์ม เนินทราย ---------- */
 function sandstoneMat(tint = 0xf0d8a4) { return std(tint, { map: brickTexture('sandstone'), roughness: 0.9, flatShading: true }); }
 
