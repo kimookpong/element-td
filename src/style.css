@@ -250,20 +250,19 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .helpList li > .ico { width: 24px; height: 24px; flex-shrink: 0; margin-top: 2px; }
 .cycleBox { width: 260px; flex-shrink: 0; }
 .cycleBox canvas { width: 100%; height: auto; }
-.elemTable { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; text-align: left; }
-.elemTable div { background: #0004; border-radius: 8px; padding: 8px; font-size: .8rem; border-left: 4px solid; }
-.elemTable b { font-size: .92rem; font-weight: 600; }
 .creatureTable { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; text-align: left; }
 .creatureTable div { display: flex; gap: 8px; align-items: center; background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; line-height: 1.35; }
 .creatureTable .ico { width: 48px; height: 48px; flex-shrink: 0; }
 .creatureTable b { font-size: .88rem; }
-#compendium { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; text-align: left; }
-#compendium .combo { background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
-#compendium .portrait { width: 52px; height: 52px; flex-shrink: 0; }
-#compendium .els .ico { width: 16px; height: 16px; vertical-align: -3px; }
-#compendium .look { color: var(--gold2); opacity: .8; }
-#compendium .weak, #infoPanel .weak { color: #ff9a8a; }
-#compendium .weak .ico, #infoPanel .weak .ico { width: 13px; height: 13px; vertical-align: -2px; }
+.compendium { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; text-align: left; }
+.compendium .combo { background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+.compendium .portrait { width: 52px; height: 52px; flex-shrink: 0; }
+.compendium .els .ico { width: 16px; height: 16px; vertical-align: -3px; }
+.compendium .look { color: var(--gold2); opacity: .8; }
+.compendium .beats { opacity: .85; }
+.compendium .beats .ico { width: 13px; height: 13px; vertical-align: -2px; }
+.compendium .weak, #infoPanel .weak { color: #ff9a8a; }
+.compendium .weak .ico, #infoPanel .weak .ico { width: 13px; height: 13px; vertical-align: -2px; }
 #infoPanel .effects.desc { color: var(--text, #eee); opacity: .92; line-height: 1.45; }
 
 /* ---------- จอเล็ก ---------- */

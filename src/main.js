@@ -90,7 +90,6 @@ function resumeGame() {
 
 /* ---------------- เริ่มเกม / เมนู ---------------- */
 function newGame() {
-  if (readSave() && !confirm(T('confirm.overwrite'))) return;
   clearSave();
   startWithGame(new Game(view.mapIndex, view.diffKey));
   const homeEl = MAPS[view.mapIndex].element;
@@ -851,15 +850,15 @@ function renderHelp() {
     const a = ABILITIES[k];
     return `<div>${ico(a.icon)}<span><b>${tr(a, 'creature')}</b><br>${tr(a, 'th')} — ${tr(a, 'desc')}</span></div>`;
   }).join('');
-  $('elemTable').innerHTML = ELEMENT_ORDER.map((el) => {
-    const e = ELEMENTS[el];
-    const b = ELEMENTS[BEATS[el]];
-    const d = TOWERS[el];
-    return `<div style="border-color:${e.color}"><b>${ico(e.icon)} ${T('help.elemCard', { el: elName(e), tower: tr(d, 'th') })}</b><br>${tr(d, 'attack')}<br><small>${ico('warning')} ${tr(d, 'weak')} · ${T('help.beats')}: ${ico(b.icon)} ${elName(b)}</small></div>`;
-  }).join('');
+  // การ์ดป้อม: รูป · ชื่อ + ไอคอนธาตุ · ลักษณะ · การโจมตี · จุดอ่อน (ใช้ทั้งป้อมเดี่ยวและป้อมผสม)
   const icons = (k) => k.split('+').map((e) => ico(ELEMENTS[e].icon)).join('');
+  const towerCard = (k, d, extra = '') => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${tr(d, 'th')}</b> <span class="els">${icons(k)}</span><br><small class="look">${tr(d, 'look')}</small><br>${tr(d, 'attack')}<br><small class="weak">${ico('warning')} ${tr(d, 'weak')}</small>${extra}</div></div>`;
+  $('elemTable').innerHTML = ELEMENT_ORDER.map((el) => {
+    const b = ELEMENTS[BEATS[el]];
+    return towerCard(el, TOWERS[el], `<br><small class="beats">${T('help.beats')}: ${ico(b.icon)} ${elName(b)}</small>`);
+  }).join('');
   const combos = Object.entries(TOWERS).filter(([k]) => k.includes('+'));
-  $('compendium').innerHTML = combos.map(([k, d]) => `<div class="combo"><img class="portrait" src="${iconUrl(comboIcon(k.split('+')))}" alt=""><div><b>${tr(d, 'th')}</b> <span class="els">${icons(k)}</span><br><small class="look">${tr(d, 'look')}</small><br>${tr(d, 'attack')}<br><small class="weak">${ico('warning')} ${tr(d, 'weak')}</small></div></div>`).join('');
+  $('compendium').innerHTML = combos.map(([k, d]) => towerCard(k, d)).join('');
 }
 
 function drawCycle() {
