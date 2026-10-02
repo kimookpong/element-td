@@ -339,6 +339,11 @@ export class Renderer3D {
     this.controls.maxDistance = Math.max(40, hi * 1.4);
     this.controls.update();
     this.userMovedCamera = false;
+    // ป้ายผู้สร้างหันเข้าหามุมกล้องเริ่มต้นครั้งเดียว (ไม่หมุนตามกล้องระหว่างเล่น)
+    if (this.world && this.world.creatorSign) {
+      const cs = this.world.creatorSign;
+      cs.rotation.y = Math.atan2(this.camera.position.x - cs.position.x, this.camera.position.z - cs.position.z);
+    }
   }
 
   /* ---------- แผนที่ ---------- */
@@ -916,12 +921,6 @@ export class Renderer3D {
     });
     this.particles.update(dt);
 
-    // ป้ายแนะนำหันหากล้อง
-    // ป้ายผู้สร้างเกมหันหากล้อง (แสดงตลอด)
-    if (this.world && this.world.creatorSign) {
-      const cs = this.world.creatorSign;
-      cs.rotation.y = Math.atan2(this.camera.position.x - cs.position.x, this.camera.position.z - cs.position.z);
-    }
     if (this.world) {
       this.coreHit = Math.max(0, (this.coreHit || 0) - dt * 2);
       const cp = this.world.corePortal;

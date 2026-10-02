@@ -124,7 +124,7 @@ const STR = {
     'sim.needLv': 'ต้องมีธาตุ {els} เลเวล {lv}', 'sim.upTo': 'อัปเกรดเป็นระดับ {n}', 'sim.needElLv': 'ต้องมีธาตุ{el} เลเวล {lv}',
     'sim.needSame': ' (และธาตุเดิมเลเวลเท่ากัน)', 'sim.building': 'ป้อมกำลังก่อสร้างอยู่', 'sim.fusing': 'กำลังหลอมรวม: {name}',
     'sim.bossWave': ':warning: มังกรโบราณธาตุ{el}กำลังมา!', 'sim.wave': 'เวฟ {n}: :{icon}: {creature}ธาตุ{el}', 'sim.bossDown': 'บอสถูกกำจัด! ได้ชีวิตคืน +{n} :heart:',
-    'sign.l1': 'เกมนี้คิดและพัฒนาโดย', 'sign.l3': 'สนใจติดต่อได้เลย!', 'sign.l4': '▶ คลิกที่ป้ายนี้',
+    'sign.l1': 'ไอเดียโดย', 'sign.l2': '▶ คลิกที่นี่',
   },
   en: {
     'doc.title': 'Element TD 3D: Free 3D Elemental Tower Defense Game',
@@ -214,6 +214,6 @@ const STR = {
     'sim.needLv': 'Requires {els} level {lv}', 'sim.upTo': 'Upgrade to tier {n}', 'sim.needElLv': 'Requires {el} level {lv}',
     'sim.needSame': ' (and the current elements at the same level)', 'sim.building': 'Tower is under construction', 'sim.fusing': 'Fusing: {name}',
     'sim.bossWave': ':warning: An ancient {el} dragon approaches!', 'sim.wave': 'Wave {n}: :{icon}: {el} {creature}', 'sim.bossDown': 'Boss defeated! +{n} :heart: life',
-    'sign.l1': 'Game designed & built by', 'sign.l3': 'Let\'s get in touch!', 'sign.l4': '▶ Click this sign',
+    'sign.l1': 'Idea by', 'sign.l2': '▶ Click here',
   },
 };

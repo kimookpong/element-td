@@ -363,8 +363,8 @@ export function buildWorld(map, themeKey) {
     coreGem.position.y = 1.75 + Math.sin(t * 2) * 0.08;
   });
 
-  // ---- ป้ายบอกทางผู้สร้างเกม (กึ่งกลางด้านบนกระดาน) ----
-  const spot = [(COLS - 1) / 2, -0.95];
+  // ---- ป้ายบอกทางผู้สร้างเกม (ด้านบนกระดาน กึ่งกลางระหว่างขอบซ้ายกับกลางกระดาน) ----
+  const spot = [(COLS - 1) / 4, -0.95];
   const creatorSign = makeCreatorSign();
   creatorSign.position.set(tileX(spot[0]), 0, tileZ(spot[1]));
   group.add(creatorSign);
@@ -1156,23 +1156,19 @@ function makeCreatorSign() {
     g.add(pivot);
     boards.push(draw);
   };
-  // ป้ายบน: รูปโปรไฟล์ + ชื่อ (ชี้ขวา)
-  addBoard(1.75, 0.62, 1, 1.5, -0.12, ['#9a6436', '#7a4c28', '#5e3a1e'], (gc, W, H) => {
+  // แถวบน: รูปโปรไฟล์ GitHub + idea by kimookpong (ชี้ขวา)
+  addBoard(1.75, 0.62, 1, 1.32, -0.08, ['#9a6436', '#7a4c28', '#5e3a1e'], (gc, W, H) => {
     const cx = 120, cy = H / 2, R = 72;
     gc.save(); gc.beginPath(); gc.arc(cx, cy, R, 0, Math.PI * 2); gc.fillStyle = '#2a1a0c'; gc.fill(); gc.clip();
     if (img) gc.drawImage(img, cx - R, cy - R, R * 2, R * 2);
     gc.restore();
     gc.lineWidth = 7; gc.strokeStyle = '#e8c870'; gc.beginPath(); gc.arc(cx, cy, R + 2, 0, Math.PI * 2); gc.stroke();
-    signText(gc, t('sign.l1'), 212, H * 0.3, `500 26px ${SIGN_FONT}`, '#fbf0d8');
+    signText(gc, t('sign.l1'), 212, H * 0.3, `500 28px ${SIGN_FONT}`, '#fbf0d8');
     signText(gc, CREATOR.name, 212, H * 0.62, `700 52px ${SIGN_FONT}`, '#ffe08a', 'left', 6);
   });
-  // ป้ายกลาง: ชวนติดต่อ (ชี้ซ้าย)
-  addBoard(1.45, 0.42, -1, 0.96, 0.16, ['#8a5a30', '#6c4222', '#523018'], (gc, W, H) => {
-    signText(gc, t('sign.l3'), W * 0.56, H * 0.5, `700 40px ${SIGN_FONT}`, '#b6ffb0', 'center', 6);
-  });
-  // ป้ายล่าง: ลิงก์ (ชี้ขวา)
-  addBoard(1.55, 0.36, 1, 0.52, -0.08, ['#7a4e2a', '#5e3a1e', '#462a14'], (gc, W, H) => {
-    signText(gc, t('sign.l4'), W * 0.08 + 30, H * 0.5, `600 30px ${SIGN_FONT}`, '#fbf0d8');
+  // แถวล่าง: คลิกเพื่อไปหน้าโปรไฟล์ (ชี้ซ้าย)
+  addBoard(1.35, 0.4, -1, 0.78, 0.1, ['#7a4e2a', '#5e3a1e', '#462a14'], (gc, W, H) => {
+    signText(gc, t('sign.l2'), W * 0.56, H * 0.5, `700 40px ${SIGN_FONT}`, '#b6ffb0', 'center', 6);
   });
   const redraw = () => boards.forEach((d) => d());
   redraw();
@@ -1182,8 +1178,8 @@ function makeCreatorSign() {
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
   // เสาไม้ + ฐานหิน
   const woodM = std(0x5a3a20, { roughness: 0.9 });
-  g.add(mesh(G.cyl(), woodM, { y: 0.95, s: [0.07, 1.9, 0.07] }));
-  g.add(mesh(G.cone(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { y: 1.98, s: [0.1, 0.16, 0.1] }));
+  g.add(mesh(G.cyl(), woodM, { y: 0.85, s: [0.07, 1.7, 0.07] }));
+  g.add(mesh(G.cone(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { y: 1.78, s: [0.1, 0.16, 0.1] }));
   g.add(mesh(G.cyl(), std(0x3e2614, { roughness: 0.9 }), { y: 0.25, s: [0.085, 0.04, 0.085] }));
   g.add(mesh(G.dode(), std(0x8a8478, { flatShading: true }), { y: 0.06, s: [0.32, 0.12, 0.28] }));
   for (const [x, z] of [[0.22, 0.1], [-0.2, 0.14], [0.05, -0.2]]) g.add(mesh(G.dode(), std(0x7a746a, { flatShading: true }), { x, y: 0.05, z, s: 0.1 }));
