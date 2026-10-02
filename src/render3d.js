@@ -943,10 +943,9 @@ export class Renderer3D {
     this.particles.update(dt);
 
     // ป้ายแนะนำหันหากล้อง
-    // ป้ายผู้สร้างเกมหันหากล้อง (ซ่อน/แสดงด้วยปุ่มป้าย)
+    // ป้ายผู้สร้างเกมหันหากล้อง (แสดงตลอด)
     if (this.world && this.world.creatorSign) {
       const cs = this.world.creatorSign;
-      cs.visible = view.showSigns !== false;
       cs.rotation.y = Math.atan2(this.camera.position.x - cs.position.x, this.camera.position.z - cs.position.z);
     }
     if (this.world) {

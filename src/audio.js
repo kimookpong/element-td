@@ -5,7 +5,12 @@ export const Sound = (() => {
   let muted = false;
   const lastPlay = {};
 
-  try { muted = localStorage.getItem('etd_muted') === '1'; } catch (e) { /* ignore */ }
+  let volume = 0.8;
+  try {
+    muted = localStorage.getItem('etd_muted') === '1';
+    const v = parseFloat(localStorage.getItem('etd_sfx_vol'));
+    if (v >= 0 && v <= 1) volume = v;
+  } catch (e) { /* ignore */ }
 
   function ensure() {
     if (ctx) return ctx;
@@ -13,7 +18,7 @@ export const Sound = (() => {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = 0.18;
+    master.gain.value = 0.22 * volume;
     master.connect(ctx.destination);
     return ctx;
   }
@@ -85,6 +90,16 @@ export const Sound = (() => {
       try { localStorage.setItem('etd_muted', muted ? '1' : '0'); } catch (e) { /* ignore */ }
       return muted;
     },
+    setMuted(m) {
+      muted = m;
+      try { localStorage.setItem('etd_muted', muted ? '1' : '0'); } catch (e) { /* ignore */ }
+    },
+    setVolume(v) {
+      volume = Math.max(0, Math.min(1, v));
+      if (master) master.gain.value = 0.22 * volume;
+      try { localStorage.setItem('etd_sfx_vol', String(volume)); } catch (e) { /* ignore */ }
+    },
     get muted() { return muted; },
+    get volume() { return volume; },
   };
 })();

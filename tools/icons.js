@@ -88,6 +88,7 @@ function star(cx, cy, ro, ri, n = 5, rot = -PI / 2) {
 }
 function circle(cx, cy, r) { const p = P(); p.arc(cx, cy, r, 0, PI * 2); return p; }
 function rrect(x, y, w, h, r) { const p = P(); p.roundRect(x, y, w, h, r); return p; }
+function P2(pts) { const p = P(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); return p; }
 function poly(pts) { const p = P(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); p.closePath(); return p; }
 function line(pts) { const p = P(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); return p; }
 function heartPath(cx = 64, cy = 64, k = 1) {
@@ -185,6 +186,30 @@ function buildUI() {
     F(rrect(14, 40, 72, 52, 10));
     F(poly([[86, 54], [116, 38], [116, 94], [86, 78]]));
     F(circle(36, 30, 14), 'gold'); F(circle(66, 30, 14), 'gold');
+  });
+  glyph('settings', 'silver', ({ F }) => {
+    const pts = [];
+    const n = 8;
+    for (let i = 0; i < n * 4; i++) {
+      const a = (i / (n * 4)) * PI * 2 - PI / 2;
+      const r = (i % 4 === 0 || i % 4 === 1) ? 54 : 40;
+      pts.push([64 + Math.cos(a) * r, 64 + Math.sin(a) * r]);
+    }
+    F(poly(pts));
+    F(circle(64, 64, 18), 'gold');
+  });
+  glyph('music', 'purple', ({ F, L }) => {
+    F(poly([[46, 24], [104, 12], [104, 30], [46, 42]]));
+    L(P2([[46, 30], [46, 92]]), 10);
+    L(P2([[104, 20], [104, 80]]), 10);
+    F(circle(34, 94, 16)); F(circle(92, 82, 16));
+  });
+  glyph('music_off', 'silver', ({ F, L }) => {
+    F(poly([[46, 24], [104, 12], [104, 30], [46, 42]]));
+    L(P2([[46, 30], [46, 92]]), 10);
+    L(P2([[104, 20], [104, 80]]), 10);
+    F(circle(34, 94, 16)); F(circle(92, 82, 16));
+    L(P2([[18, 18], [112, 112]]), 10, 'red');
   });
   glyph('help', 'gold', ({ F }) => F(circle(64, 64, 50)), {
     after: (g) => { g.font = 'bold 76px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#3a2208'; g.fillText('?', 64, 70); },

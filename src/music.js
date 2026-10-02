@@ -11,6 +11,12 @@ export const TRACKS = {
 
 export const Music = (() => {
   let muted = false;
+  let volume = 0.8;
+  try {
+    muted = localStorage.getItem('etd_music_muted') === '1';
+    const v = parseFloat(localStorage.getItem('etd_music_vol'));
+    if (v >= 0 && v <= 1) volume = v;
+  } catch (e) { /* ignore */ }
   let unlocked = false;   // เบราว์เซอร์อนุญาตให้เล่นเสียงแล้วหรือยัง
   let hidden = false;
   let cur = null;         // { name, el, vol }
@@ -32,7 +38,7 @@ export const Music = (() => {
     const { el, vol } = cur;
     const p = el.play();
     if (p && p.then) {
-      p.then(() => { unlocked = true; fade(el, vol, ms); }).catch(() => { /* รอผู้ใช้แตะหน้าจอก่อน */ });
+      p.then(() => { unlocked = true; fade(el, vol * volume, ms); }).catch(() => { /* รอผู้ใช้แตะหน้าจอก่อน */ });
     }
   }
 
@@ -59,6 +65,7 @@ export const Music = (() => {
     unlock() { if (!unlocked && cur && cur.el.paused) startCurrent(); },
     setMuted(m) {
       muted = m;
+      try { localStorage.setItem('etd_music_muted', m ? '1' : '0'); } catch (e) { /* ignore */ }
       if (!cur) return;
       if (m) { const el = cur.el; fade(el, 0, 300, () => el.pause()); } else startCurrent(600);
     },
@@ -68,6 +75,13 @@ export const Music = (() => {
       if (!cur) return;
       if (h) cur.el.pause(); else startCurrent(800);
     },
+    setVolume(v) {
+      volume = Math.max(0, Math.min(1, v));
+      try { localStorage.setItem('etd_music_vol', String(volume)); } catch (e) { /* ignore */ }
+      if (cur && !cur.el.paused) { if (cur.el._fade) cancelAnimationFrame(cur.el._fade); cur.el.volume = cur.vol * volume; }
+    },
+    get muted() { return muted; },
+    get volume() { return volume; },
     get current() { return cur ? cur.name : null; },
     get element() { return cur ? cur.el : null; },
   };

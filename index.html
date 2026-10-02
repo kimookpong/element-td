@@ -100,13 +100,8 @@
       <div class="controls">
         <button id="btnPause" class="iconBtn primary" data-i18n-title="btn.pause" title="หยุด / เล่นต่อ (Space)"><img class="ico" src="icons/pause.png" alt=""></button>
         <button id="btnSpeed" class="iconBtn" data-i18n-title="btn.speed" title="ความเร็ว (F)"><img class="ico" src="icons/speed.png" alt=""><span id="speedLbl">1×</span></button>
-        <button id="btnMute" class="iconBtn" data-i18n-title="btn.mute" title="เสียง (M)"><img class="ico" src="icons/sound.png" alt=""></button>
-        <button id="btnQuality" class="iconBtn" data-i18n-title="btn.qHigh" title="คุณภาพกราฟิก"><img class="ico" src="icons/quality.png" alt=""></button>
-        <button id="btnSigns" class="iconBtn" data-i18n-title="btn.signs" title="ป้ายผู้สร้าง (G)"><img class="ico" src="icons/sign.png" alt=""></button>
         <button id="btnCamera" class="iconBtn" data-i18n-title="btn.camera" title="รีเซ็ตมุมกล้อง (C)"><img class="ico" src="icons/camera.png" alt=""></button>
-        <button id="btnHelp" class="iconBtn" data-i18n-title="btn.help" title="วิธีเล่น (H)"><img class="ico" src="icons/help.png" alt=""></button>
-        <button id="btnLang" class="iconBtn langBtn" data-i18n-title="btn.lang" title="Language"><span id="langLbl">TH</span></button>
-        <button id="btnFull" class="iconBtn" data-i18n-title="btn.full" title="เต็มจอ (Z)"><img class="ico" src="icons/fullscreen.png" alt=""></button>
+        <button id="btnSettings" class="iconBtn" data-i18n-title="btn.settings" title="ตั้งค่า (O)"><img class="ico" src="icons/settings.png" alt=""></button>
       </div>
     </header>
 
@@ -136,10 +131,7 @@
   <!-- เมนูเริ่มเกม -->
   <div id="menu" class="titleScreen show">
     <div class="tsVignette"></div>
-    <button id="btnSoundMenu" class="tsSound" data-i18n-title="btn.mute" title="Sound"><img class="ico" src="icons/sound.png" alt=""></button>
-    <div class="langSwitch" id="langSwitch" data-i18n-title="btn.lang" title="Language">
-      <button data-lang="th">TH</button><button data-lang="en">EN</button>
-    </div>
+    <button id="btnSettingsMenu" class="tsSettings" data-i18n-title="btn.settings" title="Settings"><img class="ico" src="icons/settings.png" alt=""></button>
     <main class="tsCenter">
       <img class="tsLogo" src="logo-wide.webp" alt="Element TD — 3D elemental tower defense" width="1400" height="526" draggable="false">
       <!-- หน้าแรก: 3 ปุ่ม -->
@@ -159,6 +151,35 @@
       </div>
     </main>
     <a class="tsCredit" href="https://kimookpong.github.io/" target="_blank" rel="noopener">by kimookpong</a>
+  </div>
+
+  <!-- ตั้งค่า -->
+  <div id="settings" class="overlay">
+    <div class="card frame settingsCard">
+      <button id="btnCloseSettings" class="iconBtn small settingsClose" data-i18n-title="btn.close" title="ปิด"><img class="ico" src="icons/close.png" alt=""></button>
+      <h2><img class="ico" src="icons/settings.png" alt=""> <span data-i18n="set.title">ตั้งค่า</span></h2>
+      <div class="setRow">
+        <div class="setLbl"><img class="ico" src="icons/music.png" alt=""><span data-i18n="set.music">เพลง</span></div>
+        <div class="setCtl"><input type="range" id="volMusic" min="0" max="100" step="5"><button id="tglMusic" class="switch" role="switch"></button></div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl"><img class="ico" src="icons/sound.png" alt=""><span data-i18n="set.sfx">เสียงเอฟเฟกต์</span></div>
+        <div class="setCtl"><input type="range" id="volSfx" min="0" max="100" step="5"><button id="tglSfx" class="switch" role="switch"></button></div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl"><img class="ico" src="icons/quality.png" alt=""><span data-i18n="set.graphics">กราฟิก</span></div>
+        <div class="setCtl"><div class="segmented" id="segQuality"><button class="seg" data-q="high" data-i18n="set.high">สูง</button><button class="seg" data-q="low" data-i18n="set.low">ประหยัด</button></div></div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl"><img class="ico" src="icons/sparkle.png" alt=""><span data-i18n="set.lang">ภาษา</span></div>
+        <div class="setCtl"><div class="segmented" id="segLang"><button class="seg" data-lang="th">ไทย</button><button class="seg" data-lang="en">English</button></div></div>
+      </div>
+      <div class="setRow">
+        <div class="setLbl"><img class="ico" src="icons/fullscreen.png" alt=""><span data-i18n="set.full">เต็มจอ</span></div>
+        <div class="setCtl"><button id="tglFull" class="switch" role="switch"></button></div>
+      </div>
+      <button id="btnSetHelp" class="gameBtn small setHelp"><img class="ico" src="icons/scroll.png" alt=""><span data-i18n="menu.howto">วิธีเล่น</span></button>
+    </div>
   </div>
 
   <!-- วิธีเล่น -->

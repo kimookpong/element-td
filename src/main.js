@@ -21,8 +21,6 @@ const towerIcon = (type) => (BASIC[type] ? BASIC[type].icon : 't_' + type);
 const comboIcon = (els) => 't_' + els.slice().sort().join('_');
 const towerPortrait = (t) => (t.kind === 'basic' ? BASIC[t.base].icon : comboIcon(t.elements));
 
-let showSigns = true;
-try { showSigns = localStorage.getItem('etd_signs') !== '0'; } catch (e) { /* ignore */ }
 
 const view = {
   game: null,
@@ -35,7 +33,6 @@ const view = {
   speed: 1,
   mapIndex: 0,
   diffKey: 'normal',
-  showSigns,
 };
 
 let renderer;
@@ -236,7 +233,7 @@ function refreshAll() {
 /* ---------------- HUD ---------------- */
 const ui = {
   gold: $('gold'), lives: $('lives'), wave: $('wave'), waveTotal: $('waveTotal'), points: $('points'),
-  pause: $('btnPause'), speed: $('btnSpeed'), mute: $('btnMute'), quality: $('btnQuality'), signs: $('btnSigns'),
+  pause: $('btnPause'), speed: $('btnSpeed'), 
   info: $('infoPanel'), card: $('infoCard'), build: $('buildGrid'), elems: $('elemGrid'),
   timer: $('waveTimer'), next: $('waveNext'), pop: $('wavePop'), toast: $('toast'),
 };
@@ -597,6 +594,7 @@ function cancelAll() {
 }
 
 document.addEventListener('keydown', (ev) => {
+  if ($('settings').classList.contains('show')) { if (ev.key === 'Escape') closeSettings(); return; }
   if (!view.game || view.menu) return;
   const k = ev.key.toLowerCase();
   if (k >= '1' && k <= '8') { selectBuild(BUILD_TYPES[Number(k) - 1]); return; }
@@ -610,8 +608,8 @@ document.addEventListener('keydown', (ev) => {
     case 't': if (t) view.game.cycleMode(t); break;
     case 'f': cycleSpeed(); break;
     case 'm': toggleMute(); break;
+    case 'o': openSettings(); break;
     case 'h': openHelp(); break;
-    case 'g': toggleSigns(); break;
     case 'c': renderer.resetCamera(); break;
     case 'z': toggleFullscreen(); break;
     case 'l': toggleLang(); break;
@@ -634,22 +632,12 @@ function togglePause() {
   view.paused = !view.paused;
   updatePauseUI();
 }
-// ปิด/เปิดเสียงทั้งหมด (เอฟเฟกต์ + เพลง)
+// M = ปิด/เปิดเสียงทั้งหมด (เอฟเฟกต์ + เพลง)
 function toggleMute() {
-  const m = Sound.toggle();
+  const m = !(Sound.muted && Music.muted);
+  Sound.setMuted(m);
   Music.setMuted(m);
-  setIcon(ui.mute, m ? 'mute' : 'sound');
-  setIcon($('btnSoundMenu'), m ? 'mute' : 'sound');
-}
-function updateQualityUI() {
-  const high = renderer.quality === 'high';
-  setIcon(ui.quality, high ? 'quality' : 'quality_low');
-  ui.quality.title = high ? T('btn.qHigh') : T('btn.qLow');
-}
-function toggleSigns() {
-  view.showSigns = !view.showSigns;
-  ui.signs.classList.toggle('on', view.showSigns);
-  try { localStorage.setItem('etd_signs', view.showSigns ? '1' : '0'); } catch (e) { /* ignore */ }
+  updateSettingsUI();
 }
 function toggleFullscreen() {
   const el = document.documentElement;
@@ -663,24 +651,50 @@ function toggleFullscreen() {
 
 ui.pause.addEventListener('click', togglePause);
 ui.speed.addEventListener('click', cycleSpeed);
-ui.mute.addEventListener('click', toggleMute);
-setIcon(ui.mute, Sound.muted ? 'mute' : 'sound');
-setIcon($('btnSoundMenu'), Sound.muted ? 'mute' : 'sound');
-$('btnSoundMenu').addEventListener('click', toggleMute);
-Music.setMuted(Sound.muted);
 Music.play('menu');
 // นโยบาย autoplay: เริ่มเพลงเมื่อผู้ใช้แตะ/กดปุ่มครั้งแรก
 for (const evName of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(evName, () => { Sound.unlock(); Music.unlock(); }, { passive: true });
-ui.quality.addEventListener('click', () => { renderer.setQuality(renderer.quality === 'high' ? 'low' : 'high'); updateQualityUI(); });
-updateQualityUI();
-ui.signs.addEventListener('click', toggleSigns);
-ui.signs.classList.toggle('on', view.showSigns);
 $('btnCamera').addEventListener('click', () => renderer.resetCamera());
-$('btnHelp').addEventListener('click', openHelp);
-$('btnFull').addEventListener('click', toggleFullscreen);
+
+/* ---------------- หน้าตั้งค่า ---------------- */
+let pausedBySettings = false;
+function openSettings() {
+  if (view.game && !view.menu && !view.paused) { view.paused = true; pausedBySettings = true; updatePauseUI(); }
+  updateSettingsUI();
+  $('settings').classList.add('show');
+}
+function closeSettings() {
+  $('settings').classList.remove('show');
+  if (pausedBySettings) { view.paused = false; pausedBySettings = false; updatePauseUI(); }
+}
+function updateSettingsUI() {
+  const sw = (id, on) => { const b = $(id); b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); };
+  sw('tglMusic', !Music.muted);
+  sw('tglSfx', !Sound.muted);
+  sw('tglFull', !!document.fullscreenElement);
+  $('volMusic').value = Math.round(Music.volume * 100);
+  $('volSfx').value = Math.round(Sound.volume * 100);
+  $('volMusic').disabled = Music.muted;
+  $('volSfx').disabled = Sound.muted;
+  for (const b of document.querySelectorAll('#segQuality .seg')) b.classList.toggle('on', b.dataset.q === renderer.quality);
+  for (const b of document.querySelectorAll('#segLang .seg')) b.classList.toggle('on', b.dataset.lang === getLang());
+}
+$('btnSettings').addEventListener('click', openSettings);
+$('btnSettingsMenu').addEventListener('click', () => { Sound.unlock(); openSettings(); });
+$('btnCloseSettings').addEventListener('click', closeSettings);
+$('settings').addEventListener('click', (ev) => { if (ev.target.id === 'settings') closeSettings(); });
+$('tglMusic').addEventListener('click', () => { Music.setMuted(!Music.muted); updateSettingsUI(); });
+$('tglSfx').addEventListener('click', () => { Sound.setMuted(!Sound.muted); if (!Sound.muted) { Sound.unlock(); Sound.play('build'); } updateSettingsUI(); });
+$('volMusic').addEventListener('input', (ev) => Music.setVolume(ev.target.value / 100));
+$('volSfx').addEventListener('input', (ev) => Sound.setVolume(ev.target.value / 100));
+$('volSfx').addEventListener('change', () => { Sound.unlock(); Sound.play('build'); });
+for (const b of document.querySelectorAll('#segQuality .seg')) b.addEventListener('click', () => { renderer.setQuality(b.dataset.q); updateSettingsUI(); });
+for (const b of document.querySelectorAll('#segLang .seg')) b.addEventListener('click', () => { if (b.dataset.lang !== getLang()) toggleLang(); updateSettingsUI(); });
+$('tglFull').addEventListener('click', toggleFullscreen);
+$('btnSetHelp').addEventListener('click', () => { closeSettings(); openHelp(); });
 $('infoClose').addEventListener('click', cancelAll);
 document.addEventListener('fullscreenchange', () => {
-  setIcon($('btnFull'), document.fullscreenElement ? 'fullscreen_exit' : 'fullscreen');
+  updateSettingsUI();
   setTimeout(updateLayout, 60);
 });
 
@@ -853,9 +867,8 @@ function applyLang() {
   for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = T(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-title]')) el.title = T(el.dataset.i18nTitle);
   for (const el of document.querySelectorAll('#langLbl, .langLbl')) el.textContent = L === 'th' ? 'EN' : 'TH';
-  for (const b of document.querySelectorAll('#langSwitch button')) b.classList.toggle('on', b.dataset.lang === L);
   updatePauseUI();
-  updateQualityUI();
+  updateSettingsUI();
   renderHelp();
   renderMenu();
   if (view.game) { refreshAll(); renderWaveChip(true); }
@@ -866,8 +879,6 @@ function toggleLang() {
   applyLang();
   showToast(T('toast.lang'), 1000);
 }
-$('btnLang').addEventListener('click', toggleLang);
-for (const b of document.querySelectorAll('#langSwitch button')) b.addEventListener('click', () => { if (b.dataset.lang !== getLang()) toggleLang(); });
 
 /* ---------------- เริ่มต้น ---------------- */
 applyLang();
