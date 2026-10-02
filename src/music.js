@@ -7,6 +7,11 @@ const BASE = `${import.meta.env.BASE_URL}music/`;
 
 export const TRACKS = {
   menu: { file: 'main-theme.mp3', vol: 0.5 },
+  // เพลงประจำแผนที่ (เบากว่าเล็กน้อย ให้ได้ยินเสียงเอฟเฟกต์ชัด)
+  meadow: { file: 'meadow.mp3', vol: 0.42 },
+  ruins: { file: 'ruins.mp3', vol: 0.42 },
+  canyon: { file: 'canyon.mp3', vol: 0.42 },
+  spiral: { file: 'spiral.mp3', vol: 0.42 },
   boss: { file: 'boss-dragon.mp3', vol: 0.5 },
   guardian: { file: 'guardian.mp3', vol: 0.5 },
   victory: { file: 'victory.mp3', vol: 0.55, loop: false },

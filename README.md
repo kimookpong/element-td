@@ -147,7 +147,9 @@ src/music.js       เพลงประกอบ (วนซ้ำ + เฟด�
 public/music/      ไฟล์เพลง: main-theme.mp3 (หน้าจอเริ่มเกม "Six Elements Rise"),
                    guardian.mp3 (ภูตพิทักษ์ธาตุ "Guardian of the Elements"),
                    boss-dragon.mp3 (มังกรโบราณ "Wrath of the Ancient Dragon"),
-                   victory.mp3 ("Victory of Six Elements"), defeat.mp3 ("The Core Has Fallen")
+                   victory.mp3 ("Victory of Six Elements"), defeat.mp3 ("The Core Has Fallen"),
+                   เพลงแผนที่: meadow.mp3 ("Meadow Maze"), ruins.mp3 ("Sands of the Sphinx"),
+                   canyon.mp3 ("Winding Canyon"), spiral.mp3 ("Abyss Spiral")
 src/style.css      สไตล์ UI แฟนตาซี
 src/icons.js       ตัวช่วยไอคอน PNG (แทน emoji ทั้งหมด)
 public/icons/      ไอคอน PNG ที่สร้างด้วยโค้ด
