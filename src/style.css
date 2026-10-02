@@ -125,11 +125,11 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   border-radius: 20px; background: var(--glass); border: 1px solid var(--goldDark); cursor: default; outline: none;
 }
 #waveChip .timer { display: flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; }
-#waveChip .timer .ico { width: 22px; height: 22px; }
 #waveChip .timer.soon { color: #ffb05a; }
 #waveChip .next { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: .88rem; border-left: 1px solid var(--line); padding-left: 8px; }
 #waveChip .next .ico { width: 24px; height: 24px; }
-#waveChip .next .boss { color: #ff7a7a; font-weight: 700; }
+#waveChip .next .nextIco { width: 14px; height: 14px; opacity: .7; }
+#waveChip .next.boss .ico:last-child { filter: drop-shadow(0 0 5px #ff4a4a); }
 #waveChip .next .muted { color: var(--muted); font-size: .76rem; margin-right: 2px; }
 #waveChip .pop {
   display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); width: 280px;
@@ -293,7 +293,6 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
   .controls .iconBtn { flex: 1; min-width: 0; height: 32px; padding: 2px; }
   #btnCamera, #btnQuality { display: none; }
   #waveChip { order: 2; height: 30px; padding: 0 8px 0 4px; font-size: .8rem; }
-  #waveChip .next span.txt { display: none; }
   #dock { left: 6px; right: 6px; transform: none; max-width: none; bottom: 6px; padding: 4px 6px 6px; gap: 6px; }
   /* มือถือ: แถวบนธาตุ แถวล่างป้อม (เลื่อนซ้ายขวาได้) */
   #dock { flex-direction: column; gap: 4px; overflow: hidden; }

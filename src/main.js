@@ -296,8 +296,8 @@ function refreshAffordability() {
 }
 
 /* ---------------- เวลาเวฟ ---------------- */
-// เลขเวฟพร้อมจำนวนเวฟทั้งหมด เช่น 12/100 (โหมดไม่รู้จบแสดงแค่เลขเวฟ)
-const waveNo = (g, n) => (g.endless ? String(n) : `${n}/${TOTAL_WAVES}`);
+// เลขเวฟแบบสั้น (แสดงเป็น W12)
+const waveNo = (g, n) => String(n);
 function renderWaveChip(force) {
   const g = view.game;
   if (!g) return;
@@ -319,7 +319,10 @@ function renderWaveChip(force) {
   const a = ABILITIES[w.ability];
   const hp = Math.round(a.hp * w.hpScale);
   const weak = Object.keys(BEATS).filter((k) => BEATS[k] === w.element);
-  ui.next.innerHTML = `${g.wave > 0 ? `<span class="muted">${T('wave.upcoming')}</span>` : ""}${ico(e.icon)}${ico(a.icon)}<span class="txt">${w.ability === 'boss' ? `<span class="boss">${T('wave.boss')}</span>` : tr(a, 'creature')}</span> ×${w.count}`;
+  // เวฟถัดไป: ไอคอนลูกศร + ธาตุ + มอนสเตอร์ (ชื่อและจำนวนดูได้ในป๊อปอัปเมื่อชี้)
+  ui.next.innerHTML = `${ico('play', 'nextIco')}${ico(e.icon)}${ico(a.icon)}`;
+  ui.next.classList.toggle('boss', w.ability === 'boss');
+  ui.next.title = `${T('wave.upcoming')}: ${tr(a, 'creature')} ×${w.count}`;
   ui.pop.innerHTML = `
     <div class="row">${ico(a.icon)}<div><b>${T('wave.popTitle', { n: w.n, creature: tr(a, 'creature') })}</b><br><span class="muted">${T('wave.popEl')}</span><b style="color:${e.color}"> ${elName(e)}</b> · ${tr(a, 'th')} · ×${w.count}</div></div>
     <div>${ico('heart')} ${T('wave.hp', { hp: hp.toLocaleString() })} · ${ico('speed')} ${T('mon.speed', { n: a.speed })} · ${ico('shield')} ${T('mon.def', { n: a.def || 0 })}</div>
