@@ -97,6 +97,8 @@ function newGame() {
   showToast(T('toast.mapStart', { map: tr(MAPS[view.mapIndex], 'name') }) + (homeEl ? `<br><small>${T('map.homeToast', { icon: ico(ELEMENTS[homeEl].icon), el: elName(ELEMENTS[homeEl]) })}</small>` : ''), 3200);
 }
 
+let endShown = false; // หน้าจอจบเกมกำลังแสดง (เล่นเพลงชนะ/แพ้อยู่)
+
 function startWithGame(game) {
   view.game = game;
   view.selectedBuild = null;
@@ -104,6 +106,7 @@ function startWithGame(game) {
   view.paused = false;
   view.menu = false;
   document.body.classList.remove('menuOpen');
+  endShown = false;
   Music.play(MAPS[game.mapIndex].id);
   view.speed = 1;
   view.hoverCheck = null;
@@ -167,6 +170,22 @@ function showMenuPage(page) {
   renderMenu();
 }
 
+/* ---------------- เพลงระหว่างเล่น ----------------
+ * มังกรโบราณอยู่ในสนาม → เพลงบอส · ภูตพิทักษ์ธาตุอยู่ในสนาม → เพลงภูต · นอกนั้นเพลงของแผนที่
+ * (หน้าจอจบเกมเล่นเพลงชนะ/แพ้เอง) */
+function updateBattleMusic(g) {
+  if (endShown || g.over || view.menu) return;
+  let track = MAPS[g.mapIndex].id;
+  let guardian = false;
+  for (const e of g.creeps) {
+    if (!e.alive) continue;
+    if (e.ability === 'boss') { track = 'boss'; guardian = false; break; }
+    if (e.ability === 'elemental') guardian = true;
+  }
+  if (guardian) track = 'guardian';
+  Music.play(track);
+}
+
 /* ---------------- ลูปหลัก ---------------- */
 let last = performance.now();
 function frame(now) {
@@ -182,7 +201,7 @@ function frame(now) {
       remaining -= step;
     }
   }
-  if (g) processEvents(g);
+  if (g) { processEvents(g); updateBattleMusic(g); }
   renderer.frame(view.paused ? 0 : realDt, view);
   if (g) updateHud(false);
   requestAnimationFrame(frame);
@@ -728,6 +747,7 @@ function hideOverlays() {
 }
 
 function showEnd(won) {
+  endShown = true;
   Music.play(won ? 'victory' : 'defeat');
   const g = view.game;
   if (!g) return;
@@ -741,6 +761,7 @@ function showEnd(won) {
 
 $('btnContinue').addEventListener('click', () => {
   view.game.continueEndless();
+  endShown = false;
   view.paused = false;
   updatePauseUI();
   $('endScreen').classList.remove('show');

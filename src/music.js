@@ -1,12 +1,16 @@
 /* ============================================================
  *  เพลงประกอบ (ไฟล์ใน public/music) — เล่นวนซ้ำ เฟดข้ามเพลง
  *  เพิ่มเพลงใหม่: ใส่ไฟล์ใน public/music แล้วเพิ่มชื่อใน TRACKS
- *  ชื่อเพลงที่เกมเรียกใช้: menu · <id แผนที่> (meadow/ruins/canyon/spiral) · boss · victory · defeat
+ *  ชื่อเพลงที่เกมเรียกใช้: menu · <id แผนที่> · boss (มังกรโบราณ) · guardian (ภูตพิทักษ์ธาตุ) · victory · defeat
  * ============================================================ */
 const BASE = `${import.meta.env.BASE_URL}music/`;
 
 export const TRACKS = {
   menu: { file: 'main-theme.mp3', vol: 0.5 },
+  boss: { file: 'boss-dragon.mp3', vol: 0.5 },
+  guardian: { file: 'guardian.mp3', vol: 0.5 },
+  victory: { file: 'victory.mp3', vol: 0.55, loop: false },
+  defeat: { file: 'defeat.mp3', vol: 0.55, loop: false },
 };
 
 export const Music = (() => {
