@@ -6,13 +6,15 @@
 import * as THREE from 'three';
 import { ELEMENTS, BASIC } from './data.js';
 import { std, glow } from './gfx.js';
-import { brickTexture, runeTexture } from './textures.js';
+import { brickTexture } from './textures.js';
 import { Rig, G, xf } from './modelkit.js';
 import { ELEMENT_HEADS } from './towerHeads.js';
 
 const PI = Math.PI;
 const SHADOW_ROLES = new Set(['stone', 'stoneDark', 'marble', 'wood', 'roof', 'iron', 'rock', 'bronze', 'thatch', 'brick', 'copper', 'obsidian', 'sand', 'bone']);
-const TIER_SCALE = [0.8, 0.93, 1.08];
+const TIER_SCALE = [1.0, 1.06, 1.14];
+// หัวป้อมระดับต้นขยายใหญ่ขึ้น ให้ดูสมน้ำสมเนื้อกับมอนสเตอร์
+const HEAD_SCALE = [1.3, 1.15, 1.0];
 
 /* ---------------- วัสดุตาม role ---------------- */
 const FIXED = {
@@ -255,11 +257,8 @@ function buildTemplate(t) {
   const style = t.kind === 'basic' ? t.base : t.elements.slice().sort().join('+');
   const meta = HEADS[style].build(rig, head, T);
   const n = t.kind === 'basic' ? 0 : t.elements.length;
-  const extraH = meta.height || { 1: 0.45, 2: 0.6, 3: 0.85 }[T];
-  if (n >= 2) {
-    // วงแหวนธาตุเสริมรอบฐาน บอกว่าเป็นป้อมผสม
-    t.elements.forEach((e, i) => rig.add(rig.root, 'glow:' + ELEMENTS[e].color, G.torus(0.5 + i * 0.045, 0.01, { y: top * 0.5 + 0.03 + i * 0.035, rx: PI / 2 })));
-  }
+  head.scale.setScalar(HEAD_SCALE[T - 1]);
+  const extraH = (meta.height || { 1: 0.45, 2: 0.6, 3: 0.85 }[T]) * HEAD_SCALE[T - 1];
   const root = rig.finalize();
   root.traverse((o) => {
     if (o.isMesh) {
@@ -269,13 +268,6 @@ function buildTemplate(t) {
       o.receiveShadow = !role.startsWith('glow:') && role !== 'waterSheet';
     }
   });
-  if (t.kind !== 'basic') {
-    const rune = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.66), new THREE.MeshBasicMaterial({ map: runeTexture(), color: new THREE.Color(cols[0]).multiplyScalar(0.9), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
-    rune.name = 'rune';
-    rune.rotation.x = -PI / 2;
-    rune.position.y = top + 0.003;
-    root.add(rune);
-  }
   root.scale.setScalar(TIER_SCALE[T - 1]);
   const wrap = new THREE.Group();
   wrap.add(root);
@@ -300,7 +292,6 @@ export function buildTowerModel(t) {
   if (B.drops) bob('drops', B.drops.position.y, 0.04, 2.3);
   if (B.orbit) bob('orbit', B.orbit.position.y, 0.04, 2);
   if (B.embers) bob('embers', B.embers.position.y, 0.05, 2);
-  if (B.rune) anims.push((tt) => { B.rune.rotation.z = tt * 0.4; });
   if (B.padOrbs) anims.push((tt) => { B.padOrbs.rotation.y = tt * 0.8; B.padOrbs.position.y = Math.sin(tt * 2) * 0.03; });
   const aimTarget = (tpl.aim && B[tpl.aim]) || new THREE.Group();
   return { group, head: B.head, model: B.model, aim: aimTarget, anims, height: tpl.height };

@@ -608,20 +608,12 @@ export function buildCreatureModel(e) {
     if (o.isMesh) o.material = o.userData.role === 'body' ? body : shared[o.userData.role] || shared.body;
   });
   const st = { phase: Math.random() * 6, legs: (info.legs || []).map((l) => ({ hip: B[l.hip], knee: B[l.knee], off: l.off, back: l.back })) };
-  const scale = (e.size / 12) * (model === 'dragon' ? 1.05 : 1.1);
+  const scale = (e.size / 12) * (model === 'dragon' ? 0.88 : 0.86);
   const group = new THREE.Group();
   inst.scale.setScalar(scale);
   group.add(inst);
   const def = DEFS[model];
-  let anim = (dt, t, mv) => def.anim(B, st, dt, t, mv, info, e.ability === 'fast');
-  if (e.boss) {
-    const aura = new THREE.Mesh(new THREE.TorusGeometry(1, 0.035, 6, 48), shared.glow);
-    aura.rotation.x = PI / 2;
-    aura.position.y = 0.06;
-    group.add(aura);
-    const prev = anim;
-    anim = (dt, t, mv) => { prev(dt, t, mv); aura.rotation.z = t; aura.scale.setScalar(scale * (0.6 + Math.sin(t * 3) * 0.03)); };
-  }
+  const anim = (dt, t, mv) => def.anim(B, st, dt, t, mv, info, e.ability === 'fast');
   return { group, anim, mats: [body], body, height: info.height * scale, scale, model };
 }
 

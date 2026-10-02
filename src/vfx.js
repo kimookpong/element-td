@@ -25,16 +25,17 @@ function zoneTexture(kind) {
     g.fillStyle = gr;
     g.beginPath(); g.arc(x, y, r, 0, PI * 2); g.fill();
   };
-  const base = (inner, outer) => {
-    const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, inner);
-    gr.addColorStop(0.75, outer);
-    gr.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = gr;
-    g.fillRect(0, 0, S, S);
-  };
   let rnd = 7;
   const r = () => ((rnd = (rnd * 16807) % 2147483647) / 2147483647);
+  // แอ่งรูปทรงอิสระ: ก้อนนุ่มหลายก้อนซ้อนกัน ขอบไม่เป็นวงกลม ไม่มีเส้นขอบ
+  const base = (inner, outer) => {
+    const lobes = 9;
+    for (let i = 0; i < lobes; i++) {
+      const a = (i / lobes) * PI * 2 + r() * 0.6, d = 14 + r() * 18;
+      blob(64 + Math.cos(a) * d, 64 + Math.sin(a) * d * 0.85, 20 + r() * 14, outer);
+    }
+    blob(64, 64, 40, inner);
+  };
   if (kind === 'lava') {
     base('rgba(255,170,40,1)', 'rgba(200,40,10,0.9)');
     for (let i = 0; i < 18; i++) {
@@ -52,20 +53,16 @@ function zoneTexture(kind) {
       blob(64 + Math.cos(a) * d, 64 + Math.sin(a) * d, 3 + r() * 9, r() < 0.5 ? 'rgba(40,26,14,0.8)' : 'rgba(130,96,56,0.6)');
     }
   } else {
-    // abyss / void: เกลียวหมุน
-    base(kind === 'void' ? 'rgba(10,0,20,1)' : 'rgba(20,6,40,1)', kind === 'void' ? 'rgba(60,10,110,0.9)' : 'rgba(70,20,120,0.85)');
-    g.lineCap = 'round';
-    for (let k = 0; k < 4; k++) {
-      g.strokeStyle = kind === 'void' ? 'rgba(200,120,255,0.85)' : 'rgba(170,90,255,0.75)';
-      g.lineWidth = 3;
-      g.beginPath();
-      for (let i = 0; i <= 40; i++) {
-        const a = (i / 40) * PI * 2.2 + (k * PI) / 2;
-        const d = 4 + i * 1.3;
-        const x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d;
-        if (i) g.lineTo(x, y); else g.moveTo(x, y);
-      }
-      g.stroke();
+    // abyss / void: แอ่งมืดรูปทรงอิสระ มีจุดประกายสีม่วง
+    const dark = kind === 'void';
+    base(dark ? 'rgba(12,0,24,1)' : 'rgba(26,8,48,1)', dark ? 'rgba(70,14,120,0.85)' : 'rgba(80,24,130,0.8)');
+    for (let i = 0; i < 14; i++) {
+      const a = r() * PI * 2, d = r() * 40;
+      blob(64 + Math.cos(a) * d, 64 + Math.sin(a) * d, 5 + r() * 9, 'rgba(8,0,16,0.8)');
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = r() * PI * 2, d = r() * 42;
+      blob(64 + Math.cos(a) * d, 64 + Math.sin(a) * d, 2 + r() * 4, dark ? 'rgba(220,160,255,0.9)' : 'rgba(180,110,255,0.85)');
     }
   }
   const t = new THREE.CanvasTexture(c);
@@ -94,10 +91,10 @@ function stripeTexture() {
 }
 
 const ZONE_STYLE = {
-  lava: { edge: '#ff8a2a', particle: ['#ff6a1e', '#ffcf4a'], blend: THREE.NormalBlending, glowK: 1.4 },
-  mud: { edge: '#a87a44', particle: ['#a87a44', '#6a4a2a'], blend: THREE.NormalBlending, glowK: 1 },
-  abyss: { edge: '#b070ff', particle: ['#9a4dff', '#d6b3ff'], blend: THREE.NormalBlending, glowK: 1.2 },
-  void: { edge: '#c890ff', particle: ['#b070ff', '#ffffff'], blend: THREE.NormalBlending, glowK: 1.2 },
+  lava: { particle: ['#ff6a1e', '#ffcf4a'], blend: THREE.NormalBlending, glowK: 1.4 },
+  mud: { particle: ['#a87a44', '#6a4a2a'], blend: THREE.NormalBlending, glowK: 1 },
+  abyss: { particle: ['#9a4dff', '#d6b3ff'], blend: THREE.NormalBlending, glowK: 1.2 },
+  void: { particle: ['#b070ff', '#ffffff'], blend: THREE.NormalBlending, glowK: 1.2 },
 };
 
 export function installVfx(R) {
@@ -164,7 +161,6 @@ export function installVfx(R) {
     }
     if (ev.style === 'sun') {
       // ลำแสงชาร์จ: วาบที่ป้อมและแสงพุ่งที่เป้า
-      this.addRing(b.x, b.y - 0.3, b.z, 0.7, '#fff2a0', 0.4);
       P2.burst(b.x, b.y, b.z, '#fff6c0', 18, 2.6, 0.18, -3);
       P2.burst(a.x, a.y, a.z, '#ffe35a', 10, 1.4, 0.16, 0);
       this.addSegment(new THREE.Vector3(b.x, b.y + 6, b.z), b, ['#fff2a0'], ev.width * 0.6, 0.3);
@@ -186,8 +182,6 @@ export function installVfx(R) {
   P.addPulse = function (ev) {
     const t = ev.tower;
     const y = this.tileGround(t.c, t.r);
-    this.addRing(wx(ev.x), y + 0.08, wz(ev.y), ev.r / TILE, '#ffe35a', 0.6);
-    this.addRing(wx(ev.x), y + 0.12, wz(ev.y), (ev.r / TILE) * 0.7, '#fff6c0', 0.45);
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * PI * 2;
       this.particles.emit(wx(ev.x), y + 0.3, wz(ev.y), Math.cos(a) * 4.5, rand(0.2, 0.8), Math.sin(a) * 4.5, '#ffe35a', 0.55, 0.16, 0, y);
@@ -216,7 +210,6 @@ export function installVfx(R) {
 
   P.addGust = function (ev) {
     const y = this.groundAt(ev.x, ev.y);
-    this.addRing(wx(ev.x), y + 0.1, wz(ev.y), ev.r / TILE, '#b6ffe3', 0.5);
     for (let i = 0; i < 30; i++) {
       const a = Math.random() * PI * 2;
       this.particles.emit(wx(ev.x) + Math.cos(a) * 0.3, y + rand(0.2, 0.8), wz(ev.y) + Math.sin(a) * 0.3, Math.cos(a) * 5, 0.3, Math.sin(a) * 5, '#b6ffe3', 0.5, 0.12, 0);
@@ -225,15 +218,12 @@ export function installVfx(R) {
 
   P.addShatter = function (ev) {
     const c = this.vpt(ev.x, ev.y, ev.fly, 0.3);
-    this.addRing(c.x, c.y - 0.25, c.z, ev.r / TILE, '#bff4ff', 0.45);
     this.particles.burst(c.x, c.y, c.z, '#ffffff', 26, 4, 0.18, -6);
     this.particles.burst(c.x, c.y, c.z, '#8fdcff', 20, 3, 0.15, -6);
   };
 
   P.addEclipse = function (ev) {
     const c = this.vpt(ev.x, ev.y, ev.fly, 0.4);
-    this.addRing(c.x, c.y - 0.3, c.z, 1.1, '#8a3dff', 0.5);
-    this.addRing(c.x, c.y - 0.28, c.z, 0.8, '#ffd34a', 0.4);
     this.particles.burst(c.x, c.y, c.z, '#c890ff', 24, 3, 0.18, -2);
     this.particles.burst(c.x, c.y, c.z, '#ffd34a', 10, 2, 0.14, -2);
   };
@@ -253,36 +243,26 @@ export function installVfx(R) {
       const st = ZONE_STYLE[z.kind];
       if (!v) {
         const g = new THREE.Group();
-        const disc = new THREE.Mesh(geo('zoneDisc', () => new THREE.CircleGeometry(1, 40)),
+        const disc = new THREE.Mesh(geo('zoneDisc', () => new THREE.PlaneGeometry(2, 2)),
           new THREE.MeshBasicMaterial({ map: zoneTexture(z.kind), transparent: true, depthWrite: false, blending: st.blend, color: new THREE.Color(1, 1, 1).multiplyScalar(st.glowK) }));
         disc.rotation.x = -PI / 2;
-        const edge = new THREE.Mesh(geo('zoneEdge', () => new THREE.RingGeometry(0.92, 1, 48)), add(st.edge, 1.4));
-        edge.rotation.x = -PI / 2;
-        edge.position.y = 0.005;
-        g.add(disc, edge);
+        g.add(disc);
         if (z.kind === 'void') {
           const core = new THREE.Mesh(geo('voidCore', () => new THREE.SphereGeometry(0.12, 16, 12)), new THREE.MeshBasicMaterial({ color: 0x050008 }));
           core.position.y = 0.45;
-          const rim = new THREE.Mesh(geo('voidRim', () => new THREE.TorusGeometry(0.17, 0.02, 8, 32)), add('#c890ff', 2));
-          rim.position.y = 0.45;
-          rim.rotation.x = PI / 2;
-          g.add(core, rim);
-          g.userData.rim = rim;
+          g.add(core);
         }
         disc.renderOrder = 2;
-        edge.renderOrder = 3;
         const R = z.r / TILE;
         g.scale.set(R, 1, R);
         g.position.set(wx(z.x), this.groundAt(z.x, z.y) + 0.035, wz(z.y));
         this.dynamic.add(g);
-        v = { g, disc, edge, R };
+        v = { g, disc, R };
         this.zoneViews.set(z.id, v);
       }
       const k = Math.min(1, z.t / 0.4, (z.dur - z.t) / 0.25 + 0.2);
       v.disc.material.opacity = (z.kind === 'mud' ? 0.92 : 0.85) * k;
-      v.edge.material.opacity = 0.7 * k;
       v.disc.rotation.z += dt * (z.kind === 'void' ? 3 : z.kind === 'abyss' ? 1 : 0.15);
-      if (v.g.userData.rim) v.g.userData.rim.rotation.y += dt * 4;
       const pos = v.g.position;
       if (Math.random() < dt * (z.kind === 'void' ? 30 : 14) * v.R) {
         const a = Math.random() * PI * 2, d = Math.random() * v.R;
@@ -299,7 +279,6 @@ export function installVfx(R) {
       if (!seen.has(id)) {
         this.dynamic.remove(v.g);
         v.disc.material.dispose();
-        v.edge.material.dispose();
         this.zoneViews.delete(id);
       }
     }
@@ -360,13 +339,8 @@ export function installVfx(R) {
       let v = this.delayViews.get(d.id);
       const gy = this.groundAt(d.x, d.y);
       if (!v) {
-        const marker = new THREE.Mesh(geo('fxRing', () => new THREE.RingGeometry(0.82, 1, 48)), add(d.kind === 'erupt' ? '#ff5a1e' : '#ff9a4a', 1.5));
-        marker.rotation.x = -PI / 2;
-        marker.position.set(wx(d.x), gy + 0.05, wz(d.y));
         const s = d.kind === 'erupt' ? d.tower.stats.erupt.r / TILE : (d.big ? d.tower.stats.meteor.mainR : d.tower.stats.meteor.r) / TILE;
-        marker.scale.setScalar(s);
-        this.dynamic.add(marker);
-        v = { marker, s };
+        v = { s };
         if (d.kind === 'meteor') {
           const rock = new THREE.Group();
           rock.add(new THREE.Mesh(geo('meteorRock', () => new THREE.DodecahedronGeometry(1, 0)), new THREE.MeshStandardMaterial({ color: 0x3a2a20, emissive: 0xff4a10, emissiveIntensity: 0.9, flatShading: true })));
@@ -377,7 +351,6 @@ export function installVfx(R) {
         this.delayViews.set(d.id, v);
       }
       const k = 1 - Math.max(0, d.t) / d.total;
-      v.marker.material.opacity = 0.35 + 0.5 * Math.abs(Math.sin(this.time * (6 + k * 14)));
       if (v.rock) {
         const h = (1 - k) * 7;
         v.rock.position.set(wx(d.x) - (1 - k) * 2.2, gy + 0.2 + h, wz(d.y) - (1 - k) * 1.2);
@@ -390,8 +363,6 @@ export function installVfx(R) {
     }
     for (const [id, v] of this.delayViews) {
       if (!seen.has(id)) {
-        this.dynamic.remove(v.marker);
-        v.marker.material.dispose();
         if (v.rock) { this.dynamic.remove(v.rock); v.rock.children[0].material.dispose(); }
         this.delayViews.delete(id);
       }
@@ -401,7 +372,7 @@ export function installVfx(R) {
   P.clearVfx = function () {
     for (const m of [this.zoneViews, this.moverViews, this.delayViews]) {
       if (!m) continue;
-      for (const v of m.values()) { for (const o of [v.g, v.marker, v.rock]) if (o) this.dynamic.remove(o); }
+      for (const v of m.values()) { for (const o of [v.g, v.rock]) if (o) this.dynamic.remove(o); }
       m.clear();
     }
   };

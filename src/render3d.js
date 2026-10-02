@@ -220,10 +220,6 @@ export class Renderer3D {
     this.hoverTile.visible = false;
     h.add(this.hoverTile);
 
-    this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.64, 4, 1, Math.PI / 4), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffe680).multiplyScalar(2), transparent: true, opacity: 0.95, depthWrite: false }));
-    this.selRing.rotation.x = -Math.PI / 2;
-    this.selRing.visible = false;
-    h.add(this.selRing);
 
     // ลูกศรแสดงเส้นทางของมอนสเตอร์
     const shape = new THREE.Shape();
@@ -404,23 +400,18 @@ export class Renderer3D {
         const t = ev.tower;
         const y = this.tileGround(t.c, t.r);
         P.burst(wx(t.x), y + 0.2, wz(t.y), t.kind === 'basic' ? '#ffe0a0' : ELEMENTS[t.elements[0]].color, 30, 2.5, 0.16, -5, y);
-        this.addRing(wx(t.x), y + 0.05, wz(t.y), 0.8, '#ffffff', 0.4);
         break;
       }
       case 'upgrade': {
         const t = ev.tower;
         const y = this.tileGround(t.c, t.r);
-        this.addRing(wx(t.x), y + 0.05, wz(t.y), 1, '#ffe680', 0.5);
         P.burst(wx(t.x), y + 0.5, wz(t.y), '#ffe680', 35, 3, 0.16, -5, y);
         break;
       }
       case 'fuse': {
         const t = ev.tower;
         const y = this.tileGround(t.c, t.r);
-        ev.els.forEach((el, i) => {
-          P.burst(wx(t.x), y + 0.7, wz(t.y), ELEMENTS[el].color, 45, 4, 0.2, -4, y);
-          this.addRing(wx(t.x), y + 0.06, wz(t.y), 1.4 + i * 0.3, ELEMENTS[el].color, 0.6);
-        });
+        ev.els.forEach((el) => P.burst(wx(t.x), y + 0.7, wz(t.y), ELEMENTS[el].color, 45, 4, 0.2, -4, y));
         for (let i = 0; i < 40; i++) {
           const a = Math.random() * Math.PI * 2;
           P.emit(wx(t.x) + Math.cos(a) * 1.2, y + 0.2, wz(t.y) + Math.sin(a) * 1.2, -Math.cos(a) * 2, rand(1, 2.5), -Math.sin(a) * 2, ELEMENTS[ev.els[i % ev.els.length]].color, 0.6, 0.18, -1, y);
@@ -430,7 +421,6 @@ export class Renderer3D {
       case 'built': {
         const t = ev.tower;
         const y = this.tileGround(t.c, t.r);
-        this.addRing(wx(t.x), y + 0.05, wz(t.y), 0.9, '#fff2c0', 0.45);
         P.burst(wx(t.x), y + 0.4, wz(t.y), t.kind === 'basic' ? '#ffe0a0' : ELEMENTS[t.elements[0]].color, 26, 2.5, 0.15, -4, y);
         break;
       }
@@ -451,13 +441,12 @@ export class Renderer3D {
         const boss = e.boss;
         P.burst(wx(e.x), y + 0.3, wz(e.y), ELEMENTS[e.element].color, boss ? 140 : 26, boss ? 5 : 2.8, boss ? 0.24 : 0.16, -5, FLOOR);
         P.burst(wx(e.x), y + 0.3, wz(e.y), '#ffffff', boss ? 40 : 6, 2, 0.12, -3, FLOOR);
-        if (boss) { this.addRing(wx(e.x), FLOOR + 0.06, wz(e.y), 3, ELEMENTS[e.element].color, 0.8); this.shake = 0.4; }
+        if (boss) this.shake = 0.4;
         break;
       }
       case 'revive': {
         const e = ev.creep;
         P.burst(wx(e.x), this.creepY(e) + 0.3, wz(e.y), '#b6ffb0', 30, 2.2, 0.16, 1);
-        this.addRing(wx(e.x), this.creepY(e) + 0.05, wz(e.y), 0.8, '#b6ffb0', 0.5);
         break;
       }
       case 'hit':
@@ -466,7 +455,6 @@ export class Renderer3D {
       case 'explosion': {
         const y = ev.fly ? FLY_HEIGHT : FLOOR;
         const gy = ev.fly ? y : this.groundAt(ev.x, ev.y);
-        this.addRing(wx(ev.x), gy + 0.06, wz(ev.y), ev.r / TILE, ev.color, ev.big ? 0.5 : 0.35);
         P.burst(wx(ev.x), gy + 0.3, wz(ev.y), ev.color, ev.big ? 40 : 16, ev.big ? 4.5 : 3, ev.big ? 0.26 : 0.2, -5, gy);
         P.burst(wx(ev.x), gy + 0.3, wz(ev.y), '#ffd27a', ev.big ? 18 : 6, 2, 0.14, -5, gy);
         break;
@@ -496,7 +484,6 @@ export class Renderer3D {
         // มอนสเตอร์ที่หลุดวนกลับมาเกิดที่ประตูทางเข้า
         const e = ev.creep;
         P.burst(wx(e.x), this.creepY(e) + 0.4, wz(e.y), '#7ac0ff', 24, 2.2, 0.16, -2);
-        this.addRing(wx(e.x), this.creepY(e) + 0.05, wz(e.y), 0.9, '#7ac0ff', 0.5);
         break;
       }
       case 'leak':
@@ -509,18 +496,6 @@ export class Renderer3D {
       default:
         break;
     }
-  }
-
-  addRing(x, y, z, r, color, life) {
-    const m = new THREE.Mesh(geo('fxRing', () => new THREE.RingGeometry(0.82, 1, 48)),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(1.4), transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
-    m.rotation.x = -Math.PI / 2;
-    m.position.set(x, y, z);
-    this.dynamic.add(m);
-    this.effects.push({
-      obj: m, life, max: life,
-      update(k) { m.scale.setScalar(r * (0.25 + 0.75 * (1 - k))); m.material.opacity = k; },
-    });
   }
 
   addFloater(ev) {
@@ -703,11 +678,9 @@ export class Renderer3D {
       else { mtl.emissive.set(ELEMENTS[e.element].color); mtl.emissiveIntensity = 0.12; }
       const r = v.r;
       const px = g.position.x, pz = g.position.z;
-      this.statusFx(v, 'slow', e.slowT > 0 && e.freezeT <= 0, () => mesh(G.torus(), glow(0x9ad8ff, 2.5), { rx: Math.PI / 2, y: 0.05, s: r + 0.15, shadow: false }));
       this.statusFx(v, 'freeze', e.freezeT > 0, () => mesh(G.ico1(), std(0xcff4ff, { transparent: true, opacity: 0.5, roughness: 0.05, metalness: 0.2, emissive: 0x6ac8ff, emissiveIntensity: 0.5, flatShading: true, depthWrite: false }), { y: v.height * 0.5, s: [Math.max(r * 1.7, 0.3), Math.max(v.height * 0.62, 0.25), Math.max(r * 1.7, 0.3)], shadow: false }));
       const root = this.statusFx(v, 'root', e.rootT > 0, () => {
         const rg = new THREE.Group();
-        for (let i = 0; i < 2; i++) rg.add(mesh(G.torus(), glow(0x7a3dff, 1.8), { rx: Math.PI / 2, y: 0.06 + i * 0.12, s: r + 0.08 - i * 0.03, shadow: false }));
         for (let i = 0; i < 4; i++) {
           const a = (i / 4) * Math.PI * 2;
           rg.add(mesh(G.cyl6(), std(0x1a1024, { metalness: 0.6, roughness: 0.4 }), { x: Math.cos(a) * (r + 0.2), y: 0.1, z: Math.sin(a) * (r + 0.2), rz: Math.cos(a) * 0.9, rx: -Math.sin(a) * 0.9, s: [0.015, 0.32, 0.015], shadow: false }));
@@ -715,8 +688,6 @@ export class Renderer3D {
         return rg;
       });
       if (root && root.visible) root.rotation.y = this.time * 0.8;
-      this.statusFx(v, 'expose', e.exposeT > 0, () => mesh(G.torus(), glow(0xffd34a, 2.6), { rx: Math.PI / 2, y: 0.02, s: r + 0.25, shadow: false }));
-      this.statusFx(v, 'shred', e.shredT > 0, () => mesh(geo('shredRing', () => new THREE.TorusGeometry(1, 0.07, 4, 10)), glow(0xff3a2a, 2.2), { rx: Math.PI / 2, y: 0.03, s: r + 0.2, shadow: false }));
       const marks = this.statusFx(v, 'marks', e.marks > 0 && e.markT > 0, () => {
         const mg = new THREE.Group();
         for (let i = 0; i < 4; i++) {
@@ -744,6 +715,9 @@ export class Renderer3D {
       if (e.soulT > 0) puff(22, ['#ff3aa0', '#9a4dff'], rand(0.8, 1.5), 0.13, 1);
       if (e.corrodeT > 0) puff(14, ['#9a4dff', '#4a1a6a'], rand(0.3, 0.7), 0.12, 0.3);
       if (e.wetT > 0) puff(10, ['#8fd3ff', '#2f8fff'], -0.5, 0.09, -4);
+      if (e.exposeT > 0) puff(12, ['#ffd34a', '#fff2a0'], rand(0.4, 0.9), 0.1, 0.5);
+      if (e.shredT > 0) puff(12, ['#ff3a2a', '#ff8a6a'], rand(0.2, 0.6), 0.1, -1);
+      if (e.slowT > 0 && e.freezeT <= 0) puff(8, ['#9ad8ff', '#dff6ff'], 0.3, 0.09, -0.5);
       if (e.chill > 0 && e.freezeT <= 0) puff(e.chill / 8, ['#dff6ff', '#8fdcff'], 0.2, 0.09, -0.5);
       if (e.ability === 'regen' && Math.random() < dt * 6) {
         this.particles.emit(g.position.x + rand(-0.2, 0.2), baseY + 0.1, g.position.z + rand(-0.2, 0.2), 0, rand(0.5, 1), 0, '#7dff7a', 0.8, 0.12, 0);
@@ -984,16 +958,15 @@ export class Renderer3D {
     const { game, hover, selectedBuild, selectedTower, hoverCheck } = view;
     this.range.visible = false;
     this.hoverTile.visible = false;
-    this.selRing.visible = false;
     for (const g of Object.values(this.ghosts)) g.visible = false;
     if (!game) return;
 
     if (selectedTower) {
       const y = this.tileGround(selectedTower.c, selectedTower.r);
       if (selectedTower.stats.range < 1000) this.showRange(wx(selectedTower.x), y, wz(selectedTower.y), selectedTower.stats.range / TILE, true);
-      this.selRing.visible = true;
-      this.selRing.position.set(wx(selectedTower.x), y + 0.04, wz(selectedTower.y));
-      this.selRing.scale.setScalar(1 + Math.sin(this.time * 5) * 0.04);
+      this.hoverTile.visible = true;
+      this.hoverTile.position.set(wx(selectedTower.x), y + 0.025, wz(selectedTower.y));
+      this.hoverTile.material.color.set(0xffe680);
     }
     if (hover && selectedBuild) {
       const range = BASIC[selectedBuild] ? BASIC[selectedBuild].range : TOWERS[selectedBuild].range;
