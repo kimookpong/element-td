@@ -252,7 +252,7 @@ function refreshAll() {
 
 /* ---------------- HUD ---------------- */
 const ui = {
-  gold: $('gold'), lives: $('lives'), wave: $('wave'), waveTotal: $('waveTotal'), points: $('points'),
+  gold: $('gold'), lives: $('lives'), points: $('points'),
   pause: $('btnPause'), speed: $('btnSpeed'), 
   info: $('infoPanel'), card: $('infoCard'), build: $('buildGrid'), elems: $('elemGrid'),
   timer: $('waveTimer'), next: $('waveNext'), pop: $('wavePop'), toast: $('toast'),
@@ -268,9 +268,7 @@ function updateHud(force) {
   if (force) for (const k in hudCache) delete hudCache[k];
   setText(ui.gold, 'gold', String(Math.floor(g.gold)));
   setText(ui.lives, 'lives', String(g.lives));
-  setText(ui.wave, 'wave', String(g.wave));
   setText(ui.points, 'points', String(g.elemPoints));
-  setText(ui.waveTotal, 'wt', g.endless ? ' ∞' : `/${TOTAL_WAVES}`);
   renderWaveChip(false);
   const goldKey = Math.floor(g.gold);
   if (hudCache.goldBtns !== goldKey) {
@@ -298,6 +296,8 @@ function refreshAffordability() {
 }
 
 /* ---------------- เวลาเวฟ ---------------- */
+// เลขเวฟพร้อมจำนวนเวฟทั้งหมด เช่น 12/100 (โหมดไม่รู้จบแสดงแค่เลขเวฟ)
+const waveNo = (g, n) => (g.endless ? String(n) : `${n}/${TOTAL_WAVES}`);
 function renderWaveChip(force) {
   const g = view.game;
   if (!g) return;
@@ -305,8 +305,8 @@ function renderWaveChip(force) {
   if (g.over) label = T('wave.over');
   else if (g.waveActive) {
     const fromWave = g.creeps.some((e) => e.alive && e.ability !== 'elemental') || g.spawnQueue.length;
-    label = fromWave ? T('wave.left', { n: g.wave, left: g.creeps.filter((e) => e.alive && e.ability !== 'elemental').length + g.spawnQueue.length }) : T('wave.guardian');
-  } else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? T('wave.first', { s: Math.ceil(g.nextWaveIn) }) : T('wave.next', { n: g.wave + 1, s: Math.ceil(g.nextWaveIn) });
+    label = fromWave ? T('wave.left', { n: waveNo(g, g.wave), left: g.creeps.filter((e) => e.alive && e.ability !== 'elemental').length + g.spawnQueue.length }) : T('wave.guardian');
+  } else if (g.nextWaveIn != null && (g.wave < TOTAL_WAVES || g.endless)) label = g.wave === 0 ? T('wave.first', { s: Math.ceil(g.nextWaveIn) }) : T('wave.next', { n: waveNo(g, g.wave + 1), s: Math.ceil(g.nextWaveIn) });
   else label = T('wave.last');
   setText(ui.timer, 'timer', label);
   ui.timer.parentElement.classList.toggle('soon', !g.waveActive && g.nextWaveIn != null && g.nextWaveIn < 5);

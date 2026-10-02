@@ -7,7 +7,7 @@ import {
   TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier,
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES, MAP_AFFINITY_CHANCE, MAP_AFFINITY_BONUS,
-  ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, SELL_RATIO, INTEREST_RATE,
+  ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, LEAK_LIVES, SELL_RATIO, INTEREST_RATE,
   FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
 } from './data.js';
 import { towerDef } from './towers.js';
@@ -96,6 +96,23 @@ function computeField(map, blocked, goal) {
     }
   }
   return { dist, next };
+}
+
+/* ---------------- HP ตามเวฟ ----------------
+ * เวฟ 1–30: สูตรเดิม (+17% ต่อเวฟ)
+ * เวฟ 31+: โตตาม "ทองสะสมที่หาได้" (ราว n^2.1) เพราะ DPS ของผู้เล่นโตตามทอง
+ *          — โตเร็วช่วงต้น (~7%/เวฟ) แล้วค่อย ๆ ชะลอ (~2%/เวฟ ช่วงเวฟ 90–100)
+ *          บวกความยากอีก 30% ภายในเวฟ 100 (ป้อมสามธาตุคุ้มทองกว่า) — เวฟ 100 ≈ 16 เท่าของเวฟ 30
+ *          (จำนวนมอนสเตอร์ไม่ต้องหักออก เพราะปล่อยทีละตัวห่างเท่าเดิม เวฟยาวขึ้นแทน)
+ */
+const HP_KNEE = 30;
+const waveCount = (n) => 10 + Math.floor(n * 0.35);
+export function waveBaseHp(n) {
+  const early = (k) => 32 * Math.pow(1.17, k - 1) + k * 6;
+  if (n <= HP_KNEE) return early(n);
+  const gold = Math.pow(n / HP_KNEE, 2.1);
+  const ramp = 1 + 0.3 * Math.min(1, (n - HP_KNEE) / 70);
+  return early(HP_KNEE) * gold * ramp;
 }
 
 /* ---------------- ค่าสถานะป้อม ---------------- */
@@ -469,7 +486,8 @@ export class Game {
   }
 
   /* ---------- เวฟ ---------- */
-  waveHp(n) { return (32 * Math.pow(1.17, n - 1) + n * 6) * this.diff.hp; }
+  /* HP มอนสเตอร์ต่อตัวของเวฟ n — ช่วงต้นโตเร็ว (เหมือนเดิมถึงเวฟ 30) แล้วค่อย ๆ ชะลอให้เล่นได้ถึงเวฟ 100 */
+  waveHp(n) { return waveBaseHp(n) * this.diff.hp; }
 
   makeWave(n) {
     let ability;
@@ -490,7 +508,7 @@ export class Game {
       t += 2;
       add('boss', 0);
     } else {
-      const count = Math.round((10 + Math.floor(n * 0.35)) * (ability === 'flying' ? 0.7 : 1));
+      const count = Math.round(waveCount(n) * (ability === 'flying' ? 0.7 : 1));
       const gap = { fast: 0.45, armored: 1.0, split: 1.1, flying: 0.75 }[ability] || 0.8;
       for (let i = 0; i < count; i++) add(ability, gap);
     }
@@ -568,7 +586,6 @@ export class Game {
       boss: entry.ability === 'boss' || entry.ability === 'elemental', unlock: entry.unlock || 0,
       hp, maxHp: hp, speed: A.speed * rand(0.95, 1.05), size: A.size,
       reward: entry.ability === 'elemental' ? 10 + this.wave * 2 : Math.max(1, Math.round((3 + this.wave * 0.5) * A.reward)),
-      lives: A.lives,
       x: sc.x + m.spawnOut.x * TILE * 0.45, y: sc.y + m.spawnOut.y * TILE * 0.45,
       angle: Math.atan2(-m.spawnOut.y, -m.spawnOut.x),
       stage: 0, wp: 0, flying: entry.ability === 'flying', progress: 0,
@@ -845,10 +862,10 @@ export class Game {
     }
     if (arrive) {
       // หลุดถึงประตูแกนกลาง: เสียชีวิต แล้ววนกลับไปเริ่มที่ประตูทางเข้าใหม่
-      this.lives -= e.lives;
+      this.lives -= LEAK_LIVES;
       this.sound('leak');
-      this.emit('leak', { lives: e.lives, creep: e });
-      this.floater(e.x, e.y, `-${e.lives} :heart:`, '#ff5a6a', 18);
+      this.emit('leak', { lives: LEAK_LIVES, creep: e });
+      this.floater(e.x, e.y, `-${LEAK_LIVES} :heart:`, '#ff5a6a', 18);
       if (this.lives <= 0) { this.lives = 0; this.gameOver(); }
       const sc = tileCenter(m.spawn);
       e.x = sc.x + m.spawnOut.x * TILE * 0.45; e.y = sc.y + m.spawnOut.y * TILE * 0.45;

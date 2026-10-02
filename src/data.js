@@ -105,8 +105,8 @@ export const ABILITIES = {
   split:   { th: 'แยกร่าง', creature: 'คิทสึเนะ', icon: 'c_kitsune', model: 'kitsune', hp: 0.75, speed: 42, size: 12, reward: 0.6, lives: 1, desc: 'ตายแล้วแยกร่างเป็นจิ้งจอก 2 ตัว' , en: { th: 'Split', creature: 'Kitsune', desc: 'Splits into 2 foxes on death' } },
   undead:  { th: 'อมตะ', creature: 'ฟีนิกซ์', icon: 'c_phoenix', model: 'phoenix', hp: 0.8, speed: 44, size: 12, reward: 1.2, lives: 1, desc: 'ฟื้นคืนชีพจากเถ้าถ่านครั้งเดียวด้วย HP 50%' , en: { th: 'Undying', creature: 'Phoenix', desc: 'Rises from its ashes once with 50% HP' } },
   flying:  { th: 'บินได้', creature: 'กริฟฟิน', icon: 'c_griffin', model: 'griffin', hp: 0.6, speed: 42, size: 12, reward: 1, lives: 1, desc: 'บินข้ามเขาวงกตเป็นเส้นตรง' , en: { th: 'Flying', creature: 'Griffin', desc: 'Flies straight over mazes' } },
-  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 16, speed: 26, size: 24, reward: 20, lives: 10, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' , en: { th: 'Dragon boss', creature: 'Ancient Dragon', desc: 'Massive HP, resists status effects' } },
-  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 2, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' , en: { th: 'Guardian', creature: 'Elemental Guardian', desc: 'Summoned with essence — defeat it to unlock / level up its element' } },
+  boss:    { th: 'บอสมังกร', creature: 'มังกรโบราณ', icon: 'c_dragon', model: 'dragon', hp: 12, speed: 26, size: 24, reward: 20, lives: 1, desc: 'พลังชีวิตมหาศาล ต้านสถานะ' , en: { th: 'Dragon boss', creature: 'Ancient Dragon', desc: 'Massive HP, resists status effects' } },
+  elemental: { th: 'ภูตธาตุ', creature: 'ภูตพิทักษ์ธาตุ', icon: 'c_dragon', model: 'dragon', hp: 1, speed: 36, size: 18, reward: 0, lives: 1, desc: 'เรียกด้วยผลึกธาตุ — กำจัดให้ได้เพื่อปลดล็อก/อัปเลเวลธาตุนั้น' , en: { th: 'Guardian', creature: 'Elemental Guardian', desc: 'Summoned with essence — defeat it to unlock / level up its element' } },
   child:   { th: 'ร่างแยก', creature: 'จิ้งจอกร่างแยก', icon: 'c_kitsune', model: 'kitsune', hp: 0.35, speed: 52, size: 8, reward: 0.25, lives: 1, desc: '' , en: { th: 'Split spawn', creature: 'Fox Spawn', desc: '' } },
 };
 
@@ -269,7 +269,9 @@ export const DIFFICULTIES = {
   hard:   { en: { th: 'Hard' }, th: 'ยาก', hp: 1.4, gold: 190, lives: 10 },
 };
 
-export const TOTAL_WAVES = 30;
+export const TOTAL_WAVES = 100;
+// มอนสเตอร์ทุกตัวที่หลุดถึงแกนกลาง (รวมบอส/ภูตธาตุ) เสีย 1 ชีวิตเสมอ
+export const LEAK_LIVES = 1;
 // แผนที่ประจำธาตุ: มอนสเตอร์เป็นธาตุนั้นบ่อย + ป้อมที่มีธาตุนั้นได้ "พลังถิ่น"
 export const MAP_AFFINITY_CHANCE = 0.5;
 export const MAP_AFFINITY_BONUS = 1.15;
