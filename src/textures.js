@@ -282,52 +282,6 @@ export function brickTexture(tint = 'stone') {
   });
 }
 
-/* วงเวทย์รูน (โปร่งใส ใช้กับวัสดุแบบ additive) */
-export function runeTexture() {
-  return memo('rune', () => {
-    const size = 256;
-    const c = canvas(size);
-    const g = c.getContext('2d');
-    const m = size / 2;
-    g.strokeStyle = '#fff';
-    g.lineWidth = 4;
-    g.beginPath(); g.arc(m, m, 118, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 2;
-    g.beginPath(); g.arc(m, m, 100, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.arc(m, m, 56, 0, Math.PI * 2); g.stroke();
-    // ดาวหกแฉก
-    g.lineWidth = 3;
-    for (let k = 0; k < 2; k++) {
-      g.beginPath();
-      for (let i = 0; i <= 3; i++) {
-        const a = (i / 3) * Math.PI * 2 + k * Math.PI / 3 - Math.PI / 2;
-        const x = m + Math.cos(a) * 96, y = m + Math.sin(a) * 96;
-        if (i) g.lineTo(x, y); else g.moveTo(x, y);
-      }
-      g.stroke();
-    }
-    // อักษรรูนรอบวง
-    const rnd = seeded(7);
-    g.lineWidth = 2.5;
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      g.save();
-      g.translate(m + Math.cos(a) * 109, m + Math.sin(a) * 109);
-      g.rotate(a + Math.PI / 2);
-      g.beginPath();
-      for (let s = 0; s < 3; s++) {
-        g.moveTo((rnd() - 0.5) * 10, (rnd() - 0.5) * 10);
-        g.lineTo((rnd() - 0.5) * 10, (rnd() - 0.5) * 10);
-      }
-      g.stroke();
-      g.restore();
-    }
-    const t = toTexture(c);
-    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-    return t;
-  });
-}
-
 /* จุดแสงฟุ้ง สำหรับ sprite */
 export function glowTexture() {
   return memo('glow', () => {
@@ -340,25 +294,6 @@ export function glowTexture() {
     gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr;
     g.fillRect(0, 0, size, size);
-    const t = toTexture(c);
-    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-    return t;
-  });
-}
-
-/* ป้ายตัวเลข/ข้อความบน canvas */
-export function labelTexture(text, color = '#ffe680') {
-  return memo(`label-${text}-${color}`, () => {
-    const c = canvas(128);
-    const g = c.getContext('2d');
-    g.font = 'bold 84px sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.lineWidth = 10;
-    g.strokeStyle = 'rgba(0,0,0,0.7)';
-    g.strokeText(text, 64, 68);
-    g.fillStyle = color;
-    g.fillText(text, 64, 68);
     const t = toTexture(c);
     t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     return t;

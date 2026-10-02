@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { COLS, ROWS, ELEMENTS, ELEMENT_ORDER } from './data.js';
 import { idx } from './sim.js';
 import { FLOOR, tileX, tileZ, rand, std, glow, mesh, G, geo } from './gfx.js';
-import { grassTexture, cobbleTexture, brickTexture, runeTexture, labelTexture, glowTexture } from './textures.js';
+import { grassTexture, cobbleTexture, brickTexture, glowTexture } from './textures.js';
 
 export const THEMES = {
   meadow: {
@@ -332,27 +332,6 @@ export function buildWorld(map, themeKey) {
       d.scale.set(it.w, it.h - y0, it.w);
     }));
   }
-
-  // ---- จุดตรวจ ----
-  const checkpoints = [];
-  const runeMat = (color) => new THREE.MeshBasicMaterial({ map: runeTexture(), color: new THREE.Color(color).multiplyScalar(1.4), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
-  map.goals.slice(0, -1).forEach((gi, k) => {
-    const c = gi % COLS, r = Math.floor(gi / COLS);
-    const rune = new THREE.Mesh(geo('runePlane', () => new THREE.PlaneGeometry(1, 1)), runeMat(0xffd65a));
-    rune.rotation.x = -Math.PI / 2;
-    rune.position.set(tileX(c), FLOOR + 0.015, tileZ(r));
-    rune.scale.setScalar(0.98);
-    group.add(rune);
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(String(k + 1)), transparent: true, depthWrite: false }));
-    label.position.set(tileX(c), FLOOR + 0.75, tileZ(r));
-    label.scale.setScalar(0.5);
-    group.add(label);
-    checkpoints.push({ rune, label });
-  });
-  anim.push((t) => checkpoints.forEach((cp, k) => {
-    cp.rune.rotation.z = t * 0.5 + k;
-    cp.label.position.y = FLOOR + 0.75 + Math.sin(t * 2 + k) * 0.06;
-  }));
 
   // ---- พอร์ทัล ----
   const placePortal = (tile, out, color) => {
