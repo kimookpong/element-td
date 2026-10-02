@@ -149,7 +149,9 @@ public/music/      ไฟล์เพลง: main-theme.mp3 (หน้าจอ�
                    boss-dragon.mp3 (มังกรโบราณ "Wrath of the Ancient Dragon"),
                    victory.mp3 ("Victory of Six Elements"), defeat.mp3 ("The Core Has Fallen"),
                    เพลงแผนที่: meadow.mp3 ("Meadow Maze"), ruins.mp3 ("Sands of the Sphinx"),
-                   canyon.mp3 ("Winding Canyon"), spiral.mp3 ("Abyss Spiral")
+                   canyon.mp3 ("Winding Canyon"), spiral.mp3 ("Abyss Spiral"),
+                   volcano.mp3 ("Heart of the Molten Peak"), river.mp3 ("Currents of the Endless River"),
+                   clouds.mp3 ("Kingdom Above the Clouds"), underground.mp3 ("Depths of the Stone Kingdom")
 src/style.css      สไตล์ UI แฟนตาซี
 src/icons.js       ตัวช่วยไอคอน PNG (แทน emoji ทั้งหมด)
 public/icons/      ไอคอน PNG ที่สร้างด้วยโค้ด
