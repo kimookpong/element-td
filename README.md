@@ -159,7 +159,8 @@ public/icons/      ไอคอน PNG ที่สร้างด้วยโ�
 tools/icons.html   หน้าสร้างไอคอน (วาด canvas + เรนเดอร์โมเดล 3D เป็นรูปประจำตัว)
 tools/export-icons.cjs  สคริปต์ Playwright บันทึกไอคอนลง public/icons
 public/logo-wide.webp  โลโก้หลักของเกม (ใช้ในหน้าจอเริ่มเกม แถบบน และรูปแชร์)
-tools/logo.html    หน้าสร้างโลโก้สี่เหลี่ยม (canvas) ใช้เป็นไอคอน/favicon — node tools/export-logo.cjs → public/logo.png, logo-640.png, logo-256.png
+tools/logo.html    หน้าสร้างโลโก้สี่เหลี่ยมแบบเก่า (canvas) — ไม่ใช้แล้ว: favicon/ไอคอนแอป/โลโก้มุมบนซ้ายระหว่างเล่น
+                   ใช้โลโก้วงกลมของผู้สร้าง (public/logo.png, logo-256.png, icon-192/512.png, logo-hud.webp), logo-640.png, logo-256.png
 tools/fonts/       ฟอนต์ Luckiest Guy (OFL) ใช้สร้างโลโก้
 ```
 
