@@ -187,6 +187,11 @@ function buildUI() {
     F(poly([[86, 54], [116, 38], [116, 94], [86, 78]]));
     F(circle(36, 30, 14), 'gold'); F(circle(66, 30, 14), 'gold');
   });
+  glyph('home', 'gold', ({ F }) => {
+    F(poly([[64, 14], [118, 60], [104, 60], [104, 112], [24, 112], [24, 60], [10, 60]]));
+    F(rrect(52, 76, 24, 36, 4), 'orange');
+    F(rrect(84, 22, 12, 26, 2), 'red');
+  });
   glyph('settings', 'silver', ({ F }) => {
     const pts = [];
     const n = 8;

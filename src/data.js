@@ -272,6 +272,8 @@ export const DIFFICULTIES = {
 export const TOTAL_WAVES = 100;
 // มอนสเตอร์ทุกตัวที่หลุดถึงแกนกลาง (รวมบอส/ภูตธาตุ) เสีย 1 ชีวิตเสมอ
 export const LEAK_LIVES = 1;
+// ฆ่าบอสมังกรได้ → ได้ชีวิตคืน
+export const BOSS_LIFE_REWARD = 1;
 // แผนที่ประจำธาตุ: มอนสเตอร์เป็นธาตุนั้นบ่อย + ป้อมที่มีธาตุนั้นได้ "พลังถิ่น"
 export const MAP_AFFINITY_CHANCE = 0.5;
 export const MAP_AFFINITY_BONUS = 1.15;

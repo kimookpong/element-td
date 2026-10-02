@@ -697,6 +697,12 @@ function updateSettingsUI() {
   for (const b of document.querySelectorAll('#segLang .seg')) b.classList.toggle('on', b.dataset.lang === getLang());
 }
 $('btnSettings').addEventListener('click', openSettings);
+// กลับหน้าหลัก: บันทึกเกมไว้ก่อน แล้วกด "เล่นต่อ" ที่หน้าหลักเพื่อกลับมาเล่นได้
+$('btnHome').addEventListener('click', () => {
+  if (!view.game) return;
+  if (!view.game.over) saveGame();
+  openMenu();
+});
 $('btnSettingsMenu').addEventListener('click', () => { Sound.unlock(); openSettings(); });
 $('btnCloseSettings').addEventListener('click', closeSettings);
 $('settings').addEventListener('click', (ev) => { if (ev.target.id === 'settings') closeSettings(); });

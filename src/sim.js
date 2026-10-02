@@ -7,7 +7,7 @@ import {
   TILE, COLS, ROWS, ELEMENTS, ELEMENT_ORDER, elementMultiplier,
   BASIC, ELEMENT_TOWER, MAX_TIER, MAX_ELEMENT_LEVEL,
   ABILITIES, WAVE_PATTERN, MAPS, DIFFICULTIES, TOTAL_WAVES, MAP_AFFINITY_CHANCE, MAP_AFFINITY_BONUS,
-  ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, LEAK_LIVES, SELL_RATIO, INTEREST_RATE,
+  ELEMENT_POINT_EVERY, START_ELEMENT_POINTS, LEAK_LIVES, BOSS_LIFE_REWARD, SELL_RATIO, INTEREST_RATE,
   FIRST_WAVE_DELAY, CLEAR_GAP, BUILD_TIME, upgradeTime, ELEMENTAL_HP,
 } from './data.js';
 import { towerDef } from './towers.js';
@@ -759,7 +759,13 @@ export class Game {
         ch.hp = ch.maxHp = e.maxHp * 0.45;
       }
     }
-    if (e.ability === 'boss') this.toast(tt('sim.bossDown'), 1400);
+    if (e.ability === 'boss') {
+      // ฆ่าบอสมังกรได้ ได้ชีวิตคืน
+      this.lives += BOSS_LIFE_REWARD;
+      this.floater(e.x, e.y, `+${BOSS_LIFE_REWARD} :heart:`, '#7dff9a', 18, 1);
+      this.toast(tt('sim.bossDown', { n: BOSS_LIFE_REWARD }), 1800);
+      this.emit('changed');
+    }
     if (e.ability === 'elemental') this.elementalDefeated(e);
     this.creepRemoved(e);
   }
