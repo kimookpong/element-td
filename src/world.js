@@ -384,8 +384,8 @@ export function buildWorld(map, themeKey) {
     coreGem.position.y = 1.75 + Math.sin(t * 2) * 0.08;
   });
 
-  // ---- ป้ายผู้สร้างเกม (มุมที่ว่างจากป้ายอื่น) ----
-  const spot = [-2.3, -0.5];
+  // ---- ป้ายบอกทางผู้สร้างเกม (กึ่งกลางด้านบนกระดาน) ----
+  const spot = [(COLS - 1) / 2, -0.95];
   const creatorSign = makeCreatorSign();
   creatorSign.position.set(tileX(spot[0]), 0, tileZ(spot[1]));
   group.add(creatorSign);
@@ -1099,92 +1099,118 @@ function buildPalms(group, center, n = 6, ring = 2.6) {
   }
 }
 
-function drawBoard(g, W, H) {
-  g.clearRect(0, 0, W, H);
-  const r = 26;
-  const path = () => {
-    g.beginPath();
-    g.moveTo(r, 6); g.lineTo(W - r, 6); g.quadraticCurveTo(W - 6, 6, W - 6, r);
-    g.lineTo(W - 6, H - r); g.quadraticCurveTo(W - 6, H - 6, W - r, H - 6);
-    g.lineTo(r, H - 6); g.quadraticCurveTo(6, H - 6, 6, H - r);
-    g.lineTo(6, r); g.quadraticCurveTo(6, 6, r, 6); g.closePath();
-  };
-  path();
-  const wood = g.createLinearGradient(0, 0, 0, H);
-  wood.addColorStop(0, '#8a5a32'); wood.addColorStop(0.5, '#6e4426'); wood.addColorStop(1, '#5a361c');
-  g.fillStyle = wood; g.fill();
-  g.save(); path(); g.clip();
-  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 3;
-  for (let y = H / 4; y < H; y += H / 4) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  g.strokeStyle = 'rgba(255,220,160,0.06)'; g.lineWidth = 2;
-  for (let i = 0; i < 40; i++) { const y = (i * 37) % H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W / 3, y + 6, (2 * W) / 3, y - 6, W, y + 3); g.stroke(); }
-  g.restore();
-  path(); g.lineWidth = 10; g.strokeStyle = '#d9b45a'; g.stroke();
-  path(); g.lineWidth = 3; g.strokeStyle = '#5a3a12'; g.stroke();
-  for (const [x, y] of [[26, 26], [W - 26, 26], [26, H - 26], [W - 26, H - 26]]) {
-    g.fillStyle = '#e8c870'; g.beginPath(); g.arc(x, y, 7, 0, Math.PI * 2); g.fill();
-  }
-}
-
 /* ---------- ป้ายผู้สร้างเกม: รูปโปรไฟล์ GitHub + คลิกไปหน้าเว็บ ---------- */
 export const CREATOR = { name: 'kimookpong', url: 'https://kimookpong.github.io/', avatar: `${import.meta.env.BASE_URL}creator.png` };
 
-function drawCreator(c, img) {
+// แผ่นป้ายรูปลูกศร (dir = 1 ชี้ขวา, -1 ชี้ซ้าย) — คืนจุดยอดในหน่วย 0..1
+function arrowOutline(dir, aspect) {
+  const p = Math.min(0.28, 0.5 / aspect); // ความยาวปลายลูกศร (สัดส่วนความกว้าง)
+  const n = p * 0.45;                    // รอยบากท้ายลูกศร
+  const pts = [[0, 1], [1 - p, 1], [1, 0.5], [1 - p, 0], [0, 0], [n, 0.5]];
+  return dir > 0 ? pts : pts.map(([x, y]) => [1 - x, y]);
+}
+
+function drawArrowBoard(c, dir, wood, content) {
   const g = c.getContext('2d');
   const W = c.width, H = c.height;
-  drawBoard(g, W, H);
-  const cx = 118, cy = H / 2, R = 82;
-  g.save();
-  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.closePath();
-  g.fillStyle = '#2a1a0c'; g.fill();
-  g.clip();
-  if (img) g.drawImage(img, cx - R, cy - R, R * 2, R * 2);
+  const pts = arrowOutline(dir, W / H).map(([x, y]) => [6 + x * (W - 12), 6 + (1 - y) * (H - 12)]);
+  const path = () => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+  g.clearRect(0, 0, W, H);
+  path();
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  gr.addColorStop(0, wood[0]); gr.addColorStop(0.55, wood[1]); gr.addColorStop(1, wood[2]);
+  g.fillStyle = gr; g.fill();
+  g.save(); path(); g.clip();
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
+  g.strokeStyle = 'rgba(255,220,160,0.08)'; g.lineWidth = 2;
+  for (let i = 0; i < 26; i++) { const y = (i * 29) % H; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W / 3, y + 5, (2 * W) / 3, y - 5, W, y + 2); g.stroke(); }
   g.restore();
-  g.lineWidth = 8; g.strokeStyle = '#e8c870';
-  g.beginPath(); g.arc(cx, cy, R + 2, 0, Math.PI * 2); g.stroke();
-  g.lineWidth = 2; g.strokeStyle = '#5a3a12';
-  g.beginPath(); g.arc(cx, cy, R + 7, 0, Math.PI * 2); g.stroke();
-  const x = 228;
-  const text = (t, y, font, fill, sw = 5) => {
-    g.font = font; g.lineWidth = sw; g.strokeStyle = 'rgba(40,20,0,0.8)';
-    g.strokeText(t, x, y); g.fillStyle = fill; g.fillText(t, x, y);
-  };
-  g.textAlign = 'left'; g.textBaseline = 'middle';
-  text(t('sign.l1'), 58, '500 28px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
-  text(CREATOR.name, 108, '700 46px Kanit, "Noto Sans Thai", sans-serif', '#ffe08a', 6);
-  text(t('sign.l3'), 160, '600 30px Kanit, "Noto Sans Thai", sans-serif', '#b6ffb0');
-  text(t('sign.l4'), 206, '500 26px Kanit, "Noto Sans Thai", sans-serif', '#fbf0d8');
+  path(); g.lineJoin = 'round'; g.lineWidth = 9; g.strokeStyle = '#d9b45a'; g.stroke();
+  path(); g.lineWidth = 3; g.strokeStyle = '#4a2a10'; g.stroke();
+  // ตะปูยึดกับเสา (ฝั่งท้ายลูกศร)
+  const nx = dir > 0 ? 34 : W - 34;
+  for (const y of [H * 0.28, H * 0.72]) { g.fillStyle = '#e8c870'; g.beginPath(); g.arc(nx, y, 6, 0, Math.PI * 2); g.fill(); g.fillStyle = '#6a4a20'; g.beginPath(); g.arc(nx, y, 2.5, 0, Math.PI * 2); g.fill(); }
+  g.textBaseline = 'middle';
+  content(g, W, H);
+}
+
+const signText = (g, str, x, y, font, fill, align = 'left', sw = 5) => {
+  g.font = font; g.textAlign = align; g.lineJoin = 'round';
+  g.lineWidth = sw; g.strokeStyle = 'rgba(30,15,0,0.85)'; g.strokeText(str, x, y);
+  g.fillStyle = fill; g.fillText(str, x, y);
+};
+const SIGN_FONT = 'Kanit, "Noto Sans Thai", sans-serif';
+
+// แผ่นป้ายลูกศร 3 มิติ (หนา + ลายไม้ด้านหน้า)
+function arrowPlank(w, h, dir, tex) {
+  const g = new THREE.Group();
+  const pts = arrowOutline(dir, w / h).map(([x, y]) => new THREE.Vector2((x - 0.5) * w, (y - 0.5) * h));
+  const shape = new THREE.Shape(pts);
+  const body = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 0.06, bevelEnabled: false }), std(0x4a2e18, { roughness: 0.9 }));
+  body.position.z = -0.06;
+  body.castShadow = true;
+  const faceGeo = new THREE.ShapeGeometry(shape);
+  const uv = faceGeo.attributes.uv, pos = faceGeo.attributes.position;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / w + 0.5, pos.getY(i) / h + 0.5);
+  const face = new THREE.Mesh(faceGeo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, transparent: true, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.14 }));
+  face.position.z = 0.002;
+  g.add(body, face);
+  return g;
 }
 
 function makeCreatorSign() {
   const g = new THREE.Group();
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
   let img = null;
-  drawCreator(c, null);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  const redraw = () => { drawCreator(c, img); tex.needsUpdate = true; };
+  const boards = [];
+  const addBoard = (w, h, dir, y, ry, wood, content) => {
+    const c = document.createElement('canvas');
+    c.height = 220; c.width = Math.round(220 * (w / h));
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+    const draw = () => { drawArrowBoard(c, dir, wood, content); tex.needsUpdate = true; };
+    const plank = arrowPlank(w, h, dir, tex);
+    plank.position.set(dir * (w / 2 - 0.05), y, 0.07);
+    const pivot = new THREE.Group();
+    pivot.rotation.y = ry;
+    pivot.add(plank);
+    g.add(pivot);
+    boards.push(draw);
+  };
+  // ป้ายบน: รูปโปรไฟล์ + ชื่อ (ชี้ขวา)
+  addBoard(1.75, 0.62, 1, 1.5, -0.12, ['#9a6436', '#7a4c28', '#5e3a1e'], (gc, W, H) => {
+    const cx = 120, cy = H / 2, R = 72;
+    gc.save(); gc.beginPath(); gc.arc(cx, cy, R, 0, Math.PI * 2); gc.fillStyle = '#2a1a0c'; gc.fill(); gc.clip();
+    if (img) gc.drawImage(img, cx - R, cy - R, R * 2, R * 2);
+    gc.restore();
+    gc.lineWidth = 7; gc.strokeStyle = '#e8c870'; gc.beginPath(); gc.arc(cx, cy, R + 2, 0, Math.PI * 2); gc.stroke();
+    signText(gc, t('sign.l1'), 212, H * 0.3, `500 26px ${SIGN_FONT}`, '#fbf0d8');
+    signText(gc, CREATOR.name, 212, H * 0.62, `700 52px ${SIGN_FONT}`, '#ffe08a', 'left', 6);
+  });
+  // ป้ายกลาง: ชวนติดต่อ (ชี้ซ้าย)
+  addBoard(1.45, 0.42, -1, 0.96, 0.16, ['#8a5a30', '#6c4222', '#523018'], (gc, W, H) => {
+    signText(gc, t('sign.l3'), W * 0.56, H * 0.5, `700 40px ${SIGN_FONT}`, '#b6ffb0', 'center', 6);
+  });
+  // ป้ายล่าง: ลิงก์ (ชี้ขวา)
+  addBoard(1.55, 0.36, 1, 0.52, -0.08, ['#7a4e2a', '#5e3a1e', '#462a14'], (gc, W, H) => {
+    signText(gc, t('sign.l4'), W * 0.08 + 30, H * 0.5, `600 30px ${SIGN_FONT}`, '#fbf0d8');
+  });
+  const redraw = () => boards.forEach((d) => d());
+  redraw();
   const im = new Image();
   im.onload = () => { img = im; redraw(); };
   im.src = CREATOR.avatar;
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
+  // เสาไม้ + ฐานหิน
   const woodM = std(0x5a3a20, { roughness: 0.9 });
-  const face = new THREE.Group();
-  face.position.y = 1.2;
-  face.rotation.x = -0.18;
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.85), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, transparent: true, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.12 }));
-  board.position.z = 0.03;
-  face.add(board);
-  face.add(mesh(G.box(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { s: [1.8, 0.95, 0.04], z: -0.01 }));
-  face.add(mesh(G.box(), woodM, { s: [1.72, 0.87, 0.05] }));
-  g.add(face);
-  for (const x of [-0.62, 0.62]) g.add(mesh(G.box(), woodM, { x, y: 0.58, s: [0.07, 1.16, 0.07] }));
-  g.add(mesh(G.box(), std(0x8a8478, { flatShading: true }), { y: 0.03, s: [1.5, 0.06, 0.25] }));
+  g.add(mesh(G.cyl(), woodM, { y: 0.95, s: [0.07, 1.9, 0.07] }));
+  g.add(mesh(G.cone(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { y: 1.98, s: [0.1, 0.16, 0.1] }));
+  g.add(mesh(G.cyl(), std(0x3e2614, { roughness: 0.9 }), { y: 0.25, s: [0.085, 0.04, 0.085] }));
+  g.add(mesh(G.dode(), std(0x8a8478, { flatShading: true }), { y: 0.06, s: [0.32, 0.12, 0.28] }));
+  for (const [x, z] of [[0.22, 0.1], [-0.2, 0.14], [0.05, -0.2]]) g.add(mesh(G.dode(), std(0x7a746a, { flatShading: true }), { x, y: 0.05, z, s: 0.1 }));
   g.userData.link = CREATOR.url;
   g.userData.redraw = redraw;
-  g.scale.setScalar(1.6);
+  g.scale.setScalar(1.3);
   return g;
 }
 
