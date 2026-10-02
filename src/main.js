@@ -7,6 +7,7 @@ import {
   MAPS, DIFFICULTIES, TOTAL_WAVES, MAX_ELEMENT_LEVEL, MAX_TIER,
 } from './data.js';
 import { Sound } from './audio.js';
+import { Music } from './music.js';
 import { Game, parseMap, towerStats, towerName, buildCost, sellValue, TARGET_LABEL } from './sim.js';
 import { Renderer3D } from './render3d.js';
 import { ico, iconUrl, withIcons } from './icons.js';
@@ -105,6 +106,7 @@ function startWithGame(game) {
   view.paused = false;
   view.menu = false;
   document.body.classList.remove('menuOpen');
+  Music.play(MAPS[game.mapIndex].id);
   view.speed = 1;
   view.hoverCheck = null;
   renderer.loadMap(view.mapIndex);
@@ -121,6 +123,7 @@ function openMenu() {
   view.game = null;
   view.menu = true;
   document.body.classList.add('menuOpen');
+  Music.play('menu');
   renderer.clearDynamic();
   renderer.loadMap(view.mapIndex);
   bgMapIndex = view.mapIndex;
@@ -631,7 +634,13 @@ function togglePause() {
   view.paused = !view.paused;
   updatePauseUI();
 }
-function toggleMute() { setIcon(ui.mute, Sound.toggle() ? 'mute' : 'sound'); }
+// ปิด/เปิดเสียงทั้งหมด (เอฟเฟกต์ + เพลง)
+function toggleMute() {
+  const m = Sound.toggle();
+  Music.setMuted(m);
+  setIcon(ui.mute, m ? 'mute' : 'sound');
+  setIcon($('btnSoundMenu'), m ? 'mute' : 'sound');
+}
 function updateQualityUI() {
   const high = renderer.quality === 'high';
   setIcon(ui.quality, high ? 'quality' : 'quality_low');
@@ -656,6 +665,12 @@ ui.pause.addEventListener('click', togglePause);
 ui.speed.addEventListener('click', cycleSpeed);
 ui.mute.addEventListener('click', toggleMute);
 setIcon(ui.mute, Sound.muted ? 'mute' : 'sound');
+setIcon($('btnSoundMenu'), Sound.muted ? 'mute' : 'sound');
+$('btnSoundMenu').addEventListener('click', toggleMute);
+Music.setMuted(Sound.muted);
+Music.play('menu');
+// นโยบาย autoplay: เริ่มเพลงเมื่อผู้ใช้แตะ/กดปุ่มครั้งแรก
+for (const evName of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(evName, () => { Sound.unlock(); Music.unlock(); }, { passive: true });
 ui.quality.addEventListener('click', () => { renderer.setQuality(renderer.quality === 'high' ? 'low' : 'high'); updateQualityUI(); });
 updateQualityUI();
 ui.signs.addEventListener('click', toggleSigns);
@@ -701,6 +716,7 @@ function hideOverlays() {
 }
 
 function showEnd(won) {
+  Music.play(won ? 'victory' : 'defeat');
   const g = view.game;
   if (!g) return;
   $('endTitle').innerHTML = won ? `${ico('trophy')} ${T('end.win')}` : `${ico('skull')} ${T('end.lose')}`;
@@ -725,7 +741,7 @@ $('btnResume').addEventListener('click', () => { Sound.unlock(); resumeGame(); }
 $('btnNew').addEventListener('click', () => { Sound.unlock(); showMenuPage('new'); });
 $('btnBack').addEventListener('click', () => showMenuPage('main'));
 window.addEventListener('pagehide', saveGame);
-document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); Music.setHidden(document.hidden); });
 
 function drawThumb(def) {
   const c = document.createElement('canvas');
@@ -865,6 +881,7 @@ requestAnimationFrame(frame);
 // เปิดให้ทดสอบ/ดีบักผ่าน console
 window.ETD = {
   view,
+  music: Music,
   renderer,
   newGame,
   refreshAll,

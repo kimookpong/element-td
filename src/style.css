@@ -409,3 +409,9 @@ body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard, body.menuOpen 
   .mapGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tsCredit { display: none; }
 }
+
+/* ปุ่มเสียงบนหน้าจอเริ่มเกม (ข้างสวิตช์ภาษา) */
+.tsSound { position: absolute; top: max(14px, env(safe-area-inset-top)); right: calc(max(14px, env(safe-area-inset-right)) + 112px); z-index: 2;
+  width: 40px; height: 40px; padding: 0; border-radius: 50%; background: rgba(20, 17, 12, .78); border: 1px solid var(--goldDark); box-shadow: 0 6px 16px rgba(0, 0, 0, .45); backdrop-filter: blur(6px); }
+.tsSound .ico { width: 22px; height: 22px; }
+.tsSound:hover:not(:disabled) { border-color: var(--gold2); background: rgba(40, 34, 24, .9); }

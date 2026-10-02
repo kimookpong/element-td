@@ -138,6 +138,8 @@ src/modelkit.js    เครื่องมือปั้นโมเดล pro
 src/textures.js    พื้นผิว procedural (หญ้า, หินปูถนน, อิฐ, วงรูน)
 src/gfx.js         ตัวช่วยกราฟิกที่ใช้ร่วมกัน
 src/audio.js       เสียงเอฟเฟกต์ (WebAudio)
+src/music.js       เพลงประกอบ (วนซ้ำ + เฟดข้ามเพลง) — เพิ่มเพลงใหม่ที่ TRACKS: menu, <id แผนที่>, boss, victory, defeat
+public/music/      ไฟล์เพลง (main-theme.mp3 = เพลงหน้าจอเริ่มเกม "Six Elements Rise")
 src/style.css      สไตล์ UI แฟนตาซี
 src/icons.js       ตัวช่วยไอคอน PNG (แทน emoji ทั้งหมด)
 public/icons/      ไอคอน PNG ที่สร้างด้วยโค้ด
