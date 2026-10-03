@@ -23,4 +23,4 @@ migrations_dir = "migrations"
 
 [vars]
 # OAuth Client ID (ชนิด Web) จาก Google Cloud Console ใส่แล้ว deploy ใหม่ ปุ่มล็อกอินจะขึ้นเอง
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "446925741130-urnmall5pb5aktch1sarrt32fj3s8cti.apps.googleusercontent.com"
