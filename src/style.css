@@ -418,7 +418,9 @@ body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard, body.menuOpen 
   .menuMain { gap: 8px; }
   .menuNew { padding: 10px; gap: 8px; }
   .mapGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .tsCredit { display: none; }
+  /* มือถือแนวนอน: โชว์เครดิต + จำนวนผู้เล่นเฉพาะเมนูหลัก หน้าเลือกแผนที่เต็มจอจะทับปุ่ม */
+  .tsCredit { font-size: .7rem; bottom: max(6px, env(safe-area-inset-bottom)); }
+  .titleScreen.isNew .tsCredit { display: none; }
 }
 
 /* ปุ่มตั้งค่าบนหน้าจอเริ่มเกม */
