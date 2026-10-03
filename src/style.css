@@ -486,6 +486,8 @@ body.menuOpen #hud, body.menuOpen #dock, body.menuOpen #infoCard, body.menuOpen 
 .profTable .win { color: #8dff9a; } .profTable .lose { color: #ff9a8a; }
 .profActions { display: flex; justify-content: flex-end; margin-top: 14px; }
 .gsiWrap { display: flex; justify-content: center; margin: 14px 0 4px; min-height: 44px; }
+/* หน้าเว็บเป็น color-scheme: dark แต่ iframe ของ Google เป็น light เบราว์เซอร์จึงทาพื้นขาวทับ ตั้งเป็น light ให้พื้นโปร่งใส */
+.gsiWrap iframe { color-scheme: light; }
 .devLogin { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
 .endScore { margin: 6px 0 12px; line-height: 1.6; }
 .endScore .big { font-size: 1.5rem; font-weight: 700; color: var(--gold2); }
