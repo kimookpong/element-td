@@ -1,6 +1,6 @@
 name: Deploy to Cloudflare
 
-# ทุกครั้งที่ push ขึ้น main: build เกม, อัปเดตตาราง D1 แล้ว deploy Worker (elementtd.thasala.app)
+# ทุกครั้งที่ push ขึ้น main: build เกม, อัปเดตตาราง D1 แล้ว deploy Worker (elementtd.thasala.dev)
 # ต้องมี secret CLOUDFLARE_API_TOKEN ใน Settings > Secrets and variables > Actions
 on:
   push:
