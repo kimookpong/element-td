@@ -310,6 +310,12 @@ docs/releases/      บันทึกการเปลี่ยนแปลง
 
 [Play now](https://elementtd.thasala.dev/?lang=en) · [Changelog](CHANGELOG.md)
 
+## License
+
+โค้ดใช้สัญญาอนุญาต [MIT](LICENSE) นำไปใช้หรือดัดแปลงได้ ส่วนเพลง โลโก้ ไอคอน และภาพใน `public/` กับ `docs/screenshots/` สงวนลิขสิทธิ์ ห้ามนำไปใช้นอกโปรเจกต์นี้โดยไม่ได้รับอนุญาต
+
+The code is [MIT licensed](LICENSE). Music, logos, icons and images in `public/` and `docs/screenshots/` are all rights reserved; see [LICENSE](LICENSE) for details.
+
 ---
 
 <div align="center">
