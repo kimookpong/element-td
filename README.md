@@ -246,7 +246,7 @@ npm run deploy       # build, อัปเดตตาราง D1 และ dep
 2. Authorized JavaScript origins ใส่ `https://elementtd.thasala.dev` (ทดสอบในเครื่องเพิ่ม `http://localhost:8787`)
 3. นำ Client ID ไปใส่ `GOOGLE_CLIENT_ID` ใน `wrangler.toml` แล้ว deploy ใหม่ (ไม่ต้องใช้ Client Secret)
 
-**Deploy อัตโนมัติ** เพิ่ม secret `CLOUDFLARE_API_TOKEN` (สิทธิ์ Workers Scripts, Workers Routes, D1 แบบ Edit) ใน GitHub แล้วทุกครั้งที่ push ขึ้น `main` จะ deploy ให้เอง GitHub Pages ยัง deploy ด้วย แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
+**Deploy** สั่ง `npm run deploy` จากเครื่อง (ต้อง `npx wrangler login` ด้วยบัญชีที่มีโดเมน thasala.dev) ส่วน GitHub Pages ยัง deploy อัตโนมัติทุกครั้งที่ push ขึ้น `main` แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
 
 ถ้าเปลี่ยนเวอร์ชันใน `package.json` และเพิ่มไฟล์ `docs/releases/v<เวอร์ชัน>.md` ระบบจะสร้าง tag และ Release ของเวอร์ชันนั้นให้เอง
 
