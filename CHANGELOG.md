@@ -3,7 +3,7 @@
 ## [1.1.0] - 2026-10-03
 
 ### เพิ่ม
-- ย้ายไปรันบน Cloudflare Workers ที่ https://elementtd.thasala.app (deploy ด้วย wrangler)
+- ย้ายไปรันบน Cloudflare Workers ที่ https://elementtd.thasala.dev (deploy ด้วย wrangler)
 - เข้าสู่ระบบด้วย Google หรือเล่นแบบ Guest ต่อได้ตามปกติ (Guest ไม่บันทึกคะแนน)
 - หน้าโปรไฟล์: ประวัติ 10 เกมล่าสุด คะแนนสูงสุดแต่ละแผนที่ สรุปสถิติ และแก้ชื่อเล่น
 - ป้ายอันดับ Top 5 ในฉากเกมของทุกแผนที่ และคะแนนอันดับ 1 บนการ์ดเลือกแผนที่

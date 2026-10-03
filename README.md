@@ -7,7 +7,7 @@
 **เกม Tower Defense สามมิติ หกธาตุ เล่นฟรีบนเบราว์เซอร์**
 <br>3D elemental tower defense that runs in your browser, on desktop and mobile
 
-[![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://elementtd.thasala.app/)
+[![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://elementtd.thasala.dev/)
 [![Version](https://img.shields.io/badge/version-1.1.0-8a5cf6?style=for-the-badge)](CHANGELOG.md)
 
 ![Three.js](https://img.shields.io/badge/Three.js-r186-000000?logo=threedotjs&logoColor=white)
@@ -236,14 +236,14 @@ npm run preview   # เปิดดูไฟล์ที่ build แล้ว
 
 ```bash
 npm run worker:dev   # build แล้วรัน Worker + D1 ในเครื่องที่ http://localhost:8787
-npm run deploy       # build, อัปเดตตาราง D1 และ deploy ขึ้น elementtd.thasala.app
+npm run deploy       # build, อัปเดตตาราง D1 และ deploy ขึ้น elementtd.thasala.dev
 ```
 
 ทดสอบในเครื่องโดยไม่ต้องใช้ Google: สร้างไฟล์ `.dev.vars` ใส่ `DEV_LOGIN=1` แล้วในหน้าบัญชีจะมีปุ่ม dev login
 
 **ตั้งค่าล็อกอิน Google (ครั้งเดียว)**
 1. Google Cloud Console > APIs & Services > Credentials > Create OAuth client ID ชนิด **Web application**
-2. Authorized JavaScript origins ใส่ `https://elementtd.thasala.app` (ทดสอบในเครื่องเพิ่ม `http://localhost:8787`)
+2. Authorized JavaScript origins ใส่ `https://elementtd.thasala.dev` (ทดสอบในเครื่องเพิ่ม `http://localhost:8787`)
 3. นำ Client ID ไปใส่ `GOOGLE_CLIENT_ID` ใน `wrangler.toml` แล้ว deploy ใหม่ (ไม่ต้องใช้ Client Secret)
 
 **Deploy อัตโนมัติ** เพิ่ม secret `CLOUDFLARE_API_TOKEN` (สิทธิ์ Workers Scripts, Workers Routes, D1 แบบ Edit) ใน GitHub แล้วทุกครั้งที่ push ขึ้น `main` จะ deploy ให้เอง GitHub Pages ยัง deploy ด้วย แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
@@ -308,7 +308,7 @@ docs/releases/      บันทึกการเปลี่ยนแปลง
 
 **Element TD 3D** is a free 3D tower defense game inspired by the Warcraft III Element TD map. Summon elemental guardians to unlock six elements, fuse them into 25 unique towers, add support towers that buff, heal or earn gold, build mazes and hold the core for 100 waves. Everything is procedural, built with Three.js and Vite, and it plays on desktop and mobile in Thai or English.
 
-[Play now](https://elementtd.thasala.app/?lang=en) · [Changelog](CHANGELOG.md)
+[Play now](https://elementtd.thasala.dev/?lang=en) · [Changelog](CHANGELOG.md)
 
 ---
 
