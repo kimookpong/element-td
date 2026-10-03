@@ -24,12 +24,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Skip when the token is missing
-        if: env.CLOUDFLARE_API_TOKEN == ''
-        run: echo "::warning::CLOUDFLARE_API_TOKEN is not set, skipping Cloudflare deploy"
+      - name: Check Cloudflare token
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN secret is missing. Add it in Settings > Secrets and variables > Actions, then re-run this workflow."
+            exit 1
+          fi
       - name: Apply D1 migrations
-        if: env.CLOUDFLARE_API_TOKEN != ''
         run: npx wrangler d1 migrations apply element-td-db --remote
       - name: Deploy Worker
-        if: env.CLOUDFLARE_API_TOKEN != ''
         run: npx wrangler deploy
