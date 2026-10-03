@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### เพิ่ม
+- หน้าแรกแสดงจำนวนผู้เล่นที่ลงทะเบียนต่อจาก "by kimookpong" ทั้งบนคอมและมือถือ (มือถือแนวนอนโชว์เฉพาะเมนูหลัก)
+- สัญญาอนุญาต MIT สำหรับโค้ด ส่วนเพลงและภาพสงวนลิขสิทธิ์ (ดู `LICENSE` และ `NOTICE`)
+
+### แก้ไข
+- ปุ่มล็อกอิน Google ไม่มีกรอบสีขาวบนพื้นหลังสีเข้มแล้ว
+
+### เปลี่ยนแปลง
+- ย้าย Worker และฐานข้อมูลกลับมาอยู่บัญชี Cloudflare เดียวกับโดเมน thasala.dev เพื่อให้ elementtd.thasala.dev ใช้งานได้
+- เลิกใช้ GitHub Actions deploy ขึ้น Cloudflare เปลี่ยนเป็นสั่ง `npm run deploy` จากเครื่อง
+
 ## [1.1.0] - 2026-10-03
 
 ### เพิ่ม
@@ -28,5 +41,6 @@
 ### แก้ไข
 - มอนสเตอร์เดินไม่ทับกัน และฝูงมอนสเตอร์บินไม่ติดค้างที่จุดเลี้ยว
 
+[Unreleased]: https://github.com/kimookpong/element-td/compare/v1.1.0...main
 [1.1.0]: https://github.com/kimookpong/element-td/releases/tag/v1.1.0
 [1.0.1]: https://github.com/kimookpong/element-td/releases/tag/v1.0.1

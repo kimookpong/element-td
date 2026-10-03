@@ -67,6 +67,7 @@ Element TD 3D ได้แรงบันดาลใจจาก Element TD ใ
 | <img src="public/icons/map_maze.png" width="28" alt=""> | **สร้างเขาวงกต** | บนลานหิน มอนสเตอร์หาทางเดินใหม่ทุกครั้งที่วางป้อม ลูกศรบนพื้นบอกเส้นทางสด ๆ |
 | <img src="public/icons/map_lane.png" width="28" alt=""> | **8 แผนที่** | 4 แผนที่ทั่วไป และแผนที่ประจำธาตุ 4 แผนที่ที่ให้พลังถิ่น +15% |
 | <img src="public/icons/music.png" width="28" alt=""> | **เพลงประกอบ 13 เพลง** | เพลงประจำแต่ละแผนที่ เพลงบอส เพลงภูตธาตุ และเพลงชนะ/แพ้ |
+| <img src="public/icons/trophy.png" width="28" alt=""> | **บัญชีและอันดับ** | ล็อกอินด้วย Google เก็บประวัติ 10 เกมและคะแนนสูงสุด ชิงอันดับ Top 5 ของแต่ละแผนที่ หรือเล่นแบบ Guest ก็ได้ |
 | <img src="public/icons/save.png" width="28" alt=""> | **เล่นได้ทุกจอ** | รองรับเมาส์และนิ้วสัมผัส ติดตั้งเป็นแอปบนมือถือได้ บันทึกเกมอัตโนมัติ |
 | <img src="public/icons/scroll.png" width="28" alt=""> | **ไทย / English** | สลับภาษาได้ทุกเมื่อ หรือแชร์ลิงก์ `?lang=en` |
 
@@ -230,12 +231,14 @@ npm run build     # สร้างไฟล์สำหรับขึ้นเ
 npm run preview   # เปิดดูไฟล์ที่ build แล้ว
 ```
 
+`npm run dev` ไม่มี API จึงเล่นได้แบบ Guest อย่างเดียว ถ้าจะทดสอบล็อกอิน คะแนน และอันดับ ให้ใช้ `npm run worker:dev` ด้านล่าง
+
 ### รันบน Cloudflare (เกม + ระบบออนไลน์)
 
 เกมและ API รันบน Cloudflare Workers ข้อมูลผู้เล่นเก็บใน D1 (`element-td-db`) ตั้งค่าอยู่ใน `wrangler.toml`
 
 ```bash
-npm run worker:dev   # build แล้วรัน Worker + D1 ในเครื่องที่ http://localhost:8787
+npm run worker:dev   # build, สร้างตาราง D1 ในเครื่อง แล้วรัน Worker ที่ http://localhost:8787
 npm run deploy       # build, อัปเดตตาราง D1 และ deploy ขึ้น elementtd.thasala.dev
 ```
 
@@ -246,7 +249,7 @@ npm run deploy       # build, อัปเดตตาราง D1 และ dep
 2. Authorized JavaScript origins ใส่ `https://elementtd.thasala.dev` (ทดสอบในเครื่องเพิ่ม `http://localhost:8787`)
 3. นำ Client ID ไปใส่ `GOOGLE_CLIENT_ID` ใน `wrangler.toml` แล้ว deploy ใหม่ (ไม่ต้องใช้ Client Secret)
 
-**Deploy** สั่ง `npm run deploy` จากเครื่อง (ต้อง `npx wrangler login` ด้วยบัญชีที่มีโดเมน thasala.dev) ส่วน GitHub Pages ยัง deploy อัตโนมัติทุกครั้งที่ push ขึ้น `main` แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
+**Deploy** สั่ง `npm run deploy` จากเครื่อง ต้อง `npx wrangler login` ด้วยบัญชี Cloudflare ที่มีโดเมน thasala.dev (บัญชีเดียวกับ `account_id` ใน `wrangler.toml`) ไม่มี GitHub Actions deploy ขึ้น Cloudflare ให้แล้ว ส่วน GitHub Pages ยัง deploy อัตโนมัติทุกครั้งที่ push ขึ้น `main` แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
 
 ถ้าเปลี่ยนเวอร์ชันใน `package.json` และเพิ่มไฟล์ `docs/releases/v<เวอร์ชัน>.md` ระบบจะสร้าง tag และ Release ของเวอร์ชันนั้นให้เอง
 
@@ -254,7 +257,7 @@ npm run deploy       # build, อัปเดตตาราง D1 และ dep
 
 | Method | Path | ใช้ทำอะไร |
 |---|---|---|
-| GET | `/api/config` | Client ID ของ Google |
+| GET | `/api/config` | Client ID ของ Google และจำนวนผู้เล่นที่ลงทะเบียน (โชว์ที่ footer หน้าแรก) |
 | POST | `/api/auth/google` | เข้าสู่ระบบด้วย ID token ได้ session token กลับมา |
 | GET / PATCH | `/api/me` | โปรไฟล์ ประวัติ 10 เกม คะแนนสูงสุด / แก้ชื่อเล่น |
 | POST | `/api/runs` | เริ่มรอบเล่น |
@@ -297,6 +300,7 @@ public/icons/       ไอคอน PNG ที่สร้างด้วยโ�
 tools/icons.html    หน้าสร้างไอคอน (node tools/export-icons.cjs ขณะเปิด npm run dev)
 docs/screenshots/   ภาพประกอบ README
 docs/releases/      บันทึกการเปลี่ยนแปลงของแต่ละ Release
+LICENSE / NOTICE    MIT สำหรับโค้ด / ขอบเขตลิขสิทธิ์ของเพลงและภาพ
 ```
 
 แผนที่เขียนเป็นตัวอักษร 20×12 ใน `src/data.js`:
@@ -306,7 +310,7 @@ docs/releases/      บันทึกการเปลี่ยนแปลง
 
 ## English
 
-**Element TD 3D** is a free 3D tower defense game inspired by the Warcraft III Element TD map. Summon elemental guardians to unlock six elements, fuse them into 25 unique towers, add support towers that buff, heal or earn gold, build mazes and hold the core for 100 waves. Everything is procedural, built with Three.js and Vite, and it plays on desktop and mobile in Thai or English.
+**Element TD 3D** is a free 3D tower defense game inspired by the Warcraft III Element TD map. Summon elemental guardians to unlock six elements, fuse them into 25 unique towers, add support towers that buff, heal or earn gold, build mazes and hold the core for 100 waves. Sign in with Google to keep your history and climb each map's Top 5, or play as a guest. Everything is procedural, built with Three.js and Vite, and it plays on desktop and mobile in Thai or English.
 
 [Play now](https://elementtd.thasala.dev/?lang=en) · [Changelog](CHANGELOG.md)
 
