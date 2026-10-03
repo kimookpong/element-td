@@ -1,6 +1,6 @@
 # Element TD 3D บน Cloudflare Workers: ไฟล์เกมจาก dist/ + API ที่ /api/*
 name = "element-td"
-account_id = "2ddbba989902f74107734f8010c6eebc"
+account_id = "aa1d5f8e2f405d06cd915b83be578612"
 main = "worker/index.js"
 compatibility_date = "2026-09-01"
 workers_dev = true
@@ -18,7 +18,7 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "element-td-db"
-database_id = "c5660d71-5026-46ff-85fd-6dd68f9b4a02"
+database_id = "f4139590-bfbf-4250-8916-db4f9774fb12"
 migrations_dir = "migrations"
 
 [vars]
