@@ -1074,6 +1074,9 @@ async function submitResult(g) {
 
 /* ปุ่มบัญชีมุมซ้ายบนของหน้าหลัก */
 function renderAccount() {
+  const nUsers = Api.config ? Api.config.users : null;
+  $('tsUsers').hidden = !nUsers;
+  if (nUsers) $('tsUsers').textContent = T(nUsers === 1 ? 'ts.user1' : 'ts.users', { n: nUsers.toLocaleString() });
   const b = $('tsAccount');
   b.hidden = !Api.online;
   if (!Api.online) return;

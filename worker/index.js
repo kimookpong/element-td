@@ -222,7 +222,11 @@ async function finishRun(req, env, user, runId) {
 async function api(req, env, url) {
   const path = url.pathname.replace(/^\/api/, '');
   const method = req.method;
-  if (path === '/config' && method === 'GET') return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', devLogin: env.DEV_LOGIN === '1' });
+  if (path === '/config' && method === 'GET') {
+    // จำนวนผู้เล่นที่ลงทะเบียน (โชว์ที่ footer) ถ้า DB มีปัญหาให้ config ยังใช้ได้
+    const n = await env.DB.prepare('SELECT count(*) AS n FROM users').first().catch(() => null);
+    return json({ googleClientId: env.GOOGLE_CLIENT_ID || '', devLogin: env.DEV_LOGIN === '1', users: n ? n.n : 0 });
+  }
   if (path === '/auth/google' && method === 'POST') return login(req, env);
   const user = await currentUser(req, env);
   if (path === '/leaderboard' && method === 'GET') return leaderboard(url, env, user);
