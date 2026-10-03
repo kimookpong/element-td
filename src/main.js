@@ -13,6 +13,10 @@ import { Renderer3D } from './render3d.js';
 import { ico, iconUrl, withIcons } from './icons.js';
 import { TOWERS, towerDef } from './towers.js';
 import { t as T, tr, elName, getLang, setLang } from './i18n.js';
+import { Api } from './api.js';
+import { computeScore } from './score.js';
+
+const GAME_VERSION = '1.1.0';
 
 const $ = (id) => document.getElementById(id);
 const BUILD_TYPES = [...ATTACK_BASICS, ...ELEMENT_ORDER, ...SUPPORT_TYPES];
@@ -92,7 +96,14 @@ function resumeGame() {
 /* ---------------- เริ่มเกม / เมนู ---------------- */
 function newGame() {
   clearSave();
-  startWithGame(new Game(view.mapIndex, view.diffKey));
+  const game = new Game(view.mapIndex, view.diffKey);
+  startWithGame(game);
+  // ผู้ที่ล็อกอิน: ขอรหัสรอบเล่นจากเซิร์ฟเวอร์ (ใช้ส่งคะแนนตอนจบเกม)
+  if (Api.loggedIn) {
+    Api.startRun(MAPS[view.mapIndex].id, view.diffKey, GAME_VERSION).then((id) => {
+      if (id && view.game === game) { game.runId = id; saveGame(); }
+    });
+  }
   const homeEl = MAPS[view.mapIndex].element;
   showToast(T('toast.mapStart', { map: tr(MAPS[view.mapIndex], 'name') }) + (homeEl ? `<br><small>${T('map.homeToast', { icon: ico(ELEMENTS[homeEl].icon), el: elName(ELEMENTS[homeEl]) })}</small>` : ''), 3200);
 }
@@ -113,6 +124,7 @@ function startWithGame(game) {
   renderer.loadMap(view.mapIndex);
   renderer.clearDynamic();
   renderer.resetCamera();
+  loadLeaderboard();
   hideOverlays();
   updatePauseUI();
   updateSpeedUI();
@@ -168,6 +180,7 @@ function showMenuPage(page) {
   $('menuNew').hidden = page !== 'new';
   $('menu').classList.toggle('isNew', page === 'new');
   renderMenu();
+  if (page === 'new' && !mapSummary) loadMapSummary();
 }
 
 /* ---------------- เพลงระหว่างเล่น ----------------
@@ -850,6 +863,7 @@ function showEnd(won) {
     : T('end.loseText', { n: Math.max(0, g.wave - 1), kills: g.kills });
   $('btnContinue').style.display = won ? '' : 'none';
   $('endScreen').classList.add('show');
+  submitResult(g);
 }
 
 $('btnContinue').addEventListener('click', () => {
@@ -911,7 +925,7 @@ function renderMenu() {
       badge.innerHTML = ico(ELEMENTS[m.element].icon);
       b.appendChild(badge);
     }
-    b.addEventListener('click', () => { view.mapIndex = i; bgMapIndex = i; renderer.loadMap(i); renderMenu(); });
+    b.addEventListener('click', () => { view.mapIndex = i; bgMapIndex = i; renderer.loadMap(i); renderMenu(); loadLeaderboard(); });
     mapList.appendChild(b);
   });
   const diffList = $('diffList');
@@ -929,6 +943,7 @@ function renderMenu() {
   const btn = $('btnResume');
   btn.hidden = !has;
   btn.title = has ? T('menu.resumeText', { map: tr(MAPS[save.mapIndex], 'name'), diff: tr(DIFFICULTIES[save.diffKey], 'th'), wave: save.wave }) : '';
+  decorateMapCards();
 }
 
 function renderHelp() {
@@ -1014,12 +1029,183 @@ function applyLang() {
   renderMenu();
   if (view.game) { refreshAll(); renderWaveChip(true); }
   if (renderer.world && renderer.world.creatorSign && renderer.world.creatorSign.userData.redraw) renderer.world.creatorSign.userData.redraw();
+  if (renderer.world && renderer.world.rankBoard) renderer.world.rankBoard.userData.redraw();
+  renderAccount();
 }
 function toggleLang() {
   setLang(getLang() === 'th' ? 'en' : 'th');
   applyLang();
   showToast(T('toast.lang'), 1000);
 }
+
+/* ---------------- บัญชีผู้เล่น / คะแนน / อันดับ ---------------- */
+const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtNum = (n) => Number(n || 0).toLocaleString(getLang() === 'th' ? 'th-TH' : 'en-US');
+const avatarHtml = (u) => (u && u.avatar ? `<img class="av" src="${escHtml(u.avatar)}" alt="" referrerpolicy="no-referrer">` : `<span class="av">${escHtml(((u && u.name) || '?').slice(0, 1).toUpperCase())}</span>`);
+const mapName = (id) => { const m = MAPS.find((x) => x.id === id); return m ? tr(m, 'name') : id; };
+
+// ผลเกมปัจจุบัน: เวฟที่เคลียร์แล้ว (แพ้ = เวฟปัจจุบันยังไม่ผ่าน)
+function gameResult(g) {
+  const cleared = g.over ? Math.max(0, g.wave - 1) : g.wave;
+  return { cleared, lives: g.lives, kills: g.kills, won: !!g.won, duration: Math.round(g.time) };
+}
+
+async function submitResult(g) {
+  const r = gameResult(g);
+  const score = computeScore({ ...r, diff: g.diffKey });
+  const box = $('endScore');
+  const head = `<div class="big">${ico('star')} ${T('end.score', { s: fmtNum(score) })}</div>`;
+  if (!Api.online) { box.innerHTML = head; return; }
+  if (!Api.loggedIn) {
+    box.innerHTML = `${head}<div>${T('end.guest')}</div>${Api.loginEnabled ? `<button id="endLogin" class="primary">${T('acc.login')}</button>` : ''}`;
+    if ($('endLogin')) $('endLogin').addEventListener('click', openProfile);
+    return;
+  }
+  if (!g.runId) { box.innerHTML = `${head}<div>${T('end.noRun')}</div>`; return; }
+  box.innerHTML = `${head}<div>${T('end.saving')}</div>`;
+  const res = await Api.finishRun(g.runId, r);
+  if (!res) return;
+  if (res.queued) box.innerHTML = `${head}<div>${T('end.queued')}</div>`;
+  else if (res.error) box.innerHTML = `${head}<div>${T('end.rejected', { e: res.error })}</div>`;
+  else box.innerHTML = `${head}<div>${T('end.saved', { r: res.rank })}</div><div>${T('end.best', { b: fmtNum(res.best) })}</div>`;
+  loadLeaderboard();
+  mapSummary = null;
+}
+
+/* ปุ่มบัญชีมุมซ้ายบนของหน้าหลัก */
+function renderAccount() {
+  const b = $('tsAccount');
+  b.hidden = !Api.online;
+  if (!Api.online) return;
+  const u = Api.user;
+  b.classList.toggle('guest', !Api.loggedIn);
+  b.innerHTML = Api.loggedIn ? `${avatarHtml(u)}<span class="nm">${escHtml(u.name)}</span>` : `${ico('play')}<span class="nm">${T('acc.login')}</span>`;
+}
+$('tsAccount').addEventListener('click', openProfile);
+$('btnCloseProfile').addEventListener('click', () => $('profile').classList.remove('show'));
+$('profile').addEventListener('click', (e) => { if (e.target.id === 'profile') $('profile').classList.remove('show'); });
+
+/* ปุ่มล็อกอิน Google (โหลดสคริปต์ครั้งแรกที่ใช้) */
+let gsiPromise = null;
+function loadGsi() {
+  if (!gsiPromise) {
+    gsiPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.onload = () => {
+        window.google.accounts.id.initialize({
+          client_id: Api.config.googleClientId,
+          callback: async (resp) => {
+            try { await Api.loginWithGoogle(resp.credential); renderProfile(); }
+            catch (e) { showToast(T('acc.loginFail'), 1600); }
+          },
+        });
+        resolve(window.google);
+      };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  return gsiPromise;
+}
+
+function openProfile() {
+  $('profile').classList.add('show');
+  renderProfile();
+}
+
+async function renderProfile() {
+  const body = $('profileBody');
+  if (!Api.loggedIn) {
+    body.innerHTML = `<h2>${ico('scroll')} ${T('acc.title')}</h2><p>${T('acc.guestText')}</p>
+      ${Api.loginEnabled ? '<div class="gsiWrap" id="gsiBtn"></div>' : `<p><b>${T('acc.loginOff')}</b></p>`}
+      ${Api.config && Api.config.devLogin ? `<div class="devLogin"><input id="devName" value="Tester" maxlength="20"><button id="devGo">dev login</button></div>` : ''}`;
+    if (Api.config && Api.config.googleClientId) {
+      loadGsi().then((google) => google.accounts.id.renderButton($('gsiBtn'), { theme: 'filled_black', shape: 'pill', size: 'large', text: 'signin_with', locale: getLang() })).catch(() => {});
+    }
+    if ($('devGo')) $('devGo').addEventListener('click', async () => {
+      const n = $('devName').value.trim() || 'Tester';
+      await Api.loginWithGoogle(`dev:${n.toLowerCase()}:${n}`);
+      renderProfile();
+    });
+    return;
+  }
+  const u = Api.user;
+  body.innerHTML = `<div class="profHead">${avatarHtml(u)}<div><div class="nm">${escHtml(u.name)}</div><button id="profEdit" class="small">${T('acc.edit')}</button></div></div><p>${T('acc.loading')}</p>`;
+  bindEdit();
+  let data;
+  try { data = await Api.me(); } catch (e) { if (Api.loggedIn) body.querySelector('p').textContent = T('acc.error'); else renderProfile(); return; }
+  const s = data.stats;
+  const bestRows = MAPS.map((m) => {
+    const b = data.best[m.id];
+    return `<tr><td>${escHtml(tr(m, 'name'))}</td><td>${b ? fmtNum(b.score) : '-'}</td><td>${b ? b.cleared : '-'}</td><td>${b && b.rank ? '#' + b.rank : '-'}</td></tr>`;
+  }).join('');
+  const recentRows = data.recent.map((g) => `<tr><td>${escHtml(mapName(g.map))}</td><td>${tr(DIFFICULTIES[g.diff], 'th')}</td><td>${g.cleared}</td><td>${fmtNum(g.score)}</td><td class="${g.won ? 'win' : 'lose'}">${T(g.won ? 'res.win' : 'res.lose')}</td><td>${new Date(g.created_at * 1000).toLocaleDateString(getLang() === 'th' ? 'th-TH' : 'en-GB')}</td></tr>`).join('');
+  body.innerHTML = `<div class="profHead">${avatarHtml(data.user)}<div><div class="nm">${escHtml(data.user.name)}</div><button id="profEdit" class="small">${T('acc.edit')}</button></div></div>
+    <div class="profStats"><div><b>${fmtNum(s.games)}</b><small>${T('acc.games')}</small></div><div><b>${s.bestWave}</b><small>${T('acc.bestWave')}</small></div><div><b>${fmtNum(s.wins)}</b><small>${T('acc.wins')}</small></div><div><b>${fmtNum(s.topScore)}</b><small>${T('acc.top')}</small></div></div>
+    <h3>${T('acc.bestMaps')}</h3>
+    <table class="profTable"><tr><th>${T('tbl.map')}</th><th>${T('tbl.score')}</th><th>${T('tbl.wave')}</th><th>${T('tbl.rank')}</th></tr>${bestRows}</table>
+    <h3>${T('acc.recent')}</h3>
+    ${data.recent.length ? `<table class="profTable"><tr><th>${T('tbl.map')}</th><th>${T('tbl.diff')}</th><th>${T('tbl.wave')}</th><th>${T('tbl.score')}</th><th>${T('tbl.result')}</th><th>${T('tbl.date')}</th></tr>${recentRows}</table>` : `<p>${T('acc.none')}</p>`}
+    <div class="profActions"><button id="profLogout" class="danger">${T('acc.logout')}</button></div>`;
+  bindEdit();
+  $('profLogout').addEventListener('click', async () => { await Api.logout(); renderProfile(); });
+}
+
+// แก้ชื่อเล่น
+function bindEdit() {
+  const btn = $('profEdit');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const wrap = btn.parentElement;
+    wrap.innerHTML = `<div class="nameEdit"><input id="nameIn" maxlength="20" value="${escHtml(Api.user.name)}" title="${T('acc.nameHint')}"><button id="nameSave" class="primary small">${T('acc.save')}</button><button id="nameCancel" class="small">${T('acc.cancel')}</button></div><small>${T('acc.nameHint')}</small>`;
+    $('nameIn').focus();
+    const save = async () => {
+      const v = $('nameIn').value.trim();
+      if (v.length < 2) { showToast(T('acc.nameBad'), 1400); return; }
+      try { await Api.rename(v); renderProfile(); loadLeaderboard(); mapSummary = null; } catch (e) { showToast(T('acc.nameBad'), 1400); }
+    };
+    $('nameSave').addEventListener('click', save);
+    $('nameIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    $('nameCancel').addEventListener('click', renderProfile);
+  });
+}
+
+/* อันดับบนการ์ดเลือกแผนที่ */
+let mapSummary = null;
+async function loadMapSummary() {
+  if (!Api.online) return;
+  try { mapSummary = await Api.summary(); } catch (e) { mapSummary = {}; }
+  decorateMapCards();
+}
+function decorateMapCards() {
+  if (!mapSummary) return;
+  const cards = $('mapList').children;
+  MAPS.forEach((m, i) => {
+    const card = cards[i];
+    if (!card) return;
+    const d = mapSummary[m.id];
+    let box = card.querySelector('.mapRank');
+    if (!d) { if (box) box.remove(); return; }
+    if (!box) { box = document.createElement('div'); box.className = 'mapRank'; card.appendChild(box); }
+    box.innerHTML = (d.top ? `<span>${ico('crown')} ${escHtml(d.top.name)} ${fmtNum(d.top.score)}</span>` : '') + (d.mine != null ? `<span>${T('map.mine', { s: fmtNum(d.mine) })}</span>` : '');
+  });
+}
+
+/* ป้ายอันดับในฉากเกม */
+async function loadLeaderboard() {
+  const g = view.game;
+  const id = MAPS[(g ? g.mapIndex : view.mapIndex)].id;
+  if (!Api.online) { renderer.setLeaderboard(null); return; }
+  try {
+    const data = await Api.leaderboard(id);
+    const cur = view.game ? MAPS[view.game.mapIndex].id : MAPS[view.mapIndex].id;
+    if (cur === id) renderer.setLeaderboard({ ...data, loggedIn: Api.loggedIn });
+  } catch (e) { /* ไม่มีเน็ต: ปล่อยป้ายเดิมไว้ */ }
+}
+
+Api.onChange(() => { renderAccount(); mapSummary = null; loadLeaderboard(); if (menuPage === 'new') loadMapSummary(); });
 
 /* ---------------- เริ่มต้น ---------------- */
 applyLang();
@@ -1029,6 +1215,8 @@ renderBuild();
 renderMenu();
 updateLayout();
 requestAnimationFrame(frame);
+renderAccount();
+Api.init();
 
 // เปิดให้ทดสอบ/ดีบักผ่าน console
 window.ETD = {

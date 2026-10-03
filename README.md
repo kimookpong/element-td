@@ -7,8 +7,8 @@
 **เกม Tower Defense สามมิติ หกธาตุ เล่นฟรีบนเบราว์เซอร์**
 <br>3D elemental tower defense that runs in your browser, on desktop and mobile
 
-[![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://kimookpong.github.io/element-td/)
-[![Version](https://img.shields.io/badge/version-1.0.1-8a5cf6?style=for-the-badge)](CHANGELOG.md)
+[![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://elementtd.thasala.app/)
+[![Version](https://img.shields.io/badge/version-1.1.0-8a5cf6?style=for-the-badge)](CHANGELOG.md)
 
 ![Three.js](https://img.shields.io/badge/Three.js-r186-000000?logo=threedotjs&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
@@ -49,6 +49,13 @@ Element TD 3D ได้แรงบันดาลใจจาก Element TD ใ
 <td align="center"><sub>เล่นบนมือถือแนวตั้ง</sub></td>
 </tr>
 </table>
+
+## ออนไลน์ (v1.1.0)
+
+- **เล่นแบบ Guest ได้ทันที** ไม่ต้องสมัคร แต่คะแนนจะไม่ถูกบันทึก
+- **เข้าสู่ระบบด้วย Google** เพื่อเก็บประวัติ 10 เกมล่าสุด คะแนนสูงสุดของแต่ละแผนที่ และแก้ชื่อเล่นที่แสดงในอันดับได้
+- **ป้ายอันดับ Top 5 ทุกแผนที่** อยู่บนฉากเกมฝั่งขวาบน และการ์ดเลือกแผนที่บอกคะแนนอันดับ 1 กับคะแนนของคุณ
+- **คะแนน** = (เวฟที่เคลียร์ × 1000 + ชีวิตที่เหลือ × 100 + จำนวนที่ฆ่า) × ตัวคูณความยาก (ง่าย ×0.75, ปกติ ×1, ยาก ×1.5) เซิร์ฟเวอร์คิดคะแนนเองและตรวจว่าผลเกมเป็นไปได้จริงก่อนบันทึก
 
 ## จุดเด่น
 
@@ -223,7 +230,41 @@ npm run build     # สร้างไฟล์สำหรับขึ้นเ
 npm run preview   # เปิดดูไฟล์ที่ build แล้ว
 ```
 
-ทุกครั้งที่ push ขึ้น `main` GitHub Actions จะ build และ deploy ขึ้น GitHub Pages ให้อัตโนมัติ ถ้าเปลี่ยนเวอร์ชันใน `package.json` และเพิ่มไฟล์ `docs/releases/v<เวอร์ชัน>.md` ระบบจะสร้าง tag และ Release ของเวอร์ชันนั้นให้เอง
+### รันบน Cloudflare (เกม + ระบบออนไลน์)
+
+เกมและ API รันบน Cloudflare Workers ข้อมูลผู้เล่นเก็บใน D1 (`element-td-db`) ตั้งค่าอยู่ใน `wrangler.toml`
+
+```bash
+npm run worker:dev   # build แล้วรัน Worker + D1 ในเครื่องที่ http://localhost:8787
+npm run deploy       # build, อัปเดตตาราง D1 และ deploy ขึ้น elementtd.thasala.app
+```
+
+ทดสอบในเครื่องโดยไม่ต้องใช้ Google: สร้างไฟล์ `.dev.vars` ใส่ `DEV_LOGIN=1` แล้วในหน้าบัญชีจะมีปุ่ม dev login
+
+**ตั้งค่าล็อกอิน Google (ครั้งเดียว)**
+1. Google Cloud Console > APIs & Services > Credentials > Create OAuth client ID ชนิด **Web application**
+2. Authorized JavaScript origins ใส่ `https://elementtd.thasala.app` (ทดสอบในเครื่องเพิ่ม `http://localhost:8787`)
+3. นำ Client ID ไปใส่ `GOOGLE_CLIENT_ID` ใน `wrangler.toml` แล้ว deploy ใหม่ (ไม่ต้องใช้ Client Secret)
+
+**Deploy อัตโนมัติ** เพิ่ม secret `CLOUDFLARE_API_TOKEN` (สิทธิ์ Workers Scripts, Workers Routes, D1 แบบ Edit) ใน GitHub แล้วทุกครั้งที่ push ขึ้น `main` จะ deploy ให้เอง GitHub Pages ยัง deploy ด้วย แต่เล่นได้แบบ Guest อย่างเดียวเพราะไม่มี API
+
+ถ้าเปลี่ยนเวอร์ชันใน `package.json` และเพิ่มไฟล์ `docs/releases/v<เวอร์ชัน>.md` ระบบจะสร้าง tag และ Release ของเวอร์ชันนั้นให้เอง
+
+### API
+
+| Method | Path | ใช้ทำอะไร |
+|---|---|---|
+| GET | `/api/config` | Client ID ของ Google |
+| POST | `/api/auth/google` | เข้าสู่ระบบด้วย ID token ได้ session token กลับมา |
+| GET / PATCH | `/api/me` | โปรไฟล์ ประวัติ 10 เกม คะแนนสูงสุด / แก้ชื่อเล่น |
+| POST | `/api/runs` | เริ่มรอบเล่น |
+| POST | `/api/runs/:id/finish` | ส่งผลเกม (เซิร์ฟเวอร์ตรวจและคิดคะแนนเอง) |
+| GET | `/api/leaderboard?map=` | Top 5 ของแผนที่ และอันดับของตัวเอง |
+| GET | `/api/summary` | อันดับ 1 ของทุกแผนที่ (การ์ดเลือกแผนที่) |
+
+### ข้อมูลที่เก็บ
+
+เก็บเฉพาะรหัสบัญชี Google, ชื่อที่แสดง, รูปโปรไฟล์ และผลเกม ไม่เก็บอีเมล ผู้เล่นแบบ Guest ไม่มีข้อมูลใดถูกส่งออกจากเครื่อง
 
 <details>
 <summary><b>โครงสร้างโค้ด</b></summary>
@@ -245,6 +286,11 @@ src/textures.js     พื้นผิว procedural
 src/i18n.js         ระบบ 2 ภาษา
 src/audio.js        เสียงเอฟเฟกต์ (WebAudio)
 src/music.js        เพลงประกอบ (วนซ้ำ + เฟดข้ามเพลง)
+src/api.js          เชื่อมต่อ API ล็อกอิน และส่งผลเกม (เก็บไว้ส่งใหม่ถ้าเน็ตหลุด)
+src/score.js        สูตรคะแนนและการตรวจผลเกม (ใช้ร่วมกับ Worker)
+worker/index.js     Cloudflare Worker: API + เสิร์ฟไฟล์เกม
+migrations/         ตารางฐานข้อมูล D1
+wrangler.toml       ตั้งค่า Cloudflare (D1, โดเมน, Google Client ID)
 src/style.css       สไตล์ UI
 public/music/       ไฟล์เพลง
 public/icons/       ไอคอน PNG ที่สร้างด้วยโค้ด
@@ -262,7 +308,7 @@ docs/releases/      บันทึกการเปลี่ยนแปลง
 
 **Element TD 3D** is a free 3D tower defense game inspired by the Warcraft III Element TD map. Summon elemental guardians to unlock six elements, fuse them into 25 unique towers, add support towers that buff, heal or earn gold, build mazes and hold the core for 100 waves. Everything is procedural, built with Three.js and Vite, and it plays on desktop and mobile in Thai or English.
 
-[Play now](https://kimookpong.github.io/element-td/?lang=en) · [Changelog](CHANGELOG.md)
+[Play now](https://elementtd.thasala.app/?lang=en) · [Changelog](CHANGELOG.md)
 
 ---
 

@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /tools/
 
-Sitemap: https://kimookpong.github.io/element-td/sitemap.xml
+Sitemap: https://elementtd.thasala.app/sitemap.xml
