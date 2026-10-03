@@ -6,6 +6,10 @@ compatibility_date = "2026-09-01"
 workers_dev = true
 routes = [{ pattern = "elementtd.thasala.app", custom_domain = true }]
 
+# build เกม (vite) ก่อน deploy ทุกครั้ง ทั้งจาก wrangler ในเครื่อง, GitHub Actions และ Workers Builds
+[build]
+command = "npm run build"
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
