@@ -1,0 +1,26 @@
+# Element TD 3D บน Cloudflare Workers: ไฟล์เกมจาก dist/ + API ที่ /api/*
+name = "element-td"
+account_id = "2ddbba989902f74107734f8010c6eebc"
+main = "worker/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+routes = [{ pattern = "elementtd.thasala.app", custom_domain = true }]
+
+# build เกม (vite) ก่อน deploy ทุกครั้ง ทั้งจาก wrangler ในเครื่อง, GitHub Actions และ Workers Builds
+[build]
+command = "npm run build"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "element-td-db"
+database_id = "c5660d71-5026-46ff-85fd-6dd68f9b4a02"
+migrations_dir = "migrations"
+
+[vars]
+# OAuth Client ID (ชนิด Web) จาก Google Cloud Console ใส่แล้ว deploy ใหม่ ปุ่มล็อกอินจะขึ้นเอง
+GOOGLE_CLIENT_ID = ""

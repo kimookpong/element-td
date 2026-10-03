@@ -2,7 +2,7 @@
  *  สร้างฉากของแผนที่: ภูมิประเทศ, ทางเดินหินที่ลึกลงไปพร้อมกำแพงอิฐ,
  *  พอร์ทัล, จุดตรวจ, ต้นไม้ ตะเกียง และของตกแต่งรอบ ๆ
  * ============================================================ */
-import { t } from './i18n.js';
+import { t, tr } from './i18n.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { COLS, ROWS, ELEMENTS, ELEMENT_ORDER } from './data.js';
@@ -369,6 +369,12 @@ export function buildWorld(map, themeKey) {
   creatorSign.position.set(tileX(spot[0]), 0, tileZ(spot[1]));
   group.add(creatorSign);
 
+  // ---- ป้ายอันดับ Top 5 ของแผนที่ (ฝั่งขวา สมมาตรกับป้ายผู้สร้าง) ----
+  const rankSpot = [(COLS - 1) * 0.75, -0.95];
+  const rankBoard = makeRankBoard(map.def ? tr(map.def, 'name') : '');
+  rankBoard.position.set(tileX(rankSpot[0]), 0, tileZ(rankSpot[1]));
+  group.add(rankBoard);
+
   // ---- ของตกแต่งรอบนอก ----
   decorate(group, map, theme, walk, anim, [{ x: tileX(spot[0]), z: tileZ(spot[1]) }]);
 
@@ -398,7 +404,7 @@ export function buildWorld(map, themeKey) {
 
   return {
     group, theme, anim,
-    spawnPortal, corePortal, coreCrystal, creatorSign,
+    spawnPortal, corePortal, coreCrystal, creatorSign, rankBoard,
     update(t) { for (const a of anim) a(t); },
   };
 }
@@ -1189,3 +1195,100 @@ function makeCreatorSign() {
   return g;
 }
 
+
+/* ---------- ป้ายอันดับ Top 5 ประจำแผนที่ ----------
+ * userData.update(data) รับผลจาก /api/leaderboard (null = ไม่มีระบบออนไลน์ ซ่อนป้าย)
+ * userData.redraw() วาดใหม่ (เช่น เปลี่ยนภาษา) */
+const avatarCache = new Map();
+function loadAvatar(url, onload) {
+  if (!url) return null;
+  let e = avatarCache.get(url);
+  if (!e) {
+    e = { img: new Image(), ok: false, waits: [] };
+    e.img.crossOrigin = 'anonymous';
+    e.img.referrerPolicy = 'no-referrer';
+    e.img.onload = () => { e.ok = true; e.waits.forEach((f) => f()); e.waits = []; };
+    e.img.onerror = () => { e.waits = []; };
+    e.img.src = url;
+    avatarCache.set(url, e);
+  }
+  if (!e.ok && onload) e.waits.push(onload);
+  return e.ok ? e.img : null;
+}
+
+function makeRankBoard(mapLabel) {
+  const g = new THREE.Group();
+  const W = 1000, H = 700;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  let data;
+  const MEDAL = ['#ffd84a', '#d8dde6', '#d8935a', '#c9b48a', '#c9b48a'];
+  const draw = () => {
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, W, H);
+    // แผ่นไม้
+    const gr = x.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, '#8a5a30'); gr.addColorStop(0.5, '#6c4222'); gr.addColorStop(1, '#4e2e16');
+    x.fillStyle = gr; x.fillRect(0, 0, W, H);
+    x.strokeStyle = 'rgba(255,220,160,0.07)'; x.lineWidth = 2;
+    for (let i = 0; i < 30; i++) { const y = (i * 37) % H; x.beginPath(); x.moveTo(0, y); x.bezierCurveTo(W / 3, y + 6, (2 * W) / 3, y - 6, W, y + 2); x.stroke(); }
+    x.lineWidth = 14; x.strokeStyle = '#d9b45a'; x.strokeRect(7, 7, W - 14, H - 14);
+    x.lineWidth = 4; x.strokeStyle = '#3a2008'; x.strokeRect(16, 16, W - 32, H - 32);
+    x.textBaseline = 'middle';
+    signText(x, `\u265B ${t('rank.title', { map: mapLabel })}`, W / 2, 70, `700 52px ${SIGN_FONT}`, '#ffe08a', 'center', 7);
+    const rows = (data && data.top) || [];
+    if (!rows.length) signText(x, t('rank.empty'), W / 2, 330, `600 40px ${SIGN_FONT}`, '#fbf0d8', 'center');
+    rows.forEach((r, i) => {
+      const y = 150 + i * 92;
+      if (r.me) { x.fillStyle = 'rgba(255,216,74,0.18)'; x.fillRect(40, y - 40, W - 80, 80); }
+      // เหรียญอันดับ
+      x.fillStyle = MEDAL[i]; x.beginPath(); x.arc(85, y, 30, 0, Math.PI * 2); x.fill();
+      x.lineWidth = 4; x.strokeStyle = '#3a2008'; x.stroke();
+      signText(x, String(r.rank), 85, y + 2, `700 34px ${SIGN_FONT}`, '#3a2008', 'center', 0);
+      // รูปโปรไฟล์
+      const img = loadAvatar(r.avatar, draw);
+      x.save(); x.beginPath(); x.arc(160, y, 32, 0, Math.PI * 2); x.closePath();
+      x.fillStyle = '#2a1a0c'; x.fill(); x.clip();
+      if (img) x.drawImage(img, 128, y - 32, 64, 64);
+      else signText(x, (r.name || '?').slice(0, 1).toUpperCase(), 160, y + 2, `700 34px ${SIGN_FONT}`, '#ffe08a', 'center', 0);
+      x.restore();
+      x.lineWidth = 4; x.strokeStyle = '#e8c870'; x.beginPath(); x.arc(160, y, 33, 0, Math.PI * 2); x.stroke();
+      let name = r.name || '';
+      x.font = `600 40px ${SIGN_FONT}`;
+      while (name.length > 1 && x.measureText(name).width > 430) name = name.slice(0, -1);
+      if (name !== r.name) name += '...';
+      signText(x, name, 215, y, `600 40px ${SIGN_FONT}`, r.me ? '#ffe08a' : '#fbf0d8');
+      signText(x, Number(r.score).toLocaleString('en-US'), W - 210, y, `700 40px ${SIGN_FONT}`, '#ffe08a', 'right');
+      signText(x, `W${r.cleared}`, W - 60, y, `600 32px ${SIGN_FONT}`, '#b6ffb0', 'right');
+    });
+    let foot = '';
+    if (data && data.me && !(rows.some((r) => r.me))) foot = t('rank.me', { r: data.me.rank, s: Number(data.me.score).toLocaleString('en-US') });
+    else if (data && !data.loggedIn) foot = t('rank.login');
+    if (foot) signText(x, foot, W / 2, H - 52, `500 32px ${SIGN_FONT}`, '#b6ffb0', 'center');
+    tex.needsUpdate = true;
+  };
+  const bw = 2.3, bh = bw * (H / W);
+  const board = new THREE.Group();
+  board.position.y = 0.55 + bh / 2;
+  const back = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, bh + 0.08, 0.07), std(0x4a2e18, { roughness: 0.9 }));
+  back.position.z = -0.04; back.castShadow = true;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.16 }));
+  face.position.z = 0.001;
+  board.add(back, face);
+  g.add(board);
+  const woodM = std(0x5a3a20, { roughness: 0.9 });
+  for (const s of [-1, 1]) {
+    const postH = 0.55 + bh + 0.1;
+    g.add(mesh(G.cyl(), woodM, { x: s * (bw / 2 - 0.15), y: postH / 2, z: -0.09, s: [0.06, postH, 0.06] }));
+    g.add(mesh(G.cone(), std(0xd9b45a, { metalness: 0.6, roughness: 0.35 }), { x: s * (bw / 2 - 0.15), y: postH + 0.07, z: -0.09, s: [0.08, 0.13, 0.08] }));
+    g.add(mesh(G.dode(), std(0x8a8478, { flatShading: true }), { x: s * (bw / 2 - 0.15), y: 0.05, z: -0.09, s: [0.16, 0.08, 0.14] }));
+  }
+  g.visible = false;
+  g.userData.update = (d) => { data = d; g.visible = !!d; if (d) draw(); };
+  g.userData.redraw = () => { if (data) draw(); };
+  g.scale.setScalar(1.15);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => g.userData.redraw());
+  return g;
+}

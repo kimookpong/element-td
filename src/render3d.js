@@ -339,10 +339,14 @@ export class Renderer3D {
     this.controls.maxDistance = Math.max(40, hi * 1.4);
     this.controls.update();
     this.userMovedCamera = false;
-    // ป้ายผู้สร้างหันเข้าหามุมกล้องเริ่มต้นครั้งเดียว (ไม่หมุนตามกล้องระหว่างเล่น)
-    if (this.world && this.world.creatorSign) {
-      const cs = this.world.creatorSign;
-      cs.rotation.y = Math.atan2(this.camera.position.x - cs.position.x, this.camera.position.z - cs.position.z);
+    this.faceSigns();
+  }
+
+  // ป้ายผู้สร้างและป้ายอันดับหันเข้าหามุมกล้องเริ่มต้นครั้งเดียว (ไม่หมุนตามกล้องระหว่างเล่น)
+  faceSigns() {
+    if (!this.world) return;
+    for (const s of [this.world.creatorSign, this.world.rankBoard]) {
+      if (s) s.rotation.y = Math.atan2(this.camera.position.x - s.position.x, this.camera.position.z - s.position.z);
     }
   }
 
@@ -364,6 +368,22 @@ export class Renderer3D {
     this.sun.intensity = th.sunI;
     this.routeVersion = -1;
     this.routePts = null;
+    this.applyLeaderboard();
+    this.faceSigns();
+  }
+
+  /* ป้ายอันดับ: เก็บผลแยกตามแผนที่ แล้วแสดงบนป้ายของแผนที่ที่โหลดอยู่ (null = ไม่มีระบบออนไลน์) */
+  setLeaderboard(data) {
+    this.lbCache = this.lbCache || {};
+    if (data === null) this.lbOffline = true;
+    else { this.lbOffline = false; this.lbCache[data.map] = data; }
+    this.applyLeaderboard();
+  }
+  applyLeaderboard() {
+    const board = this.world && this.world.rankBoard;
+    if (!board) return;
+    if (this.lbOffline || !this.lbCache) { board.userData.update(null); return; }
+    board.userData.update(this.lbCache[this.map.def.id] || { map: this.map.def.id, top: [], me: null, loggedIn: true });
   }
 
   /* ---------- การเลือกช่อง ---------- */

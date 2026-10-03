@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://kimookpong.github.io/element-td/</loc>
+    <loc>https://elementtd.thasala.app/</loc>
     <lastmod>2026-10-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="th" href="https://kimookpong.github.io/element-td/?lang=th"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://kimookpong.github.io/element-td/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://kimookpong.github.io/element-td/"/>
+    <xhtml:link rel="alternate" hreflang="th" href="https://elementtd.thasala.app/?lang=th"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://elementtd.thasala.app/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://elementtd.thasala.app/"/>
     <image:image>
-      <image:loc>https://kimookpong.github.io/element-td/og-image.jpg</image:loc>
+      <image:loc>https://elementtd.thasala.app/og-image.jpg</image:loc>
       <image:title>Element TD 3D — 3D elemental tower defense</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://kimookpong.github.io/element-td/logo-wide.webp</image:loc>
+      <image:loc>https://elementtd.thasala.app/logo-wide.webp</image:loc>
       <image:title>Element TD logo</image:title>
     </image:image>
   </url>

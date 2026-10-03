@@ -222,6 +222,8 @@ export class Game {
       nextWaveData: this.nextWaveData,
       nextId: this.nextId,
       nextWaveIn: this.nextWaveIn,
+      runId: this.runId || null,
+      playTime: Math.round(this.time),
       towers: this.towers.map((t) => ({
         c: t.c, r: t.r, kind: t.kind, base: t.base, elements: t.elements.slice(), tier: t.tier,
         spent: t.spent, mode: t.mode, kills: t.kills, dmgDealt: Math.round(t.dmgDealt),
@@ -233,11 +235,12 @@ export class Game {
   static restore(data) {
     if (!data || data.v !== SAVE_VERSION || !MAPS[data.mapIndex] || !DIFFICULTIES[data.diffKey]) return null;
     const g = new Game(data.mapIndex, data.diffKey);
-    for (const k of ['gold', 'lives', 'wave', 'kills', 'endless', 'won', 'elemPoints', 'lastElement', 'nextId', 'nextWaveIn']) {
+    for (const k of ['gold', 'lives', 'wave', 'kills', 'endless', 'won', 'elemPoints', 'lastElement', 'nextId', 'nextWaveIn', 'runId']) {
       if (data[k] !== undefined) g[k] = data[k];
     }
     for (const e of ELEMENT_ORDER) g.elemLevel[e] = Math.max(0, Math.min(MAX_ELEMENT_LEVEL, data.elemLevel?.[e] | 0));
     if (data.nextWaveData) g.nextWaveData = data.nextWaveData;
+    if (data.playTime > 0) g.time = data.playTime;
     for (const s of data.towers || []) {
       if (s.c < 0 || s.c >= COLS || s.r < 0 || s.r >= ROWS) continue;
       const i = idx(s.c, s.r);
