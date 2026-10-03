@@ -1,0 +1,13 @@
+Element TD 3D
+Copyright (c) 2026 kimookpong
+
+The MIT License in LICENSE covers the source code only (src/, worker/,
+tools/*.js, tools/*.cjs, tools/*.html, migrations/ and the build/config files).
+
+It does NOT cover the game's assets. The music in public/music/, the logos,
+icons and images in public/, and the screenshots in docs/screenshots/ are
+Copyright (c) 2026 kimookpong, all rights reserved. Please do not reuse them
+outside this project without permission.
+
+Third-party: tools/fonts/luckiest-guy.woff2 is under the Apache License 2.0
+(see tools/fonts/LICENSE-luckiest-guy.txt).
