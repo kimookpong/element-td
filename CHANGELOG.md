@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.1.1] - 2026-10-04
 
 ### เพิ่ม
 - หน้าแรกแสดงจำนวนผู้เล่นที่ลงทะเบียนต่อจาก "by kimookpong" ทั้งบนคอมและมือถือ (มือถือแนวนอนโชว์เฉพาะเมนูหลัก)
@@ -41,6 +41,6 @@
 ### แก้ไข
 - มอนสเตอร์เดินไม่ทับกัน และฝูงมอนสเตอร์บินไม่ติดค้างที่จุดเลี้ยว
 
-[Unreleased]: https://github.com/kimookpong/element-td/compare/v1.1.0...main
+[1.1.1]: https://github.com/kimookpong/element-td/releases/tag/v1.1.1
 [1.1.0]: https://github.com/kimookpong/element-td/releases/tag/v1.1.0
 [1.0.1]: https://github.com/kimookpong/element-td/releases/tag/v1.0.1

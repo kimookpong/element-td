@@ -8,7 +8,7 @@
 <br>3D elemental tower defense that runs in your browser, on desktop and mobile
 
 [![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://elementtd.thasala.dev/)
-[![Version](https://img.shields.io/badge/version-1.1.0-8a5cf6?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.1-8a5cf6?style=for-the-badge)](CHANGELOG.md)
 
 ![Three.js](https://img.shields.io/badge/Three.js-r186-000000?logo=threedotjs&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
