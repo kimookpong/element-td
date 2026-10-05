@@ -1336,17 +1336,17 @@ export class Game {
     const color = this.towerColor(t);
     if (s.zone) {
       this.addZone({ ...s.zone, x: p.tx, y: p.ty, tower: t });
-      this.emit('hit', { x: p.tx, y: p.ty, color, fly: false });
+      this.emit('hit', { x: p.tx, y: p.ty, color, tower: t, fly: false });
     } else if (s.splash) {
       for (const e of this.creeps) {
         if (!e.alive) continue;
         const rr = s.splash + e.size * 0.5;
         if (dist2(e.x, e.y, p.tx, p.ty) <= rr * rr) this.applyHit(e, t, e === p.target ? 1 : 0.5);
       }
-      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: t.kind === 'basic' ? '#ffb060' : color, fly: p.fly });
+      this.emit('explosion', { x: p.tx, y: p.ty, r: s.splash, color: t.kind === 'basic' ? '#ffb060' : color, tower: t, fly: p.fly });
     } else if (p.target && p.target.alive) {
       this.applyHit(p.target, t, 1);
-      this.emit('hit', { x: p.tx, y: p.ty, color, fly: p.fly });
+      this.emit('hit', { x: p.tx, y: p.ty, color, tower: t, fly: p.fly });
     }
   }
 

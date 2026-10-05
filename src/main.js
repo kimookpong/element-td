@@ -16,7 +16,7 @@ import { t as T, tr, elName, getLang, setLang } from './i18n.js';
 import { Api } from './api.js';
 import { computeScore } from './score.js';
 
-const GAME_VERSION = '1.1.1';
+const GAME_VERSION = '1.1.2';
 
 const $ = (id) => document.getElementById(id);
 const BUILD_TYPES = [...ATTACK_BASICS, ...ELEMENT_ORDER, ...SUPPORT_TYPES];

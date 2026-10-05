@@ -5,7 +5,8 @@
  *  - G: ฟังก์ชันสร้างเรขาคณิต (ทรงรี, ท่อเรียว, ทรงกลึง, แผ่นปีก ฯลฯ)
  * ============================================================ */
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -60,7 +61,9 @@ export class Rig {
 
   finalize() {
     for (const { bone, role, geos } of this.parts.values()) {
-      const merged = mergeGeometries(geos);
+      const joined = mergeGeometries(geos);
+      const merged = mergeVertices(joined, 1e-5);
+      joined.dispose();
       merged.computeBoundingSphere();
       const m = new THREE.Mesh(merged);
       m.userData.role = role;
@@ -80,6 +83,16 @@ export const G = {
     return xf(new THREE.SphereGeometry(1, seg, Math.round(seg * 0.7)), { ...o, s: [rx, ry, rz] });
   },
   sphere(r, o = {}, seg = 12) { return xf(new THREE.SphereGeometry(r, seg, Math.round(seg * 0.75)), o); },
+  bevelBox(w, h, d, o = {}, radius = 0.012) {
+    return xf(new RoundedBoxGeometry(w, h, d, 1, Math.min(radius, w * 0.35, h * 0.35, d * 0.35)), o);
+  },
+  scalePlate(w, h, o = {}) {
+    const shape = new THREE.Shape([[-w*0.5,-h*0.35],[-w*0.5,h*0.35],[w*0.12,h*0.5],[w*0.5,0],[w*0.12,-h*0.5]].map(([x,y])=>new THREE.Vector2(x,y)));
+    return xf(new THREE.ExtrudeGeometry(shape,{depth:0.003,bevelEnabled:true,bevelSegments:1,steps:1,bevelSize:0.0018,bevelThickness:0.0015}),o);
+  },
+  crystal(r, h, o = {}) {
+    return G.lathe([[0,-h*0.5],[r,-h*0.22],[r,h*0.25],[0,h*0.5]], o, 6);
+  },
   box(w, h, d, o = {}) { return xf(new THREE.BoxGeometry(w, h, d), o); },
   cyl(rt, rb, h, o = {}, seg = 10) { return xf(new THREE.CylinderGeometry(rt, rb, h, seg), o); },
   cone(r, h, o = {}, seg = 8) { return xf(new THREE.ConeGeometry(r, h, seg), o); },

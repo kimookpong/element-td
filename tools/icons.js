@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { buildCreatureModel } from '../src/creatures.js';
 import { buildTowerModel } from '../src/models.js';
 import { TOWERS } from '../src/towers.js';
+import { BATTLE_LOOK } from '../src/battleFantasy.js';
 
 const S = 128;
 const ICONS = {};
@@ -413,17 +414,18 @@ async function buildPortraits() {
   renderer.setSize(size, size);
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = BATTLE_LOOK.exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene();
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x404060, 1.4));
-  const key = new THREE.DirectionalLight(0xfff2e0, 2.4);
+  scene.add(new THREE.HemisphereLight(0xd7e8ff, 0x695848, BATTLE_LOOK.studioHemi));
+  const key = new THREE.DirectionalLight(0xffecd2, BATTLE_LOOK.studioSun);
   key.position.set(3, 5, 4);
   scene.add(key);
   const rim = new THREE.DirectionalLight(0xa0c8ff, 1.2);
   rim.position.set(-4, 2, -3);
   scene.add(rim);
   const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
-  const down = canvas();
+  const down = canvas(size);
   const dg = down.getContext('2d');
 
   const shoot = (name, obj, { yaw = 0.6, pitch = 0.32, fill = 1.0 } = {}) => {
@@ -432,14 +434,14 @@ async function buildPortraits() {
     const box = new THREE.Box3().setFromObject(obj);
     const center = box.getCenter(new THREE.Vector3());
     const sz = box.getSize(new THREE.Vector3());
-    const r = Math.max(sz.x, sz.y, sz.z) * 0.62 / fill;
+    const r = sz.length() * 0.53 / fill;
     const d = r / Math.tan((cam.fov * PI) / 360);
     cam.position.set(center.x + Math.sin(yaw) * Math.cos(pitch) * d, center.y + Math.sin(pitch) * d, center.z + Math.cos(yaw) * Math.cos(pitch) * d);
     cam.lookAt(center);
     renderer.render(scene, cam);
-    dg.clearRect(0, 0, S, S);
+    dg.clearRect(0, 0, size, size);
     dg.imageSmoothingQuality = 'high';
-    dg.drawImage(renderer.domElement, 0, 0, S, S);
+    dg.drawImage(renderer.domElement, 0, 0, size, size);
     ICONS[name] = down.toDataURL('image/png');
     scene.remove(obj);
   };
@@ -450,11 +452,11 @@ async function buildPortraits() {
   ];
   for (const [name, ability, element] of creatures) {
     const m = buildCreatureModel({ ability, element, size: 12 });
-    m.anim(0.016, 1.3, 1);
+    m.anim(0.016, 1.3, 0);
     m.group.children.forEach((ch) => { if (ch.geometry && ch.geometry.type === 'TorusGeometry') ch.visible = false; });
     // หันหน้าไปทางกล้อง (+X ของโมเดล = ด้านหน้า)
     m.group.rotation.y = 0.9;
-    shoot('c_' + name, m.group, { yaw: 0, pitch: 0.25, fill: 1.22 });
+    shoot('c_' + name, m.group, { yaw: 0, pitch: 0.25, fill: 1.05 });
   }
   // ป้อมพื้นฐาน + ป้อมธาตุทั้ง 25 แบบ (ระดับสูงสุด) · x_* = ภาพตรวจระดับ ไม่ถูกบันทึกเป็นไฟล์
   const towers = [

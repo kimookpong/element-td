@@ -2,13 +2,16 @@
  *  สร้างฉากของแผนที่: ภูมิประเทศ, ทางเดินหินที่ลึกลงไปพร้อมกำแพงอิฐ,
  *  พอร์ทัล, จุดตรวจ, ต้นไม้ ตะเกียง และของตกแต่งรอบ ๆ
  * ============================================================ */
+import { buildLandscapeDetails, buildBiomeLandscape } from './landscapeDetails.js';
+import { terrainLava } from './skillMaterials.js';
 import { t, tr } from './i18n.js';
 import * as THREE from 'three';
+import { G as Sculpt } from './modelkit.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { COLS, ROWS, ELEMENTS, ELEMENT_ORDER } from './data.js';
 import { idx } from './sim.js';
 import { FLOOR, tileX, tileZ, rand, std, glow, mesh, G, geo } from './gfx.js';
-import { grassTexture, cobbleTexture, brickTexture, glowTexture } from './textures.js';
+import { grassTexture, cobbleTexture, brickTexture, glowTexture, surfaceTexture } from './textures.js';
 
 export const THEMES = {
   meadow: {
@@ -110,24 +113,35 @@ function instanced(g, m, items, place, { shadow = true, colors = null } = {}) {
 
 /* ---------- เรขาคณิตของต้นไม้/หญ้า (สร้างครั้งเดียว) ---------- */
 function foliageGeometry() {
-  return geo('foliage', () => {
-    const parts = [
-      [0, 0, 0, 0.55], [0.32, 0.12, 0.1, 0.4], [-0.28, 0.08, -0.14, 0.42], [0.05, 0.42, 0, 0.4], [-0.08, 0.1, 0.32, 0.36],
-    ].map(([x, y, z, s]) => {
-      const g = new THREE.IcosahedronGeometry(s, 1);
-      g.translate(x, y, z);
-      return g;
-    });
+  return geo('foliageSculpted', () => {
+    const parts=[];
+    for(let level=0;level<3;level++)for(let k=0;k<6;k++) {
+      const a=k*Math.PI/3+level*0.7,r=0.24-level*0.065;
+      const g=new THREE.SphereGeometry(0.25-level*0.035,12,8);
+      const p=g.attributes.position;
+      for(let i=0;i<p.count;i++) {
+        const x=p.getX(i),y=p.getY(i),z=p.getZ(i),n=1+Math.sin(x*40+z*31+y*22)*0.06;
+        p.setXYZ(i,x*n,y*n*0.75,z*n);
+      }
+      g.translate(Math.cos(a)*r,level*0.22,Math.sin(a)*r);g.computeVertexNormals();parts.push(g);
+    }
     return mergeGeometries(parts);
   });
 }
-
 function pineGeometry() {
-  return geo('pine', () => mergeGeometries([
-    new THREE.ConeGeometry(0.5, 0.75, 7).translate(0, 0.55, 0),
-    new THREE.ConeGeometry(0.4, 0.65, 7).translate(0, 0.9, 0),
-    new THREE.ConeGeometry(0.27, 0.55, 7).translate(0, 1.22, 0),
-  ]));
+  return geo('pineSculpted',()=>{
+    const parts=[];
+    for(let level=0;level<7;level++) {
+      const r=0.43*(1-level/8);
+      const g=new THREE.ConeGeometry(r,0.43,16,3);g.translate(0,0.38+level*0.15,0);parts.push(g);
+      for(let k=0;k<5;k++) {
+        const a=k*Math.PI*2/5+level*0.5;
+        const leaf=new THREE.ConeGeometry(r*0.3,0.24,8);leaf.rotateZ(0.55);leaf.rotateY(a);
+        leaf.translate(Math.cos(a)*r*0.45,0.3+level*0.15,Math.sin(a)*r*0.45);parts.push(leaf);
+      }
+    }
+    return mergeGeometries(parts);
+  });
 }
 
 function tuftGeometry() {
@@ -178,11 +192,21 @@ function makePortal(color, stoneTint) {
   g.add(mesh(G.box(), stone, { y: 0.06, s: [1.5, 0.12, 0.55] }));
   g.add(mesh(G.box(), stone, { x: -0.62, y: 0.25, s: [0.3, 0.3, 0.45] }));
   g.add(mesh(G.box(), stone, { x: 0.62, y: 0.25, s: [0.3, 0.3, 0.45] }));
-  const ring = mesh(geo('portalRing', () => new THREE.TorusGeometry(0.55, 0.13, 6, 16)), std(0x7d776c, { roughness: 0.85, flatShading: true }), { y: 0.82 });
+  const ring = mesh(geo('portalRing', () => new THREE.TorusGeometry(0.55, 0.095, 10, 48)), std(0x7d776c, { roughness: 0.85, flatShading: true }), { y: 0.82 });
   g.add(ring);
-  for (let k = 0; k < 5; k++) {
-    const a = Math.PI / 2 + ((k - 2) / 2) * 1.2;
-    g.add(mesh(G.box(), glow(color, 3), { x: Math.cos(a) * 0.55, y: 0.82 + Math.sin(a) * 0.55, z: 0.1, s: 0.07, rz: a, shadow: false }));
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * Math.PI * 2;
+    g.add(mesh(G.box(), glow(color, 3), { x: Math.cos(a) * 0.55, y: 0.82 + Math.sin(a) * 0.55, z: 0.1, s: [0.035, 0.075, 0.035], rz: a, shadow: false }));
+  }
+  const bronze = std(0xbfa575, { metalness: 0.65, roughness: 0.36 });
+  for (const side of [-1, 1]) {
+    g.add(mesh(G.cyl(), stone, { x: side * 0.63, y: 0.65, s: [0.09, 1.0, 0.09] }));
+    for (const y of [0.18, 0.55, 1.12]) g.add(mesh(G.cyl(), bronze, { x: side * 0.63, y, s: [0.115, 0.04, 0.115] }));
+    g.add(mesh(G.octa(), glow(color, 1.8), { x: side * 0.63, y: 1.28, s: [0.06, 0.15, 0.06], shadow: false }));
+  }
+  for(let k=0;k<16;k++) {
+    const a=k*Math.PI*2/16;
+    g.add(mesh(G.box(), bronze, {x:Math.cos(a)*0.55,y:0.82+Math.sin(a)*0.55,z:0.06,s:[0.025,0.09,0.035],rz:a- Math.PI/2}));
   }
   const sw = swirlMaterial(color);
   const disc = new THREE.Mesh(geo('portalDisc', () => new THREE.CircleGeometry(0.48, 48)), sw);
@@ -207,9 +231,9 @@ export function buildWorld(map, themeKey) {
 
   const grassMat = std(0xffffff, { map: grassTexture(theme.grass), roughness: 0.95 });
   const cobbleTex = cobbleTexture(theme.stone);
-  const cobbleMat = std(0xffffff, { map: cobbleTex, bumpMap: cobbleTex, bumpScale: 2.5, roughness: 0.9 });
+  const cobbleMat = std(0xffffff, { map: cobbleTex, bumpMap: cobbleTex, bumpScale: 0.045, roughness: 0.9 });
   const brickTex = brickTexture(theme.stone);
-  const brickMat = std(0xffffff, { map: brickTex, bumpMap: brickTex, bumpScale: 2, roughness: 0.92 });
+  const brickMat = std(0xffffff, { map: brickTex, bumpMap: brickTex, bumpScale: 0.035, roughness: 0.92 });
   const CAPS = { basalt: 0x2e2422, cloud: 0xf4f8ff, cave: 0x4a3e34, mossy: 0x7f8c6c };
   const capMat = std(CAPS[theme.stone] || (theme.stone === 'sand' ? 0xcbb388 : theme.stone === 'sandstone' ? 0xe6cc92 : theme.stone === 'night' ? 0x5c5f80 : 0x9a948a), { roughness: 0.85, flatShading: true });
 
@@ -325,7 +349,7 @@ export function buildWorld(map, themeKey) {
     }, { shadow: false, colors: () => new THREE.Color(pal[Math.floor(Math.random() * pal.length)]).multiplyScalar(1.6).getHex() }));
   }
   if (ruinBlocks.length) {
-    const ruinMat = std(0xd6d0c4, { map: brickTex, bumpMap: brickTex, bumpScale: 2, roughness: 0.9 });
+    const ruinMat = std(0xd6d0c4, { map: brickTex, bumpMap: brickTex, bumpScale: 0.035, roughness: 0.9 });
     group.add(instanced(G.box(), ruinMat, ruinBlocks, (d, it) => {
       const y0 = it.y0 || 0;
       d.position.set(it.x, y0 + (it.h - y0) / 2, it.z);
@@ -377,6 +401,9 @@ export function buildWorld(map, themeKey) {
 
   // ---- ของตกแต่งรอบนอก ----
   decorate(group, map, theme, walk, anim, [{ x: tileX(spot[0]), z: tileZ(spot[1]) }]);
+
+  buildLandscapeDetails(group, map, themeKey, anim);
+  buildBiomeLandscape(group, map, themeKey, anim);
 
   // ---- ท้องฟ้า ----
   const sky = new THREE.Mesh(
@@ -462,7 +489,8 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
 
   // ต้นไม้
   const treeSpots = scatter(desert || barren ? 0 : canyon ? 30 : 150, 1.2, 15);
-  const trunkMat = std(night ? 0x3a2a30 : 0x6b4a2b, { roughness: 0.9 });
+  const bark = surfaceTexture('wood');
+  const trunkMat = std(night ? 0x3a2a30 : 0x725942, { map: bark, bumpMap: bark, bumpScale: 0.018, roughness: 0.94 });
   if (desert) buildDesert(group, scatter, nearPortal, B);
   if (theme.deco === 'volcano') buildVolcano(group, scatter, B, anim);
   if (theme.deco === 'sky') buildSky(group, scatter, B, anim);
@@ -491,12 +519,12 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   const leafy = night ? [] : treeSpots.filter((_, i) => i % 3 !== 0);
   if (leafy.length) {
     const sizes = leafy.map(() => rand(0.9, 1.7));
-    group.add(instanced(geo('trunk', () => new THREE.CylinderGeometry(0.07, 0.12, 1, 6)), trunkMat, leafy, (d, it, i) => {
+    group.add(instanced(geo('trunkSculpted', () => { const parts = [Sculpt.tube([[0,-0.5,0],[0.015,-0.1,0],[-0.02,0.3,0],[0.025,0.64,0]],[0.12,0.035],{},18,12)]; for(let k=0;k<5;k++){const a=k*Math.PI*2/5;parts.push(Sculpt.tube([[0,0.05,0],[Math.cos(a)*0.17,0.31,Math.sin(a)*0.17],[Math.cos(a)*0.26,0.51,Math.sin(a)*0.26]],[0.042,0.012],{},10,7));parts.push(Sculpt.tube([[0,-0.25,0],[Math.cos(a)*0.1,-0.42,Math.sin(a)*0.1],[Math.cos(a)*0.27,-0.5,Math.sin(a)*0.27]],[0.052,0.005],{},8,6));}return mergeGeometries(parts); }), trunkMat, leafy, (d, it, i) => {
       d.position.set(it.x, 0.45 * sizes[i], it.z);
       d.scale.set(sizes[i], sizes[i] * 0.9, sizes[i]);
     }));
-    const leafBase = canyon ? 0x8a9a3a : 0x3f8f32;
-    group.add(instanced(foliageGeometry(), std(0xffffff, { flatShading: true, roughness: 0.85 }), leafy, (d, it, i) => {
+    const leafBase = canyon ? 0x92965d : 0x4c8256;
+    group.add(instanced(foliageGeometry(), std(0xffffff, { roughness: 0.88 }), leafy, (d, it, i) => {
       d.position.set(it.x, 1.05 * sizes[i], it.z);
       d.rotation.y = rand(0, 6);
       d.scale.setScalar(sizes[i]);
@@ -508,8 +536,8 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
       d.position.set(it.x, 0, it.z);
       d.scale.setScalar(sizes[i]);
     }));
-    const pineBase = night ? 0x1f4a50 : 0x2a6a38;
-    group.add(instanced(pineGeometry(), std(0xffffff, { flatShading: true, roughness: 0.85 }), pines, (d, it, i) => {
+    const pineBase = night ? 0x284e59 : 0x345e4e;
+    group.add(instanced(pineGeometry(), std(0xffffff, { roughness: 0.88 }), pines, (d, it, i) => {
       d.position.set(it.x, 0, it.z);
       d.rotation.y = rand(0, 6);
       d.scale.setScalar(sizes[i]);
@@ -519,7 +547,7 @@ function decorate(group, map, theme, walk, anim, extraPts = []) {
   // พุ่มไม้และก้อนหิน
   if (!canyon) {
     const bushes = scatter(120, 0.5, 12);
-    group.add(instanced(G.ico1(), std(0xffffff, { flatShading: true, roughness: 0.85 }), bushes, (d, it) => {
+    group.add(instanced(G.ico1(), std(0xffffff, { roughness: 0.88 }), bushes, (d, it) => {
       const s = rand(0.18, 0.4);
       d.position.set(it.x, s * 0.6, it.z);
       d.scale.set(s * 1.3, s, s * 1.2);
@@ -711,7 +739,8 @@ function buildHazards(group, list, theme, anim, capMat) {
   group.add(new THREE.Mesh(walls.build(), wallMat));
   if (lava) {
     const tex = lavaTexture();
-    const lavaMesh = new THREE.Mesh(bottom.build(), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.6, 1.25, 1.1) }));
+    const lavaMesh = new THREE.Mesh(bottom.build(), terrainLava());
+    anim.push(t=>{lavaMesh.material.uniforms.time.value=t;});
     group.add(lavaMesh);
     anim.push((t) => { tex.offset.set(t * 0.03, t * 0.05); });
     group.add(instanced(G.dode(), std(0x221a18, { flatShading: true, roughness: 0.6 }), caps, (d, it) => {
@@ -747,10 +776,19 @@ function buildHazards(group, list, theme, anim, capMat) {
 }
 
 /* ---------- ฉากภูเขาไฟ ---------- */
+function erodedRock(radius, height, top = 0.01) {
+  const g=new THREE.CylinderGeometry(top,radius,height,20,14),p=g.attributes.position;
+  for(let i=0;i<p.count;i++) {
+    const x=p.getX(i),y=p.getY(i),z=p.getZ(i),a=Math.atan2(z,x);
+    const n=1+Math.sin(a*7+y*13)*0.06+Math.sin(a*11-y*4)*0.04;
+    p.setXYZ(i,x*n,y+height/2,z*n);
+  }
+  g.computeVertexNormals();return g;
+}
 function makeVolcanoCone(h, r) {
   const g = new THREE.Group();
   const prof = [[r, 0], [r * 0.8, h * 0.25], [r * 0.55, h * 0.6], [r * 0.32, h * 0.92], [r * 0.26, h], [r * 0.2, h * 0.94], [0, h * 0.9]];
-  const cone = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 14), std(0x3a2a24, { flatShading: true, roughness: 0.95 }));
+  const cone = new THREE.Mesh((()=>{const g=new THREE.LatheGeometry(prof.map(([x,y])=>new THREE.Vector2(x,y)),64),p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),a=Math.atan2(z,x),n=1+Math.sin(a*9+y*0.8)*0.04+Math.sin(a*19-y*1.2)*0.025;p.setXYZ(i,x*n,y,z*n);}g.computeVertexNormals();return g;})(), std(0x3a2a24, { map: surfaceTexture('stone'), bumpMap: surfaceTexture('stone'), bumpScale: 0.09, roughness: 0.95 }));
   cone.castShadow = true;
   g.add(cone);
   const crater = new THREE.Mesh(new THREE.CircleGeometry(r * 0.2, 16), glow(0xff7a2a, 2.6));
@@ -791,7 +829,7 @@ function buildVolcano(group, scatter, B, anim) {
   }));
   // หินออบซิเดียนแหลม
   const spikes = scatter(55, 0.8, 14);
-  group.add(instanced(geo('spike', () => new THREE.ConeGeometry(0.25, 1, 5).translate(0, 0.5, 0)), std(0x14101a, { metalness: 0.6, roughness: 0.2, flatShading: true }), spikes, (d, it) => {
+  group.add(instanced(geo('spikeSculpted', () => erodedRock(0.25,1)), std(0x14101a, { metalness: 0.6, roughness: 0.2, flatShading: true }), spikes, (d, it) => {
     const h = rand(0.5, 1.8);
     d.position.set(it.x, 0, it.z);
     d.rotation.set(rand(-0.25, 0.25), rand(0, 3), rand(-0.25, 0.25));
@@ -801,7 +839,8 @@ function buildVolcano(group, scatter, B, anim) {
   const pools = scatter(7, 2, 12);
   const tex = lavaTexture();
   pools.forEach((p) => {
-    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.6, 1.25, 1.1) }));
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 48), terrainLava());
+    anim.push(t=>{pool.material.uniforms.time.value=t;});
     pool.rotation.x = -Math.PI / 2; pool.position.set(p.x, 0.02, p.z);
     pool.scale.set(rand(0.9, 1.8), rand(0.6, 1.2), 1);
     group.add(pool);
@@ -823,7 +862,7 @@ function buildSky(group, scatter, B, anim) {
   islands.forEach(([x, y, z], i) => {
     const g = new THREE.Group();
     const s = 0.8 + (i % 3) * 0.35;
-    const rock = new THREE.Mesh(new THREE.ConeGeometry(1.6 * s, 2.6 * s, 7).rotateX(Math.PI), std(0x8a7a6a, { flatShading: true }));
+    const rock = new THREE.Mesh(erodedRock(1.6*s,2.6*s,0.15*s).translate(0,-1.3*s,0).rotateX(Math.PI), std(0x8a7a6a, { flatShading: true }));
     rock.position.y = -1.3 * s;
     const top = new THREE.Mesh(new THREE.CylinderGeometry(1.65 * s, 1.6 * s, 0.25 * s, 7), std(0x6ac04a, { flatShading: true }));
     const tree = new THREE.Mesh(foliageGeometry(), std(0x3f9a3a, { flatShading: true }));
@@ -858,9 +897,9 @@ function buildSky(group, scatter, B, anim) {
 
 /* ---------- ฉากถ้ำใต้ดิน ---------- */
 function buildCave(group, scatter, B, anim) {
-  const rockM = std(0x4a3c30, { flatShading: true, roughness: 0.95 });
+  const rockM = std(0x4a3c30, {map:surfaceTexture('stone'),bumpMap:surfaceTexture('stone'),bumpScale:0.035,roughness:0.95});
   const stal = scatter(140, 0.8, 16);
-  group.add(instanced(geo('stal', () => new THREE.ConeGeometry(0.3, 1, 6).translate(0, 0.5, 0)), rockM, stal, (d, it) => {
+  group.add(instanced(geo('stalSculpted', () => erodedRock(0.3,1,0.015)), rockM, stal, (d, it) => {
     const h = rand(0.5, 1.6) * (1 + it.d * 0.18);
     d.position.set(it.x, 0, it.z);
     d.rotation.y = rand(0, 3);

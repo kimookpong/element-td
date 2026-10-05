@@ -4,20 +4,35 @@
  *  ติดตั้งเป็นเมธอดของ Renderer3D ผ่าน installVfx()
  * ============================================================ */
 import * as THREE from 'three';
+import { zoneSurface } from './skillMaterials.js';
 import { TILE } from './data.js';
 import { FLY_HEIGHT, wx, wz, rand, geo } from './gfx.js';
 
 const PI = Math.PI;
+function cycloneRibbon(layer) {
+  const positions=[],uvs=[],indices=[];
+  for(let i=0;i<=80;i++) {
+    const t=i/80,angle=t*PI*7+layer*PI*2/3,r=0.06+t*(0.4-layer*0.05);
+    for(const side of [-1,1]) {
+      const a=angle+side*(0.18+t*0.12);
+      positions.push(Math.cos(a)*r,t*(1.5-layer*0.13),Math.sin(a)*r);
+      uvs.push(side===-1?0:1,t*2);
+    }
+    if(i<80){const k=i*2;indices.push(k,k+2,k+1,k+1,k+2,k+3);}
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();return g;
+}
 const add = (c, k = 1.6) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(k), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
 
 /* ---------------- พื้นผิวแอ่งต่าง ๆ (วาดด้วย canvas ครั้งเดียว) ---------------- */
 const texCache = {};
-function zoneTexture(kind) {
+export function zoneTexture(kind) {
   if (texCache[kind]) return texCache[kind];
-  const S = 128;
+  const S = 256;
   const c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
+  g.scale(S / 128, S / 128);
   const blob = (x, y, r, col) => {
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
     gr.addColorStop(0, col);
@@ -100,12 +115,28 @@ const ZONE_STYLE = {
 export function installVfx(R) {
   const P = R.prototype;
 
+  P.addShockwave = function (x, y, z, color, radius = 0.65, life = 0.42) {
+    const g = new THREE.Group();
+    g.position.set(x, y + 0.025, z);
+    const rings = [0, 1].map(i => {
+      const ring = new THREE.Mesh(geo('impactRing' + i, () => new THREE.RingGeometry(i ? 0.86 : 0.94, 1, 48)), add(color, i ? 1 : 1.7));
+      ring.rotation.x = -PI / 2; g.add(ring); return ring;
+    });
+    this.dynamic.add(g);
+    const update = k => rings.forEach((ring, i) => {
+      ring.scale.setScalar(radius * (0.15 + (1 - k) * (i ? 0.78 : 1)));
+      ring.material.opacity = k * k * (i ? 0.25 : 0.7);
+    });
+    update(1);
+    this.effects.push({ obj: g, life, max: life, update });
+  };
+
   P.vpt = function (x, y, fly, h = 0.35) {
     return new THREE.Vector3(wx(x), (fly ? FLY_HEIGHT : this.groundAt(x, y)) + h, wz(y));
   };
 
   /* ลำแสงตรงระหว่างสองจุด */
-  P.addSegment = function (a, b, colors, width, life, coreCol = 0xffffff) {
+  P.addSegment = function (a, b, colors, width, life, coreCol = 0xffffff, style = 'prism', brightness = 1) {
     const dir = b.clone().sub(a);
     const len = dir.length();
     if (len < 1e-4) return;
@@ -114,13 +145,39 @@ export function installVfx(R) {
     g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
     const cyl = geo('beamCyl', () => new THREE.CylinderGeometry(1, 1, 1, 8, 1, true));
     const parts = colors.map((c, i) => {
-      const m = new THREE.Mesh(cyl, add(c));
-      m.scale.set(0.04 * width * (1 - i * 0.25), len, 0.04 * width * (1 - i * 0.25));
+      const m = new THREE.Mesh(cyl, add(c, style === 'solar' ? 0.85 : 1.25));
+      m.scale.set(0.025 * width * (1 - i * 0.25), len, 0.025 * width * (1 - i * 0.25));
       return m;
     });
-    const core = new THREE.Mesh(cyl, add(coreCol, 1.5));
+    // Refracted strands, a solar helix, eclipse collars, or piercing frost shards.
+    if (style === 'solar') {
+      const spiral = geo('beamFilament',()=>{
+        const points=[];for(let i=0;i<=48;i++){const t=i/48,a=t*PI*8;points.push(new THREE.Vector3(Math.cos(a),t-0.5,Math.sin(a)));}
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),48,0.06,4,false);
+      });
+      const filament = new THREE.Mesh(spiral,add(colors[0],1.2));
+      filament.scale.set(0.065*width,len,0.065*width);parts.push(filament);
+    } else if (style === 'sun' || style === 'eclipse') {
+      for(let i=0;i<5;i++) {
+        const collar=new THREE.Mesh(geo('beamCollar',()=>new THREE.TorusGeometry(1,0.04,5,32)),add(colors[i%colors.length]));
+        collar.rotation.x=PI/2;collar.position.y=(i/4-0.5)*len;
+        collar.scale.setScalar((style==='sun'?0.09:0.065)*width);parts.push(collar);
+      }
+    } else if (style === 'arrow' || style === 'frost') {
+      for(let i=0;i<7;i++) {
+        const shard=new THREE.Mesh(geo('beamShard',()=>new THREE.OctahedronGeometry(1)),add(colors[i%colors.length]));
+        shard.position.y=(i/6-0.5)*len;shard.scale.set(0.045*width,style==='frost'?0.18:0.11,0.045*width);parts.push(shard);
+      }
+    } else {
+      for(const side of [-1,1]) {
+        const strand=new THREE.Mesh(cyl,add(colors[0],1.1));strand.position.x=side*0.045*width;
+        strand.scale.set(0.007*width,len,0.007*width);parts.push(strand);
+      }
+    }
+    const core = new THREE.Mesh(cyl, add(style === 'solar' ? '#ffcb83' : coreCol, 1.2));
     core.scale.set(0.014 * width, len, 0.014 * width);
     parts.push(core);
+    parts.forEach(part => part.material.color.multiplyScalar(brightness));
     g.add(...parts);
     this.dynamic.add(g);
     const baseS = parts.map((p) => p.scale.x);
@@ -128,7 +185,7 @@ export function installVfx(R) {
       obj: g, life, max: life,
       update(k) {
         parts.forEach((p, i) => {
-          p.material.opacity = k;
+          p.material.opacity = k * (i < colors.length ? 0.55 : 0.85);
           p.scale.x = p.scale.z = baseS[i] * (0.4 + 0.6 * k);
         });
       },
@@ -152,7 +209,8 @@ export function installVfx(R) {
     } else if (ev.style === 'frost') {
       colors = ['#8fdcff', '#ffffff'];
     }
-    this.addSegment(a, b, colors, ev.width, ev.life || 0.22, core);
+    this.addSegment(a, b, colors, ev.width, ev.life || 0.22, core, ev.style, t.elements?.includes('light') ? 0.75 : 1);
+    this.addShockwave(b.x, b.y - 0.25, b.z, colors[0], ev.style === 'sun' ? 0.65 : 0.3, 0.28);
     const P2 = this.particles;
     const n = ev.style === 'sun' ? 4 : 6;
     for (let i = 0; i < n; i++) {
@@ -163,7 +221,7 @@ export function installVfx(R) {
       // ลำแสงชาร์จ: วาบที่ป้อมและแสงพุ่งที่เป้า
       P2.burst(b.x, b.y, b.z, '#fff6c0', 18, 2.6, 0.18, -3);
       P2.burst(a.x, a.y, a.z, '#ffe35a', 10, 1.4, 0.16, 0);
-      this.addSegment(new THREE.Vector3(b.x, b.y + 6, b.z), b, ['#fff2a0'], ev.width * 0.6, 0.3);
+      this.addSegment(new THREE.Vector3(b.x, b.y + 6, b.z), b, ['#fff2a0'], ev.width * 0.6, 0.3, 0xffffff, 'sun', 0.75);
     }
   };
 
@@ -173,7 +231,7 @@ export function installVfx(R) {
     let prev = new THREE.Vector3(wx(t.x), this.tileGround(t.c, t.r) + (v ? v.height * 0.85 : 0.95), wz(t.y));
     ev.pts.forEach((p, i) => {
       const b = this.vpt(p.x, p.y, p.fly);
-      this.addSegment(prev, b, ['#bff4ff', ev.colors[0]], Math.max(0.7, 1.8 - i * 0.3), 0.25);
+      this.addSegment(prev, b, ['#bff4ff', ev.colors[0]], Math.max(0.7, 1.8 - i * 0.3), 0.25, 0xffffff, 'prism', 0.75);
       this.particles.burst(b.x, b.y, b.z, i % 2 ? '#8fdcff' : '#fff6c0', 6, 1.6, 0.12, -3);
       prev = b;
     });
@@ -182,6 +240,7 @@ export function installVfx(R) {
   P.addPulse = function (ev) {
     const t = ev.tower;
     const y = this.tileGround(t.c, t.r);
+    this.addShockwave(wx(ev.x), y, wz(ev.y), '#ffe7a2', (ev.r || 110) / TILE, 0.65);
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * PI * 2;
       this.particles.emit(wx(ev.x), y + 0.3, wz(ev.y), Math.cos(a) * 4.5, rand(0.2, 0.8), Math.sin(a) * 4.5, '#ffe35a', 0.55, 0.16, 0, y);
@@ -210,6 +269,7 @@ export function installVfx(R) {
 
   P.addGust = function (ev) {
     const y = this.groundAt(ev.x, ev.y);
+    this.addShockwave(wx(ev.x), y, wz(ev.y), '#adffe3', 1.2, 0.4);
     for (let i = 0; i < 30; i++) {
       const a = Math.random() * PI * 2;
       this.particles.emit(wx(ev.x) + Math.cos(a) * 0.3, y + rand(0.2, 0.8), wz(ev.y) + Math.sin(a) * 0.3, Math.cos(a) * 5, 0.3, Math.sin(a) * 5, '#b6ffe3', 0.5, 0.12, 0);
@@ -244,7 +304,7 @@ export function installVfx(R) {
       if (!v) {
         const g = new THREE.Group();
         const disc = new THREE.Mesh(geo('zoneDisc', () => new THREE.PlaneGeometry(2, 2)),
-          new THREE.MeshBasicMaterial({ map: zoneTexture(z.kind), transparent: true, depthWrite: false, blending: st.blend, color: new THREE.Color(1, 1, 1).multiplyScalar(st.glowK) }));
+          zoneSurface(z.kind, zoneTexture(z.kind)));
         disc.rotation.x = -PI / 2;
         g.add(disc);
         if (z.kind === 'void') {
@@ -261,7 +321,8 @@ export function installVfx(R) {
         this.zoneViews.set(z.id, v);
       }
       const k = Math.min(1, z.t / 0.4, (z.dur - z.t) / 0.25 + 0.2);
-      v.disc.material.opacity = (z.kind === 'mud' ? 0.92 : 0.85) * k;
+      v.disc.material.uniforms.opacity.value = (z.kind === 'mud' ? 0.92 : 0.85) * k;
+      v.disc.material.uniforms.time.value = this.time;
       v.disc.rotation.z += dt * (z.kind === 'void' ? 3 : z.kind === 'abyss' ? 1 : 0.15);
       const pos = v.g.position;
       if (Math.random() < dt * (z.kind === 'void' ? 30 : 14) * v.R) {
@@ -278,7 +339,7 @@ export function installVfx(R) {
     for (const [id, v] of this.zoneViews) {
       if (!seen.has(id)) {
         this.dynamic.remove(v.g);
-        v.disc.material.dispose();
+        v.g.traverse(o => { if (o.material) o.material.dispose(); });
         this.zoneViews.delete(id);
       }
     }
@@ -297,9 +358,9 @@ export function installVfx(R) {
         const cols = lava ? ['#ff3a10', '#ff8a2a', '#ffd27a'] : ['#ff5a1e', '#ffa030', '#ffe08a'];
         cols.forEach((c, i) => {
           const mat = add(c, 1.5);
-          mat.map = stripeTexture();
-          const cone = new THREE.Mesh(geo('twister' + i, () => new THREE.CylinderGeometry(0.42 - i * 0.08, 0.06 + i * 0.02, 1.5 - i * 0.2, 16, 1, true)), mat);
-          cone.position.y = (1.5 - i * 0.2) / 2;
+          mat.map = stripeTexture().clone();
+          const cone = new THREE.Mesh(geo('sculptedTwister' + i, () => cycloneRibbon(i)), mat);
+          cone.position.y = 0;
           layers.push(cone);
           g.add(cone);
         });
@@ -325,7 +386,7 @@ export function installVfx(R) {
     for (const [id, v] of this.moverViews) {
       if (!seen.has(id)) {
         this.dynamic.remove(v.g);
-        v.layers.forEach((c) => c.material.dispose());
+        v.layers.forEach((c) => { c.material.map?.dispose(); c.material.dispose(); });
         this.moverViews.delete(id);
       }
     }
@@ -340,22 +401,30 @@ export function installVfx(R) {
       const gy = this.groundAt(d.x, d.y);
       if (!v) {
         const s = d.kind === 'erupt' ? d.tower.stats.erupt.r / TILE : (d.big ? d.tower.stats.meteor.mainR : d.tower.stats.meteor.r) / TILE;
-        v = { s };
+        const warning = new THREE.Mesh(geo('skillWarning', () => new THREE.RingGeometry(0.91, 1, 48)), add('#ffac58', 1.2));
+        warning.rotation.x = -PI / 2;
+        warning.position.set(wx(d.x), gy + 0.025, wz(d.y));
+        warning.scale.setScalar(s);
+        this.dynamic.add(warning);
+        v = { s, warning };
         if (d.kind === 'meteor') {
           const rock = new THREE.Group();
-          rock.add(new THREE.Mesh(geo('meteorRock', () => new THREE.DodecahedronGeometry(1, 0)), new THREE.MeshStandardMaterial({ color: 0x3a2a20, emissive: 0xff4a10, emissiveIntensity: 0.9, flatShading: true })));
-          rock.scale.setScalar(d.big ? 0.22 : 0.12);
+          rock.add(new THREE.Mesh(geo('meteorRockDetailed', () => { const g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i),s=1+Math.sin(x*21+y*17+z*13)*0.11; p.setXYZ(i,x*s,y*s,z*s); } g.computeVertexNormals(); return g; }), new THREE.MeshStandardMaterial({ color: 0x3a2a20, emissive: 0xff4a10, emissiveIntensity: 0.9, flatShading: true })));
+          for(let ring=0;ring<3;ring++) rock.add(new THREE.Mesh(geo('meteorFissure'+ring,()=>new THREE.TorusGeometry(0.94,0.018,5,32,PI*1.5).rotateX(ring*0.85).rotateY(ring*0.7)),add('#ffab53',2)));
+          rock.scale.setScalar(d.big ? 0.26 : 0.15);
           this.dynamic.add(rock);
           v.rock = rock;
         }
         this.delayViews.set(d.id, v);
       }
       const k = 1 - Math.max(0, d.t) / d.total;
+      v.warning.material.opacity = 0.15 + k * 0.5;
+      v.warning.scale.setScalar(v.s * (0.92 + Math.sin(this.time * 9) * 0.04));
       if (v.rock) {
         const h = (1 - k) * 7;
         v.rock.position.set(wx(d.x) - (1 - k) * 2.2, gy + 0.2 + h, wz(d.y) - (1 - k) * 1.2);
         v.rock.rotation.x += dt * 6; v.rock.rotation.z += dt * 4;
-        if (Math.random() < 0.9) this.particles.emit(v.rock.position.x, v.rock.position.y, v.rock.position.z, rand(-0.2, 0.2), 0.3, rand(-0.2, 0.2), Math.random() < 0.5 ? '#ff6a1e' : '#ffcf4a', 0.4, d.big ? 0.24 : 0.16, 0);
+        if (Math.random() < dt * 45) this.particles.emit(v.rock.position.x, v.rock.position.y, v.rock.position.z, rand(-0.2, 0.2), 0.3, rand(-0.2, 0.2), Math.random() < 0.5 ? '#ff6a1e' : '#ffcf4a', 0.4, d.big ? 0.24 : 0.16, 0);
       } else if (Math.random() < dt * 20) {
         const a = Math.random() * PI * 2, r = Math.random() * v.s * 0.8;
         this.particles.emit(wx(d.x) + Math.cos(a) * r, gy + 0.05, wz(d.y) + Math.sin(a) * r, 0, rand(0.6, 1.4), 0, Math.random() < 0.5 ? '#ffffff' : '#ff7a2a', 0.6, 0.15, 0.3, gy);
@@ -363,7 +432,8 @@ export function installVfx(R) {
     }
     for (const [id, v] of this.delayViews) {
       if (!seen.has(id)) {
-        if (v.rock) { this.dynamic.remove(v.rock); v.rock.children[0].material.dispose(); }
+        this.dynamic.remove(v.warning); v.warning.material.dispose();
+        if (v.rock) { this.dynamic.remove(v.rock); v.rock.traverse(o=>o.material?.dispose()); }
         this.delayViews.delete(id);
       }
     }
@@ -372,7 +442,12 @@ export function installVfx(R) {
   P.clearVfx = function () {
     for (const m of [this.zoneViews, this.moverViews, this.delayViews]) {
       if (!m) continue;
-      for (const v of m.values()) { for (const o of [v.g, v.rock]) if (o) this.dynamic.remove(o); }
+      for (const v of m.values()) {
+        for (const o of [v.g, v.rock, v.warning]) if (o) {
+          this.dynamic.remove(o);
+          o.traverse(child => { if (child.material) { if (v.layers) child.material.map?.dispose(); child.material.dispose(); } });
+        }
+      }
       m.clear();
     }
   };

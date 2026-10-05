@@ -9,7 +9,10 @@
  *  boss    → มังกรโบราณ
  * ============================================================ */
 import * as THREE from 'three';
+import { CREATURE_SKIN } from './battleFantasy.js';
 import { ELEMENTS } from './data.js';
+import { resculptCreature } from './sculptedCreatures.js';
+import { surfaceTexture } from './textures.js';
 import { Rig, G, xf } from './modelkit.js';
 
 const PI = Math.PI;
@@ -114,7 +117,6 @@ const DEFS = {
       for (const s of [-1, 1]) {
         rig.add(head, 'body', G.cone(0.034, 0.11, { x: -0.025, y: 0.085, z: s * 0.045, rz: 0.25, rx: -s * 0.25 }, 6));
         rig.add(head, 'glow', G.cone(0.018, 0.075, { x: -0.018, y: 0.08, z: s * 0.047, rz: 0.25, rx: -s * 0.25 }, 5));
-        rig.add(head, 'eye', G.sphere(0.017, { x: 0.068, y: 0.025, z: s * 0.05 }, 8));
         rig.add(head, 'fur', G.cone(0.025, 0.08, { x: -0.03, y: -0.02, z: s * 0.065, rx: -s * 1.2, rz: 1.1 }, 5));
       }
       const jaw = rig.bone('jaw', head, { x: 0.03, y: -0.045 });
@@ -171,7 +173,6 @@ const DEFS = {
       rig.add(head, 'dark', G.sphere(0.009, { x: 0.155, y: -0.005, z: 0.02 }, 6), G.sphere(0.009, { x: 0.155, y: -0.005, z: -0.02 }, 6));
       for (const s of [-1, 1]) {
         rig.add(head, 'body', G.cone(0.02, 0.07, { x: -0.03, y: 0.05, z: s * 0.03, rz: 0.35, rx: -s * 0.2 }, 6));
-        rig.add(head, 'eye', G.sphere(0.013, { x: 0.035, y: 0.02, z: s * 0.045 }, 8));
       }
       rig.add(head, 'gold', G.tube([[0.0, 0.045, 0], [0.04, 0.12, 0], [0.085, 0.21, 0]], (t) => 0.019 * (1 - t) * (0.82 + 0.18 * Math.sin(t * 44)), {}, 24, 6));
       rig.add(head, 'glow', G.octa(0.016, { x: 0.088, y: 0.215 }));
@@ -231,7 +232,6 @@ const DEFS = {
       for (const s of [-1, 1]) {
         rig.add(head, 'horn', G.tube([[-0.02, 0.05, s * 0.04], [-0.08, 0.1, s * 0.07], [-0.16, 0.11, s * 0.08]], [0.02, 0.001], {}, 10, 6));
         rig.add(head, 'glow', G.tube([[0.14, -0.025, s * 0.03], [0.2, -0.05, s * 0.09], [0.26, -0.03, s * 0.13]], [0.007, 0.002], {}, 8, 4));
-        rig.add(head, 'eye', G.sphere(0.016, { x: 0.06, y: 0.03, z: s * 0.055 }, 8));
       }
       const legs = [
         { ...leg(rig, body, 'fl', [0.17, 0.2, 0.19], { upper: 0.1, lower: 0.1, r1: 0.06, r2: 0.045, foot: 'claw', splay: -0.35 }), off: 0 },
@@ -251,6 +251,7 @@ const DEFS = {
       B.head.rotation.y = Math.sin(t * 0.8) * 0.3;
       B.neck.rotation.z = Math.sin(t * 1.3) * 0.08;
       B.tail0.rotation.y = Math.sin(t * 2) * 0.3;
+      if(B.jaw) B.jaw.rotation.z=-.35-Math.max(0,Math.sin(t*1.6))*.35;
     },
   },
 
@@ -280,7 +281,6 @@ const DEFS = {
         rig.add(h, 'body', G.ell(0.065, 0.048, 0.05), G.tube([[0.02, -0.005, 0], [0.12, -0.02, 0]], [0.04, 0.022], {}, 6, 7));
         for (const s of [-1, 1]) {
           rig.add(h, 'horn', G.tube([[-0.01, 0.035, s * 0.025], [-0.06, 0.07, s * 0.045]], [0.012, 0.001], {}, 6, 5));
-          rig.add(h, 'eye', G.sphere(0.012, { x: 0.045, y: 0.02, z: s * 0.038 }, 6));
           rig.add(h, 'mane', G.sheet([[0, 0], [-0.06, 0.02], [-0.04, 0.05]], { x: -0.03, y: 0, z: s * 0.045 }));
         }
         const jaw = rig.bone('hjaw' + k, h, { x: 0.02, y: -0.03 });
@@ -312,7 +312,7 @@ const DEFS = {
   kitsune: {
     tint: 0.18,
     build(rig, variant) {
-      const tails = variant === 'child' ? 1 : 3;
+      const tails = variant === 'child' ? 1 : 9;
       const body = rig.bone('body');
       rig.add(body, 'body', G.ell(0.2, 0.095, 0.085, { y: 0.31 }), G.ell(0.11, 0.1, 0.085, { x: 0.12, y: 0.325 }), G.ell(0.1, 0.09, 0.08, { x: -0.12, y: 0.315 }));
       rig.add(body, 'belly', G.ell(0.15, 0.05, 0.07, { y: 0.265 }), G.ell(0.06, 0.07, 0.07, { x: 0.18, y: 0.33 }));
@@ -327,7 +327,6 @@ const DEFS = {
       for (const s of [-1, 1]) {
         rig.add(head, 'body', G.cone(0.04, 0.13, { x: -0.01, y: 0.085, z: s * 0.04, rz: 0.15, rx: -s * 0.22 }, 6));
         rig.add(head, 'glow', G.cone(0.022, 0.095, { x: -0.002, y: 0.08, z: s * 0.042, rz: 0.15, rx: -s * 0.22 }, 5));
-        rig.add(head, 'eye', G.ell(0.017, 0.01, 0.012, { x: 0.05, y: 0.022, z: s * 0.048, rz: 0.3 }, 8));
         rig.add(head, 'belly', G.cone(0.022, 0.07, { x: -0.01, y: -0.02, z: s * 0.058, rx: -s * 1.3, rz: 1 }, 5));
         rig.add(head, 'glow', G.sheet([[0, 0], [0.03, 0.006], [0.05, 0]], { x: 0.06, y: 0.04, z: s * 0.05, rx: s * PI / 2 }));
       }
@@ -380,7 +379,6 @@ const DEFS = {
       const head = rig.bone('head', neck, { x: 0.085, y: 0.09 });
       rig.add(head, 'body', G.ell(0.05, 0.044, 0.04));
       rig.add(head, 'gold', G.tube([[0.035, 0, 0], [0.075, -0.008, 0], [0.098, -0.03, 0]], [0.017, 0.002], {}, 8, 6));
-      for (const s of [-1, 1]) rig.add(head, 'eye', G.sphere(0.01, { x: 0.025, y: 0.015, z: s * 0.034 }, 6));
       for (let i = 0; i < 4; i++) {
         rig.add(head, i % 2 ? 'glow' : 'feather2', G.tube([[0, 0.03, (i - 1.5) * 0.012], [-0.05, 0.09 + i * 0.01, (i - 1.5) * 0.02], [-0.12 - i * 0.015, 0.12 + i * 0.01, (i - 1.5) * 0.025]], [0.012, 0.001], {}, 8, 5));
       }
@@ -400,7 +398,7 @@ const DEFS = {
       return { height: 0.85 };
     },
     anim(B, st, dt, t) {
-      const flap = Math.sin(t * 4.2) * 0.55 + 0.15;
+      const flap = Math.sin(t * 3.4) * 0.3 + 0.08;
       B.wingL.rotation.x = -flap;
       B.wingR.rotation.x = flap;
       B.body.position.y = 0.55 + Math.sin(t * 4.2 + 1.2) * 0.04;
@@ -424,7 +422,6 @@ const DEFS = {
       rig.add(head, 'belly', G.ell(0.066, 0.058, 0.055));
       rig.add(head, 'gold', G.tube([[0.045, 0.005, 0], [0.1, -0.005, 0], [0.128, -0.045, 0]], [0.026, 0.003], {}, 10, 7));
       for (const s of [-1, 1]) {
-        rig.add(head, 'eye', G.sphere(0.012, { x: 0.04, y: 0.02, z: s * 0.045 }, 6));
         rig.add(head, 'dark', G.ell(0.025, 0.008, 0.012, { x: 0.042, y: 0.034, z: s * 0.045, rz: -0.3 }, 6));
         rig.add(head, 'feather', G.feather(0.07, 0.016, { x: -0.03, y: 0.04, z: s * 0.03, ry: -PI / 2 - s * 0.3, rz: 0.4 }));
       }
@@ -448,10 +445,10 @@ const DEFS = {
       return { height: 0.45 };
     },
     anim(B, st, dt, t) {
-      const flap = Math.sin(t * 6.5) * 0.7 + 0.1;
+      const flap = Math.sin(t * 3.2) * 0.32 + 0.06;
       B.wingL.rotation.x = -flap;
       B.wingR.rotation.x = flap;
-      B.body.position.y = 0.15 - Math.sin(t * 6.5) * 0.035;
+      B.body.position.y = 0.32 - Math.sin(t * 3.2) * 0.015;
       B.body.rotation.z = Math.sin(t * 6.5 + 1) * 0.04;
       for (let i = 0; i < 2; i++) B['tail' + i].rotation.y = Math.sin(t * 3 - i) * 0.35;
       B.head.rotation.y = Math.sin(t * 0.9) * 0.25;
@@ -485,7 +482,6 @@ const DEFS = {
         rig.add(head, 'horn', G.tube([[-0.03, 0.05, s * 0.04], [-0.1, 0.1, s * 0.07], [-0.19, 0.12, s * 0.085], [-0.26, 0.085, s * 0.075]], [0.026, 0.001], {}, 14, 7));
         rig.add(head, 'horn', G.tube([[-0.04, 0.02, s * 0.06], [-0.1, 0.03, s * 0.1]], [0.014, 0.001], {}, 6, 5));
         rig.add(head, 'horn', G.cone(0.012, 0.05, { x: 0.02, y: -0.03, z: s * 0.07, rx: -s * 1.4 }, 4));
-        rig.add(head, 'eye', G.ell(0.02, 0.012, 0.012, { x: 0.075, y: 0.032, z: s * 0.058, rz: 0.2 }, 8));
         rig.add(head, 'membrane', G.sheet([[0, 0], [-0.05, 0.03], [-0.1, 0.0], [-0.06, -0.02]], { x: -0.04, y: -0.02, z: s * 0.07, rx: s * PI / 2 }));
       }
       const jaw = rig.bone('jaw', head, { x: 0.04, y: -0.048 });
@@ -551,6 +547,12 @@ function getTemplate(model, variant) {
   if (!templates.has(key)) {
     const rig = new Rig();
     const info = DEFS[model].build(rig, variant);
+    resculptCreature(rig, model, variant);
+    if(model==='dragon') info.height=1.25;
+    if(model==='griffin') info.height=.95;
+    if(model==='phoenix') info.height=1.5;
+    if(model==='hydra') info.height=1.0;
+    if(model==='unicorn') info.height=1.12;
     const root = rig.finalize();
     templates.set(key, { root, info });
   }
@@ -566,27 +568,94 @@ function roleMaterials(element, model) {
   const ec = new THREE.Color(el.color);
   const gc = new THREE.Color(el.glow);
   const white = new THREE.Color(0xffffff);
-  const base = ec.clone().lerp(white, DEFS[model].tint);
+  const base = new THREE.Color(CREATURE_SKIN[model]).lerp(ec, 0.07);
   const M = {
-    body: new THREE.MeshPhysicalMaterial({ color: base, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.4, sheen: 0.5, sheenColor: gc, emissive: ec, emissiveIntensity: 0.12 }),
-    fur: new THREE.MeshStandardMaterial({ color: base.clone().lerp(white, 0.25), roughness: 0.75, emissive: ec, emissiveIntensity: 0.1 }),
-    belly: new THREE.MeshStandardMaterial({ color: base.clone().lerp(white, 0.62), roughness: 0.6 }),
+    body: new THREE.MeshPhysicalMaterial({ color: base, roughness: 0.52, metalness: 0.08, clearcoat: 0.08, clearcoatRoughness: 0.4, sheen: 0.2, sheenColor: gc, emissive: ec, emissiveIntensity: 0.015 }),
+    fur: new THREE.MeshStandardMaterial({ color: base.clone().lerp(new THREE.Color(0xabb0a9), 0.18), roughness: 0.75, emissive: ec, emissiveIntensity: 0.01 }),
+    belly: new THREE.MeshStandardMaterial({ color: base.clone().lerp(new THREE.Color(0xa69b84), 0.32), roughness: 0.6 }),
     dark: new THREE.MeshStandardMaterial({ color: ec.clone().multiplyScalar(0.22), roughness: 0.45, metalness: 0.2 }),
-    horn: new THREE.MeshStandardMaterial({ color: 0xf1e7cf, roughness: 0.35, metalness: 0.05 }),
-    gold: new THREE.MeshStandardMaterial({ color: 0xf2c25a, roughness: 0.25, metalness: 0.9 }),
+    horn: new THREE.MeshStandardMaterial({ color: 0xbcb092, roughness: 0.35, metalness: 0.05 }),
+    gold: new THREE.MeshStandardMaterial({ color: 0xb69751, roughness: 0.25, metalness: 0.9 }),
     shell: new THREE.MeshStandardMaterial({ color: ec.clone().lerp(new THREE.Color(0x5a4028), 0.5), roughness: 0.55, metalness: 0.1 }),
     shell2: new THREE.MeshStandardMaterial({ color: ec.clone().lerp(new THREE.Color(0xd8c090), 0.45), roughness: 0.5, metalness: 0.1 }),
-    mane: new THREE.MeshStandardMaterial({ color: gc, emissive: ec, emissiveIntensity: 0.75, roughness: 0.4, side: THREE.DoubleSide }),
-    membrane: new THREE.MeshStandardMaterial({ color: ec.clone().lerp(gc, 0.35), emissive: ec, emissiveIntensity: 0.3, roughness: 0.55, side: THREE.DoubleSide, transparent: true, opacity: 0.72, depthWrite: false }),
+    mane: new THREE.MeshStandardMaterial({ color: gc, emissive: ec, emissiveIntensity: 0.12, roughness: 0.4, side: THREE.DoubleSide }),
+    membrane: new THREE.MeshStandardMaterial({ color: ec.clone().lerp(gc, 0.35), emissive: ec, emissiveIntensity: 0.08, roughness: 0.65, side: THREE.DoubleSide, transparent: true, opacity: 0.72, depthWrite: false }),
     feather: new THREE.MeshStandardMaterial({ color: base, roughness: 0.6, side: THREE.DoubleSide, emissive: ec, emissiveIntensity: 0.15 }),
     feather2: new THREE.MeshStandardMaterial({ color: base.clone().lerp(gc, 0.6), roughness: 0.55, side: THREE.DoubleSide, emissive: ec, emissiveIntensity: 0.35 }),
-    glow: new THREE.MeshBasicMaterial({ color: gc.clone().multiplyScalar(1.6) }),
-    eye: new THREE.MeshBasicMaterial({ color: new THREE.Color(0xfff6c0).multiplyScalar(1.9) }),
+    glow: new THREE.MeshBasicMaterial({ color: gc.clone().multiplyScalar(1.15) }),
+    armor: new THREE.MeshStandardMaterial({color:0x3c4650,metalness:0.72,roughness:0.44}),
+    leather: new THREE.MeshStandardMaterial({color:0x49362a,roughness:0.9}),
+    trim: new THREE.MeshStandardMaterial({color:0xb69751,metalness:0.7,roughness:0.38}),
+    cloth: new THREE.MeshStandardMaterial({color:0x147b91,roughness:.9,side:THREE.DoubleSide}),
+    mouth: new THREE.MeshStandardMaterial({color:0x782828,roughness:.85}),
   };
   if (model === 'phoenix') {
-    M.feather.emissiveIntensity = 0.45;
-    M.feather2.emissiveIntensity = 0.7;
+    M.body.color.set(0xe65b0b);M.body.sheen=0;M.body.clearcoat=.15;
+    M.feather.color.set(0xf27509);M.feather2.color.set(0xffa916);
+    M.gold.color.set(0xffd126);M.gold.metalness=.12;
+    for(const role of ['body','feather','feather2','gold']) {M[role].emissive.set(0xff6300);M[role].emissiveIntensity=.06;M[role].roughness=.55;}
   }
+  if(model==='dragon') {
+    M.body.color.set(0xdf5809).lerp(ec,0.035);
+    M.body.sheen=0; M.body.clearcoat=0;
+    M.belly.color.set(0xe0c991);
+    M.shell2.color.set(0xc64a0e);
+    M.horn.color.set(0xc6b995);
+    M.dark.color.set(0x30292c);
+    M.membrane.color.set(0xd95b13);
+    M.membrane.transparent=false; M.membrane.opacity=1; M.membrane.depthWrite=true; M.membrane.emissiveIntensity=0;
+    for(const role of ['body','belly','shell2','horn','dark','membrane']) { M[role].flatShading=true; M[role].roughness=.76; }
+  }
+  if(model==='griffin') {
+    M.body.color.set(0xa96530);M.body.sheen=0;M.body.clearcoat=0;
+    M.belly.color.set(0xe7dfbc);M.dark.color.set(0x142b38);
+    M.feather.color.set(0x142b38);M.feather2.color.set(0xc28b4c);
+    M.gold.color.set(0xc99445);
+    for(const role of ['body','belly','dark','feather','feather2','gold']) {M[role].flatShading=true;M[role].emissiveIntensity=0;M[role].roughness=.75;}
+  }
+  if(model==='kitsune') {
+    M.body.color.set(0xe8e3ce);M.body.sheen=0;M.body.clearcoat=0;
+    M.belly.color.set(0xf2ebd6);M.fur.color.set(0x50575b);
+    M.dark.color.set(0x383c42);M.shell2.color.set(0xbd2030);
+    M.mane.color.set(0xbd2030);M.mane.emissiveIntensity=0;
+    for(const role of ['body','belly','fur','dark','shell2','mane'])M[role].roughness=.8;
+  }
+  if(model==='hydra') {
+    M.body.color.set(0x087e80);M.body.sheen=0;M.body.clearcoat=.08;
+    M.shell2.color.set(0x086567);M.belly.color.set(0xc4c8a0);
+    M.mane.color.set(0xa69d74);M.mane.emissiveIntensity=0;
+    M.gold.color.set(0x82775a);M.gold.metalness=.05;
+    M.horn.color.set(0xd6d7bc);
+  }
+  if(model==='unicorn') {
+    M.body.color.set(0xb5e5ee);M.body.sheen=0;M.body.clearcoat=.22;
+    M.belly.color.set(0xb4dce5);M.dark.color.set(0x556077);
+    M.fur.color.set(0xc6e4eb);M.mane.color.set(0x883b9d);M.mane.emissiveIntensity=0;
+    M.feather2.color.set(0xe185c9);M.feather2.emissiveIntensity=0;
+    M.cloth.color.set(0x689fce);M.gold.color.set(0xcda64e);M.horn.color.set(0xead18a);
+    for(const role of ['body','belly','mane','feather2','cloth']) {M[role].roughness=.46;M[role].bumpScale=.0006;}
+  }
+  if(model==='turtle') {
+    M.body.color.set(0x499d29);M.body.sheen=0;M.body.clearcoat=.05;
+    M.belly.color.set(0xada66a);M.shell.color.set(0x482512);
+    M.shell2.color.set(0x9b5421);M.horn.color.set(0x3b3923);
+    M.mouth.color.set(0x6d1635);
+    for(const role of ['body','shell','shell2'])M[role].roughness=.84;
+  }
+  if(model==='wolf') {
+    const coats={fire:0x743249,water:0x5c7892,wind:0xc7d5dc,earth:0x625c51,light:0xdbdee2,dark:0x343149};
+    M.body.color.set(coats[element]??0x43495f);M.body.sheen=0;M.body.clearcoat=0;
+    M.fur.color.copy(M.body.color).multiplyScalar(.62);
+    M.belly.color.copy(M.body.color).multiplyScalar(.85);
+    M.dark.color.set(0x17202c);M.horn.color.set(0xdccbb1);
+    for(const role of ['body','fur','belly','dark','horn']){M[role].flatShading=true;M[role].roughness=.88;M[role].emissiveIntensity=0;}
+  }
+  for (const role of ['body', 'belly', 'shell', 'shell2', 'horn']) {
+    M[role].bumpMap = surfaceTexture('stone'); M[role].bumpScale = role === 'body' ? 0.002 : 0.004;
+    M[role].envMapIntensity = 0.3;
+  }
+  for (const role of ['armor','trim','leather']) { M[role].map=surfaceTexture(role==='leather'?'wood':'metal');M[role].bumpMap=M[role].map;M[role].bumpScale=0.0015; }
+  M.gold.envMapIntensity = 0.8;
   matCache.set(key, M);
   return M;
 }

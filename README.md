@@ -8,7 +8,7 @@
 <br>3D elemental tower defense that runs in your browser, on desktop and mobile
 
 [![เล่นเลย](https://img.shields.io/badge/%E0%B9%80%E0%B8%A5%E0%B9%88%E0%B8%99%E0%B9%80%E0%B8%A5%E0%B8%A2-Play%20now-f5b942?style=for-the-badge&logo=googlechrome&logoColor=white)](https://elementtd.thasala.dev/)
-[![Version](https://img.shields.io/badge/version-1.1.1-8a5cf6?style=for-the-badge)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.2-8a5cf6?style=for-the-badge)](CHANGELOG.md)
 
 ![Three.js](https://img.shields.io/badge/Three.js-r186-000000?logo=threedotjs&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
@@ -281,6 +281,12 @@ src/towers.js       ข้อมูลป้อมธาตุ 25 แบบ
 src/render3d.js     ตัวเรนเดอร์ Three.js: กล้อง, อนุภาค, ซิงก์วัตถุจาก sim
 src/world.js        สร้างฉาก: ภูมิประเทศ, กำแพง, พอร์ทัล, ของตกแต่ง, ป้ายผู้สร้าง
 src/models.js       โมเดลป้อม (ฐานตามระดับ + แคชแม่แบบ)
+src/towerArchitecture.js  อาคารป้อมแฟนตาซี 31 แบบ × 3 ระดับ (ผัง ความสูง วัสดุ หลังคา)
+src/sculptedTowers.js     รายละเอียดหัวป้อมและกลไกยิง
+src/towerAttackArt.js     หน้าตากระสุน รอย และแรงปะทะของแต่ละป้อม
+src/sculptedCreatures.js  ผิวและกายวิภาคมอนสเตอร์ (src/reference*.js แยกตามสายพันธุ์)
+src/battleFantasy.js      แสง ค่าแสง และโทนสีผิว/วัสดุที่ใช้ร่วมกัน
+src/artDirection.js / skillMaterials.js / landscapeDetails.js  วัสดุ shader สกิล และของตกแต่งแผนที่
 src/towerHeads.js   โมเดลหัวป้อมธาตุ 25 แบบ
 src/creatures.js    สัตว์ในเทพนิยาย 8 แบบ พร้อมโครงกระดูกและแอนิเมชัน
 src/vfx.js          เอฟเฟกต์การโจมตีพิเศษ (แอ่ง, พายุ, อุกกาบาต, ลำแสงชิ่ง)
@@ -298,6 +304,8 @@ src/style.css       สไตล์ UI
 public/music/       ไฟล์เพลง
 public/icons/       ไอคอน PNG ที่สร้างด้วยโค้ด
 tools/icons.html    หน้าสร้างไอคอน (node tools/export-icons.cjs ขณะเปิด npm run dev)
+tools/art-preview.html  ดูโมเดลป้อม มอนสเตอร์ แผนที่ และเอฟเฟกต์การยิงทีละชิ้น (เปิดขณะ npm run dev)
+docs/art-direction.md   แนวทางงานภาพ Sculpted Realms
 docs/screenshots/   ภาพประกอบ README
 docs/releases/      บันทึกการเปลี่ยนแปลงของแต่ละ Release
 LICENSE / NOTICE    MIT สำหรับโค้ด / ขอบเขตลิขสิทธิ์ของเพลงและภาพ

@@ -176,39 +176,32 @@ export function cobbleTexture(tint = 'stone') {
     const rnd = seeded(97 + tint.length);
     g.fillStyle = P.mortar;
     g.fillRect(0, 0, size, size);
-    const n = 6;
-    const cell = size / n;
-    for (let gy = 0; gy < n; gy++) {
-      for (let gx = 0; gx < n; gx++) {
-        const cx = (gx + 0.5 + (gy % 2) * 0.5 + (rnd() - 0.5) * 0.25) * cell;
-        const cy = (gy + 0.5 + (rnd() - 0.5) * 0.25) * cell;
-        const rad = cell * (0.5 + rnd() * 0.06);
-        const verts = [];
-        const k = 8 + Math.floor(rnd() * 3);
-        for (let v = 0; v < k; v++) {
-          const a = (v / k) * Math.PI * 2 + rnd() * 0.3;
-          const rr = rad * (0.82 + rnd() * 0.22);
-          verts.push([Math.cos(a) * rr * 1.08, Math.sin(a) * rr * (0.82 + rnd() * 0.18)]);
+    // Hand-cut flagstones: narrow joints, chipped corners and fine mineral veins.
+    const rows = 8, h = size / rows, w = size / 4;
+    for (let row = 0; row < rows; row++) for (let col = -1; col < 5; col++) {
+      const x = col * w + (row % 2) * w / 2, y = row * h;
+      const inset = 2.5, chip = 4 + rnd() * 5;
+      const l = (P.lmin + P.lmax) / 2 + (rnd() - 0.5) * 7;
+      const verts = [[inset + chip,inset],[w-inset-chip,inset],[w-inset,inset+chip],
+        [w-inset,h-inset-chip],[w-inset-chip,h-inset],[inset+chip,h-inset],[inset,h-inset-chip],[inset,inset+chip]];
+      wrapped(size, x + w / 2, y + h / 2, w, (cx, cy) => {
+        const px = cx - w / 2, py = cy - h / 2;
+        g.beginPath();
+        verts.forEach(([vx,vy],i) => i ? g.lineTo(px+vx,py+vy) : g.moveTo(px+vx,py+vy));
+        g.closePath();
+        g.fillStyle = `hsl(${P.hue},${P.sat}%,${l}%)`; g.fill();
+        g.save(); g.clip();
+        const gr = g.createLinearGradient(px,py,px+w,py+h);
+        gr.addColorStop(0,'rgba(255,255,255,0.12)'); gr.addColorStop(1,'rgba(0,0,0,0.12)');
+        g.fillStyle=gr; g.fillRect(px,py,w,h);
+        for(let v=0;v<3;v++) {
+          g.strokeStyle='rgba(235,225,210,0.07)'; g.lineWidth=0.8;
+          g.beginPath(); g.moveTo(px+v*37,py);
+          g.bezierCurveTo(px+20+v*26,py+18,px+50+v*19,py+30,px+v*36+30,py+h); g.stroke();
         }
-        const l = P.lmin + rnd() * (P.lmax - P.lmin);
-        const fill = `hsl(${P.hue + (rnd() - 0.5) * 16}, ${P.sat}%, ${l}%)`;
-        wrapped(size, cx, cy, rad, (px, py) => {
-          g.beginPath();
-          verts.forEach(([vx, vy], i) => (i ? g.lineTo(px + vx, py + vy) : g.moveTo(px + vx, py + vy)));
-          g.closePath();
-          g.fillStyle = fill;
-          g.fill();
-          const gr = g.createRadialGradient(px - rad * 0.35, py - rad * 0.35, 1, px, py, rad * 1.1);
-          gr.addColorStop(0, 'rgba(255,255,255,0.22)');
-          gr.addColorStop(0.6, 'rgba(255,255,255,0)');
-          gr.addColorStop(1, 'rgba(0,0,0,0.28)');
-          g.fillStyle = gr;
-          g.fill();
-          g.strokeStyle = 'rgba(0,0,0,0.35)';
-          g.lineWidth = 2;
-          g.stroke();
-        });
-      }
+        g.restore();
+        g.strokeStyle='rgba(15,20,26,0.2)'; g.lineWidth=1; g.stroke();
+      });
     }
     // จุดสีเล็ก ๆ ให้ดูมีพื้นผิว
     for (let i = 0; i < 4000; i++) {
@@ -297,5 +290,24 @@ export function glowTexture() {
     const t = toTexture(c);
     t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
     return t;
+  });
+}
+
+/* Fine surface structure for the new sculpted models. Shared, neutral-color maps. */
+export function surfaceTexture(kind = 'stone') {
+  return memo(`surface-${kind}`, () => {
+    const c = canvas(256), g = c.getContext('2d'), rnd = seeded(853 + kind.length * 17);
+    g.fillStyle = '#dedbd4'; g.fillRect(0, 0, 256, 256);
+    for(let i=0;i<5500;i++) {
+      const a=0.035+rnd()*0.07;g.fillStyle=rnd()<0.5?`rgba(15,22,30,${a})`:`rgba(255,255,255,${a})`;
+      g.fillRect(rnd()*256,rnd()*256,0.6+rnd()*2.2,0.6+rnd()*2.2);
+    }
+    for(let k=0;k<24;k++) {
+      g.strokeStyle=kind==='wood'?'rgba(60,33,15,0.15)':'rgba(255,255,255,0.1)';
+      g.lineWidth=kind==='metal'?0.4:0.9;g.beginPath();
+      const x=k/24*256;g.moveTo(x,0);
+      g.bezierCurveTo(x+Math.sin(k)*18,80,x-Math.cos(k)*16,175,x,256);g.stroke();
+    }
+    return toTexture(c);
   });
 }

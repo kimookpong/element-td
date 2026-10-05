@@ -257,6 +257,10 @@ button.danger:hover:not(:disabled) { border-color: #d05050; }
 .compendium { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; text-align: left; }
 .compendium .combo { background: #0004; border-radius: 8px; padding: 6px 8px; font-size: .78rem; display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
 .compendium .portrait { width: 52px; height: 52px; flex-shrink: 0; }
+#help .compendium { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 12px; }
+#help .compendium .combo { padding: 12px; gap: 12px; border: 1px solid #bca47825; background: linear-gradient(145deg, #26334488, #101724cc); }
+#help .compendium .portrait { width: 88px; height: 104px; object-fit: contain; border-radius: 8px; background: #0c142a66; }
+@media (max-width: 480px) { #help .compendium .portrait { width: 64px; height: 80px; } }
 .compendium .els .ico { width: 16px; height: 16px; vertical-align: -3px; }
 .compendium .look { color: var(--gold2); opacity: .8; }
 .compendium .beats { opacity: .85; }

@@ -3,6 +3,8 @@
  *  1 หน่วย = 1 ช่องตาราง, กระดานอยู่บนระนาบ XZ
  * ============================================================ */
 import * as THREE from 'three';
+import { BATTLE_LOOK } from './battleFantasy.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -17,9 +19,10 @@ import { buildCreatureModel } from './creatures.js';
 import { withIcons } from './icons.js';
 import { installVfx } from './vfx.js';
 import { TOWERS } from './towers.js';
+import { attackProfile, buildAttackProjectile, buildAttackTrail, buildAttackBurst } from './towerAttackArt.js';
 
 /* ---------------- ระบบอนุภาค ---------------- */
-class Particles {
+export class Particles {
   constructor(max) {
     this.max = max;
     this.cursor = 0;
@@ -129,12 +132,18 @@ export class Renderer3D {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = BATTLE_LOOK.exposure;
     container.appendChild(renderer.domElement);
     this.renderer = renderer;
     this.canvas = renderer.domElement;
 
     this.scene = new THREE.Scene();
+    const environment = new RoomEnvironment();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    this.environmentTarget = pmrem.fromScene(environment, 0.04);
+    this.scene.environment = this.environmentTarget.texture;
+    this.scene.environmentIntensity = 0.35;
+    environment.dispose(); pmrem.dispose();
     this.camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
     this.root = new THREE.Group();
     this.scene.add(this.root);
@@ -169,7 +178,7 @@ export class Renderer3D {
 
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.5, 0.45, 0.92);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), BATTLE_LOOK.bloom, 0.4, BATTLE_LOOK.bloomThreshold);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 
@@ -475,11 +484,14 @@ export class Renderer3D {
         break;
       }
       case 'hit':
+        if (ev.tower) { this.addTowerBurst(ev.tower, this.vpt(ev.x,ev.y,ev.fly), 'impact'); break; }
         P.burst(wx(ev.x), (ev.fly ? FLY_HEIGHT : FLOOR) + 0.35, wz(ev.y), ev.color, 6, 1.5, 0.13, -5);
         break;
       case 'explosion': {
+        if (ev.tower) this.addTowerBurst(ev.tower, this.vpt(ev.x,ev.y,ev.fly), 'impact');
         const y = ev.fly ? FLY_HEIGHT : FLOOR;
         const gy = ev.fly ? y : this.groundAt(ev.x, ev.y);
+        this.addShockwave(wx(ev.x), gy, wz(ev.y), ev.color, ev.big ? 1.4 : 0.75);
         P.burst(wx(ev.x), gy + 0.3, wz(ev.y), ev.color, ev.big ? 40 : 16, ev.big ? 4.5 : 3, ev.big ? 0.26 : 0.2, -5, gy);
         P.burst(wx(ev.x), gy + 0.3, wz(ev.y), '#ffd27a', ev.big ? 18 : 6, 2, 0.14, -5, gy);
         break;
@@ -502,7 +514,10 @@ export class Renderer3D {
       }
       case 'shot': {
         const v = this.towerViews.get(ev.tower.id);
-        if (v) v.recoil = 1;
+        if (v) {
+          v.recoil = 1;
+          this.addTowerBurst(ev.tower,new THREE.Vector3(wx(ev.tower.x),this.tileGround(ev.tower.c,ev.tower.r)+v.height*0.85,wz(ev.tower.y)),'muzzle');
+        }
         break;
       }
       case 'loop': {
@@ -541,8 +556,8 @@ export class Renderer3D {
   clearDynamic() {
     for (const v of this.towerViews.values()) { this.dynamic.remove(v.group); this.dynamic.remove(v.scaffold); this.dynamic.remove(v.bar); }
     for (const v of this.creepViews.values()) { if (v.shadow) this.dynamic.remove(v.shadow); this.removeCreepView(v); }
-    for (const v of this.projViews.values()) this.dynamic.remove(v.mesh);
-    for (const fx of this.effects) this.dynamic.remove(fx.obj);
+    for (const v of this.projViews.values()) { this.dynamic.remove(v.mesh, v.ribbon.mesh); v.art.dispose(); v.ribbon.dispose(); }
+    for (const fx of this.effects) { this.dynamic.remove(fx.obj); if (fx.dispose) fx.dispose(); else fx.obj.traverse(o=>{if(o.material)o.material.dispose();}); }
     for (const f of this.floaters) f.el.remove();
     this.towerViews.clear();
     this.creepViews.clear();
@@ -796,65 +811,47 @@ export class Renderer3D {
     return g;
   }
 
+  addTowerBurst(tower, position, phase) {
+    const fx = buildAttackBurst(attackProfile(tower), position, phase);
+    this.dynamic.add(fx.obj); this.effects.push(fx);
+  }
+
   syncProjectiles(game, dt) {
     const seen = new Set();
     for (const p of game.projectiles) {
       seen.add(p.id);
       let v = this.projViews.get(p.id);
       if (!v) {
-        const st = p.style;
         const t = p.tower;
-        const color = t.kind === 'basic' ? BASIC[t.base].color : ELEMENTS[p.elements[p.elements.length - 1]].color;
-        let m;
-        if (st === 'arrow') {
-          m = new THREE.Group();
-          m.add(mesh(G.cyl(), std(0x8a6a40), { rz: Math.PI / 2, s: [0.012, 0.3, 0.012], shadow: false }));
-          m.add(mesh(G.cone4(), std(0xdddddd, { metalness: 0.7 }), { x: 0.17, rz: -Math.PI / 2, s: [0.025, 0.06, 0.025], shadow: false }));
-        } else if (st === 'cannon') {
-          m = mesh(G.sph(), std(0x222228, { metalness: 0.6, roughness: 0.4 }), { s: 0.08 });
-        } else if (st === 'earth') {
-          m = mesh(G.dode(), std(0x8a6a45, { flatShading: true }), { s: 0.12 });
-        } else if (st === 'shell') {
-          m = new THREE.Group();
-          m.add(mesh(G.sph(), std(0x2a2830, { metalness: 0.7, roughness: 0.35, emissive: 0xff5a1e, emissiveIntensity: 0.6 }), { s: 0.09, shadow: false }));
-        } else if (st === 'ice') {
-          m = mesh(G.octa(), glow(0xcff4ff, 2.6), { s: [0.07, 0.12, 0.07], shadow: false });
-        } else if (st === 'chain') {
-          m = new THREE.Group();
-          m.add(mesh(G.sphLo(), glow(0x7a3dff, 3), { s: 0.07, shadow: false }));
-          m.add(mesh(G.torus(), glow(0xb070ff, 2.5), { s: 0.11, shadow: false }));
-        } else if (st === 'lob') {
-          m = mesh(G.sphLo(), glow(color, 3), { s: 0.1, shadow: false });
-        } else if (st === 'wind') {
-          m = mesh(geo('crescent', () => new THREE.TorusGeometry(0.1, 0.02, 4, 12, Math.PI)), glow(0x7affd0, 3), { rx: Math.PI / 2, shadow: false });
-        } else {
-          const size = { fire: 0.13, water: 0.09, dark: 0.1, soul: 0.11 }[st] || 0.08;
-          m = mesh(G.sphLo(), glow(color, 3.5), { s: size * (p.elements.length > 1 ? 1.35 : 1), shadow: false });
-        }
+        const art = buildAttackProjectile(t);
+        const m = art.group;
+        const ribbon = buildAttackTrail(art.profile);
+        this.dynamic.add(ribbon.mesh);
         const ty = this.tileGround(t.c, t.r);
-        v = { mesh: m, trail: t.kind === 'basic' ? (st === 'cannon' ? '#9a9a9a' : null) : st === 'soul' ? '#ff3aa0' : st === 'ice' ? '#ffffff' : color, total: Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1, y0: ty + 0.85 };
+        v = { mesh: m, art, ribbon, total: Math.hypot(p.tx - p.sx, p.ty - p.sy) || 1, y0: ty + (this.towerViews.get(t.id)?.height || 1) * 0.85, initialized: false };
         this.dynamic.add(m);
         this.projViews.set(p.id, v);
       }
       const remain = Math.hypot(p.tx - p.x, p.ty - p.y);
       v.total = Math.max(v.total, remain);
       const k = Math.min(1, Math.max(0, 1 - remain / v.total));
-      const y1 = (p.fly ? FLY_HEIGHT : FLOOR) + 0.3;
+      const y1 = (p.fly ? FLY_HEIGHT : this.groundAt(p.tx,p.ty)) + 0.3;
       const lob = ['earth', 'cannon', 'shell', 'lob'].includes(p.style) ? 1 : 0.15;
       const y = v.y0 + (y1 - v.y0) * k + Math.sin(k * Math.PI) * lob;
       const prev = v.mesh.position.clone();
       v.mesh.position.set(wx(p.x), y, wz(p.y));
-      if (p.style === 'arrow') {
+      if (!v.initialized) v.mesh.rotation.y = Math.atan2(p.sy-p.ty, p.tx-p.sx);
+      if (v.initialized) {
         const d = v.mesh.position.clone().sub(prev);
-        if (d.lengthSq() > 1e-6) v.mesh.rotation.set(0, Math.atan2(-d.z, d.x), Math.atan2(d.y, Math.hypot(d.x, d.z)));
-      } else if (p.style === 'wind') v.mesh.rotation.z += dt * 20;
-      else if (p.style === 'earth' || p.style === 'ice' || p.style === 'chain') { v.mesh.rotation.x += dt * 8; v.mesh.rotation.z += dt * 6; }
-      if (v.trail && Math.random() < 0.85) {
-        this.particles.emit(v.mesh.position.x, v.mesh.position.y, v.mesh.position.z, 0, 0.1, 0, v.trail, 0.28, p.style === 'wind' ? 0.08 : 0.13, 0);
+        if (d.lengthSq() > 1e-6) v.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),d.normalize());
       }
+      v.initialized = true;
+      v.art.update(game.time);
+      v.ribbon.update(v.mesh.position, dt);
+
     }
     for (const [id, v] of this.projViews) {
-      if (!seen.has(id)) { this.dynamic.remove(v.mesh); this.projViews.delete(id); }
+      if (!seen.has(id)) { this.dynamic.remove(v.mesh, v.ribbon.mesh); v.art.dispose(); v.ribbon.dispose(); this.projViews.delete(id); }
     }
   }
 
@@ -933,7 +930,8 @@ export class Renderer3D {
       fx.life -= dt;
       if (fx.life <= 0) {
         this.dynamic.remove(fx.obj);
-        fx.obj.traverse((o) => { if (o.material) o.material.dispose(); });
+        if (fx.dispose) fx.dispose();
+        else fx.obj.traverse((o) => { if (o.material) o.material.dispose(); });
         return false;
       }
       fx.update(fx.life / fx.max);
