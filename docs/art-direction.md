@@ -65,3 +65,7 @@ Validated 60 creature variants, 27 attack stages, production build and browser p
 ## Current visual constraint
 
 Per the user's request, omit stair geometry and eye details from all towers, creatures and attack effects. The dark tower uses a faceted crystal core instead of an eyeball. Golem eye lights, skull eye sockets, creature sockets/pupils/brows and soul-projectile eyes are removed. Keep this constraint in future art changes. Production build passed after removal.
+
+## Grand tower architecture
+
+The current tower renderer uses `grandTowerArchitecture.js` in place of the earlier village buildings. All 31 recipes keep their individual weapons, now enlarged above open decks. Structure families include cathedral buttresses, citadels, industrial arsenals, swept pavilions, paired portals, suspended crystal supports, thorn groves, cascades, ice spires, obelisks and rock colossi. Level two adds crystals and heraldic cloth; level three adds orbiting satellites. No stairs or eye geometry. Firing height follows the enlarged model. Portraits in `public/icons/t_*.png` must be regenerated through `tools/icons.html` after model changes.

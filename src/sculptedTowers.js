@@ -1,7 +1,7 @@
 /* Each tower has its own construction recipe and silhouette. Shared helpers build
  * small parts only; there is no shared weapon/architecture recipe. */
 import { G } from './modelkit.js';
-import { buildTowerArchitecture } from './towerArchitecture.js';
+import { buildGrandTowerArchitecture } from './grandTowerArchitecture.js';
 const PI=Math.PI,TAU=2*PI;
 const around=(n,r,fn)=>{for(let i=0;i<n;i++){const a=i*TAU/n;fn(Math.cos(a)*r,Math.sin(a)*r,a,i);}};
 export const TOWER_IDENTITIES = {
@@ -169,7 +169,7 @@ const builders={
 };
 export function buildSculptedTower(rig,head,style,tier){
   const identity=TOWER_IDENTITIES[style];if(!identity)throw Error('Missing tower identity: '+style);
-  const color=palette[style.split('+')[0]]||'#ffda9d';const architecture=buildTowerArchitecture(rig,head,style,tier,color);
+  const color=palette[style.split('+')[0]]||'#ffda9d';const architecture=buildGrandTowerArchitecture(rig,head,style,tier,color);
   const mechanism=rig.bone('mechanism',head,{y:architecture.deck,z:architecture.weaponZ});
   const [height,aim]=builders[style](rig,mechanism,tier,color);
   // Tier scale is applied by models.js; recipe-specific details use tier above.
@@ -182,4 +182,7 @@ export function animateSculptedTower(B,t,dt,boost=0){
   if(B.flow)B.flow.scale.y=1+Math.sin(t*3)*0.04;
   if(B.cloth)B.cloth.rotation.y=Math.sin(t*2)*0.12;
   if(B.sticks)B.sticks.rotation.z=Math.sin(t*5)*0.15;
+  if(B.grandHalo)B.grandHalo.rotation.y=t*.18;
+  if(B.grandSatellite)B.grandSatellite.rotation.y=-t*.24;
+  for(const side of [0,1])if(B['elementWind'+side])B['elementWind'+side].rotation.z=t*.8;
 }

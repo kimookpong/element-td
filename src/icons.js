@@ -3,7 +3,7 @@
  * ============================================================ */
 const BASE = `${import.meta.env.BASE_URL}icons/`;
 
-export const iconUrl = (name) => `${BASE}${name}.png?v=reference-art-2`;
+export const iconUrl = (name) => `${BASE}${name}.png?v=element-towers-4`;
 
 // แท็ก <img> สำหรับใช้ใน innerHTML
 export const ico = (name, cls = '') => `<img class="ico${cls ? ' ' + cls : ''}" src="${iconUrl(name)}" alt="" draggable="false">`;
